@@ -1,0 +1,7 @@
+setup.py
+hyper_resource_sanic/__init__.py
+hyper_resource_sanic.egg-info/PKG-INFO
+hyper_resource_sanic.egg-info/SOURCES.txt
+hyper_resource_sanic.egg-info/dependency_links.txt
+hyper_resource_sanic.egg-info/requires.txt
+hyper_resource_sanic.egg-info/top_level.txt
