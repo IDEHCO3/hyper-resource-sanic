@@ -1,4 +1,4 @@
-def get_template()
+def get_template():
     template = f"""
 import asyncio
 from databases import Database

@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import importlib
+import inspect
+import os
+import glob
+
 from databases import Database
 from environs import Env
 from sanic import Sanic, response
 from sanic.response import text
 from sanic_openapi import swagger_blueprint
 #from src.middlewares.security import setup_middlewares
-from src.routes.setor_censitario import setor_censitario_routes
-from src.routes.unidade_federativa import unidades_federativas_routes
+# from src.routes.setor_censitario import setor_censitario_routes
+# from src.routes.unidade_federativa import unidades_federativas_routes
 from src.orm.database_postgresql import DialectDbPostgresql
 import logging
 
@@ -32,11 +37,21 @@ async def print_on_request(request):
 @app.route('/')
 def handle_request(request):
     print(app.db.url.dialect)
+    response_dict = {}
     porta = f":{port}"if port else ""
-    return response.json({
-        "unidades-federativas": f"{protocol}//{host}{porta}/unidades-federativas",
-        "setores-censitarios": f"{protocol}//{host}{porta}/setores-censitarios",
-    })
+
+    routes_filepaths = glob.glob( os.path.join(os.getcwd() + os.sep, "routes") + os.sep + "*.py")
+    routes_filenames = [path.split(os.sep)[-1] for path in routes_filepaths if path.split(os.sep)[-1] not in ["setup_routes.py", "entry_point.py"]]
+    filenames_without_extension = [name.split(".")[0] for name in routes_filenames]
+
+    for filename in filenames_without_extension:
+        path = importlib.import_module("routes." + filename).BASE[1:] # removing first slash
+        response_dict.update({path: f"{protocol}//{host}{porta}/{path}"})
+    return response.json(response_dict)
+    # return response.json({
+    #     "unidade-federativa-list": f"{protocol}//{host}{porta}/unidade-federativa-list",
+    #     # "setores-censitarios": f"{protocol}//{host}{porta}/setores-censitarios",
+    # })
 
 @app.listener('after_server_start')
 async def connect_to_db(*args, **kwargs):
@@ -55,8 +70,12 @@ def setup_database():
     #app.Session = sessionmaker(bind=app.db)
 
 def setup_routes():
-    setor_censitario_routes(app)
-    unidades_federativas_routes(app) 
+    setup_routes_module = importlib.import_module("routes.setup_routes")
+    setup_routes_module.setup_all_routes(app)
+    # funcmembers = inspect.getmembers(all_models, inspect.isfunction)
+    print("Routing complete")
+    # setor_censitario_routes(app)
+    # unidades_federativas_routes(app)
 
 def init():
     #app.config.from_object(Settings)

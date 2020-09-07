@@ -13,7 +13,7 @@ from src.orm.models import AlchemyBase, Base
 
 def generate_model_file(path, file_name, class_name, a_class):
     #from templates.resource_template import template
-    file_with_path = f'{path}{file_name}.py'
+    file_with_path = os.path.join(path, file_name + '.py')
     with open(file_with_path, 'w') as file:
         file.write(base_template())
         file.write('\n\n')
@@ -33,10 +33,12 @@ def generate_model_file(path, file_name, class_name, a_class):
                 file.write(f'   {left_part}{right_part}\n')
 
 def generate_all_model_files(clsmembers):
-    passpath = r'' + os.getcwd() + '\\src\\models\\'
-    
+    src_path = os.path.join(os.path.dirname(os.getcwd()), 'src')
+    models_path = os.path.join(src_path, 'models')
+    if not os.path.exists(models_path):
+        os.makedirs(models_path)
+
     for class_name_class in clsmembers:
         class_name = class_name_class[0]
         file_name = convert_camel_case_to_underline(class_name)
-        path = r'' + os.getcwd() + '\\src\\models\\'
-        generate_model_file(path, file_name, class_name, class_name_class[1])
+        generate_model_file(models_path, file_name, class_name, class_name_class[1])

@@ -14,34 +14,36 @@ def get_template(file_name, file_name_hyfen, class_name):
     template = f"""from sanic.response import json
 from src.resources.{file_name} import {class_name}Resource, {class_name}CollectionResource
 
+BASE = '/{file_name_hyfen}-list'
+
 def {file_name}_routes(app):
     
-    @app.route('/{file_name_hyfen}-list/<id:int>')
+    @app.route(BASE + '/<id:int>')
     async def {file_name}_id(request, id):
         r = {class_name}Resource(request)
         return await r.get_representation(id)
     
-    @app.route('/{file_name_hyfen}-list/<id:int>/<path:path>')
+    @app.route(BASE + '/<id:int>/<path:path>')
     async def {file_name}_resource_id_path(request, id, path):
         r = {class_name}Resource(request)
         return await r.get_representation(id, path)
 
-    @app.route("/{file_name_hyfen}-list")
+    @app.route(BASE)
     async def {file_name}_list(request):
         cr = {class_name}CollectionResource(request)
         return await cr.get_representation()
         
-    @app.route("/{file_name_hyfen}-list/<path:path>")
+    @app.route(BASE + "/<path:path>")
     async def {file_name}_list_path(request, path):
         cr = {class_name}CollectionResource(request)
         return await cr.get_representation_given_path(path)
 
-    @app.route("/{file_name_hyfen}-list", methods=['HEAD'] )
+    @app.route(BASE, methods=['HEAD'] )
     async def head_{file_name}_list(request):
         cr = {class_name}CollectionResource(request)
         return await cr.head()
 
-    @app.route("/{file_name_hyfen}-list/<path:path>", methods=['HEAD'] )
+    @app.route(BASE + "/<path:path>", methods=['HEAD'] )
     async def head_{file_name}_list_path(request, path):
         cr = {class_name}CollectionResource(request)
         return await cr.head_given_path(path)
@@ -49,12 +51,12 @@ def {file_name}_routes(app):
     return template
 
 def generate_route_file(path, file_name, file_name_hyfen, class_name):
-    file_with_path = f'{path}{file_name}.py'
+    file_with_path = os.path.join(path, file_name + '.py')
     with open(file_with_path, 'w') as file:
         file.write(get_template(file_name, file_name_hyfen, class_name))
 
 def generate_entry_point_file(path, file_name, file_names_hyfen, class_names):
-    file_with_path = f'{path}{file_name}.py'
+    file_with_path = os.path.join(path, file_name + '.py')
     with open(file_with_path, 'w') as file:
         file.write('def api_entry_point():\n')
         file.write('    return {\n')
@@ -64,7 +66,7 @@ def generate_entry_point_file(path, file_name, file_names_hyfen, class_names):
         file.write('    }\n')
 
 def generate_setup_routes_file(path, file_name="setup_routes", file_names=[], class_names=[]):
-    file_with_path = f'{path}{file_name}.py'
+    file_with_path = os.path.join(path, file_name + '.py')
     with open(file_with_path, 'w') as file:
         for i in range(0, len(file_names)):
             file.write(f'from src.routes.{file_names[i]} import {file_names[i]}_routes\n')
@@ -73,17 +75,23 @@ def generate_setup_routes_file(path, file_name="setup_routes", file_names=[], cl
             file.write(f'    {file_names[i]}_routes(app)\n')
 
 def generate_all_router_files(clsmembers):
-    path = r'' + os.getcwd()+ '\\src\\routes\\'
+    src_path = os.path.join(os.path.dirname(os.getcwd()), 'src')
+    routes_path = os.path.join(src_path, 'routes')
+
+    if not os.path.exists(routes_path):
+        os.makedirs(routes_path)
+
     for class_name_class in clsmembers:
         class_name = class_name_class[0]
         file_name = convert_camel_case_to_underline(class_name)
         file_name_hyfen = convert_camel_case_to_hifen(class_name)
-        generate_route_file(path, file_name, file_name_hyfen, class_name)
+        generate_route_file(routes_path, file_name, file_name_hyfen, class_name)
 
 def generate_all_entry_point_file(clsmembers):
     class_names = [class_name_class[0] for class_name_class in clsmembers]
     file_names_hyfen = [convert_camel_case_to_hifen(class_name_class[0]) for class_name_class in clsmembers]
-    path = r'' + os.getcwd() + '\\src\\routes\\'
-    generate_entry_point_file(path, "entry_point", file_names_hyfen, class_names)
+    src_path = os.path.join(os.path.dirname(os.getcwd()), 'src')
+    routes_path = os.path.join(src_path, 'routes')
+    generate_entry_point_file(routes_path, "entry_point", file_names_hyfen, class_names)
     file_names = [convert_camel_case_to_underline(class_name_class[0]) for class_name_class in clsmembers]
-    generate_setup_routes_file(path,"setup_routes",file_names, class_names)
+    generate_setup_routes_file(routes_path,"setup_routes",file_names, class_names)
