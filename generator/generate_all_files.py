@@ -1,14 +1,14 @@
 import os
 import sys, inspect, importlib
-from generator.generator_route import generate_all_router_files,generate_all_entry_point_file
-from generator.all_models import *
-from generator.generate_model_files import generate_all_model_files
-from generator.generator_resource import generate_all_resource_files
+from generator_route import generate_all_router_files,generate_all_entry_point_file
+from all_models import *
+from generate_model_files import generate_all_model_files
+from generator_resource import generate_all_resource_files
 from sqlalchemy import CHAR, Column, Float, Integer, Numeric, SmallInteger, String, Text
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 
-all_models = importlib.import_module("generator.all_models")
+all_models = importlib.import_module("all_models")
 clsmembers = inspect.getmembers(all_models, inspect.isclass)
 clsmodels = [(name, _class) for name, _class in clsmembers if issubclass(_class, Base) and _class != Base]
 

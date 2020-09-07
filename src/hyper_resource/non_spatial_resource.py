@@ -1,5 +1,5 @@
 from sanic import  response
-from src.hyper_resource.abstract_resource import AbstractResource
+from hyper_resource.abstract_resource import AbstractResource
 class NonSpatialResource(AbstractResource):
      async def get_representation(self, id_or_key_value):
         dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), self.entity_class())

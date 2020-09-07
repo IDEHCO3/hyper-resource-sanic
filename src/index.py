@@ -5,9 +5,9 @@ from environs import Env
 from sanic import Sanic, response
 from sanic.response import text
 from sanic_openapi import swagger_blueprint
-from src.routes.setup_routes import setup_all_routes
-from src.routes.entry_point import api_entry_point
-from src.orm.database_postgresql import DialectDbPostgresql
+from routes.setup_routes import setup_all_routes
+from routes.entry_point import api_entry_point
+from orm.database_postgresql import DialectDbPostgresql
 
 #Create Sanic app
 app = Sanic(__name__)

@@ -13,7 +13,7 @@ from sanic_openapi import swagger_blueprint
 #from src.middlewares.security import setup_middlewares
 # from src.routes.setor_censitario import setor_censitario_routes
 # from src.routes.unidade_federativa import unidades_federativas_routes
-from src.orm.database_postgresql import DialectDbPostgresql
+from orm.database_postgresql import DialectDbPostgresql
 import logging
 
 #Create Sanic app
