@@ -4,7 +4,7 @@ class AbstractResource:
         self.request = request
     
     def dialect_DB(self):
-          return self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), None)    
+          return self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), self.entity_class())    
 
     def entity_class(self):
         raise NotImplementedError("'entity_class' must be implemented in subclasses")

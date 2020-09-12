@@ -1,6 +1,6 @@
 from sanic import  response
-from hyper_resource.abstract_resource import AbstractResource
-
+from src.hyper_resource.abstract_resource import AbstractResource
+from ..url_interpreter.interpreter import Interpreter
 collection_function_names = [
   "filter",
   "projection",
@@ -47,6 +47,7 @@ class AbstractCollectionResource(AbstractResource):
                 return await self.pre_projection(path)
                 
         except (RuntimeError, TypeError, NameError):
+            raise
             return response.json("error: Error no banco")
 
     async def pre_offsetlimit(self, path):
@@ -112,10 +113,10 @@ class AbstractCollectionResource(AbstractResource):
     async def pre_groupbysum(self, path):
         str_atts = path.split('/')[1]  #empolyees/name&salary
         fields_from_path = str_atts[1].split('&')
-        if fields_from_path_not_in_attribute_names(atts_from_path):
-            return response.json(f"The attribute {att_name} does not exists", status=400)
+        if self.fields_from_path_not_in_attribute_names(fields_from_path):
+            return response.json(f"The attribute {str_atts} does not exists", status=400)
         
-        return await groupbysum(self, path) 
+        return await self.groupbysum(self, path)
 
     async def groupbysum(self, str_att_names_as_comma, att_to_sum):
         rows = await self.dialect_DB().group_by_sum(str_att_names_as_comma, att_to_sum)
@@ -123,7 +124,16 @@ class AbstractCollectionResource(AbstractResource):
         return response.json(res)
     
     async def pre_filter(self, path):
-        return await self.filter(path)
+        return await self.filter(path[6:]) #len('filter') = 6
     
     async def filter(self, path):
-        return await self.dialect_DB().filter(path)
+        print(path)
+        interp = Interpreter(path, self.entity_class())
+        try:
+            whereclause = await interp.translate()
+        except  (Exception, SyntaxError):
+            print(f"path: {path}")
+            raise
+        print(f'whereclause: {whereclause}')
+        rows =  await self.dialect_DB().filter(whereclause)
+        return response.json(self.rows_as_dict(rows))

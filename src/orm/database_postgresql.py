@@ -13,18 +13,22 @@ class DialectDbPostgresql(DialectDatabase):
      
     async def fetch_all(self):
         query = self.metadata_table.select()
-        print(query)
         rows = await self.db.fetch_all(query)
         return rows
     
-    async def fetch_one(self, dic):
-        key_name = next(key for key in dic.keys())
-        cols_as_enum = self.column_names_as_enum()
-        #query = f'select {cols_as_enum} from {self.metadata_table.schema}.{self.metadata_table.name} where {key_name} = :{key_name}'
-        query = f'select * from {self.metadata_table.schema}.{self.metadata_table.name} where {key_name} = :{key_name}'
+    async def fetch_one(self, dic, all_column='*'):
+        key_or_unique = next(key for key in dic.keys())
+        query = f'select {all_column} from {self.metadata_table.schema}.{self.metadata_table.name} where {key_or_unique} = :{key_or_unique}'
         row = await self.db.fetch_one(query=query, values=dic)
         return row
-        
+     
+    async def filter(self, a_filter):
+        cols_as_enum = self.column_names_as_enum()
+        query = f'select {cols_as_enum} from {self.metadata_table.schema}.{self.metadata_table.name} where {a_filter}'
+        print(query)
+        rows = await self.db.fetch_all(query)
+        return rows
+
     async def count(self):
         query = f'select count(*) from {self.metadata_table.schema}.{self.metadata_table.name}'
         row = await self.db.fetch_one(query)

@@ -5,6 +5,7 @@ build/
 logs/**/*.log 
 generator/all_models.py
 generator/__pycache__/*.pyc
+/generator/templates/__pycache__/*.pyc
 src/_pycache_
 src/routes/
 src/routes/_pycache_
