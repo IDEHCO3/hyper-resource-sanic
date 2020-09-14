@@ -5,6 +5,16 @@ async def get_request(url):
     async with httpx.AsyncClient() as client:
       return await client.get(url)
 
+"""
+dict_init = {'s0': {'attribute': 's1', '(': 's2'}}
+dict_attribute = {'s1': {'relational_operator': 's3','logical_operator': 's4' ,'null_operator': 's5', 'in_operator':'s6', 'function_operator': 's7'}}
+dict_left_parenthese = {'s2': {'attribute': 's1', '(': 's2'}}
+dict_relational = {'s3': {'value': 's8', 'value_as_url': 's9'}}
+dict_value = {'s10': {None: 'fs', 'logical_operator': 's4', ')':'s11'}}
+dict_logical = {'s12': {'value': 's8', 'value_as_url': 's9', ')':'s11'}}
+dict_right_parenthese = {'s13': {None: 'sf', ')': 's13', 'relational_operator': 's3', }}
+"""
+
 dict_relational_operator = {
     'gt': '>',
     'lt': '<',

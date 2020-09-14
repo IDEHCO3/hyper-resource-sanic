@@ -1,4 +1,6 @@
 from sanic import  response
+from typing import Dict
+
 from src.hyper_resource.abstract_resource import AbstractResource
 from ..url_interpreter.interpreter import Interpreter
 collection_function_names = [
@@ -125,7 +127,10 @@ class AbstractCollectionResource(AbstractResource):
     
     async def pre_filter(self, path):
         return await self.filter(path[6:]) #len('filter') = 6
-    
+
+    def dict_name_operation(self) -> Dict[str, 'function']:
+        return {'filter': self.filter}
+
     async def filter(self, path: str) -> "AbstractCollectionResource":
         """
         :param path: expression

@@ -30,12 +30,12 @@ class AbstractResource:
         return {}
 
     def doc_for_operation(self, operation_name: str) -> List[str]:
-        dic_name_oper = self.entity_class().dict_name_operation()
+        dic_name_oper = self.dict_name_operation()
         if operation_name not in dic_name_oper:
             raise LookupError(f'This {operation_name} is not supported')
         operation = dic_name_oper[operation_name]
         doc_str = operation.__doc__
-        return [s.trim() for s in doc_str.split('\n') if s != '']
+        return [s.strip() for s in doc_str.split('\n') if s.strip() != '']
 
     async def get_representation(self):
         raise NotImplementedError("'get_representation' must be implemented in subclasses")

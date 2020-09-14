@@ -71,5 +71,6 @@ class AlchemyBase:
         if operation_name not in cls.dict_name_operation():
             raise LookupError(f'This {operation_name} is not supported')
         return cls.dict_name_operation()[operation_name].__annotations__
-def attribute_starts_with(self, attribute: str) -> 'AlchemyBase':
+
+    def attribute_starts_with(self, attribute: str) -> 'AlchemyBase':
         return None
