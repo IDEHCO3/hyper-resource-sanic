@@ -125,7 +125,7 @@ class Interpreter:
     async def translate_for_attribute(self, translated: str) -> str:
         tuple_attrib_column_type = self.modelClass.attribute_column_type(self.word)
         translated += tuple_attrib_column_type[1]
-        tk = self.nextWord()
+        tk = self.nextWord() #After attribute word, next word could be relational operator or In operator or null operator or function operator
         if self.word_is_relational_operator(tk):
             translated = await self.translate_for_relational_operator(tuple_attrib_column_type[0], tuple_attrib_column_type[2], translated) #dict_relational_operator[tk]
         elif self.word_is_in_operator(tk):
@@ -182,8 +182,8 @@ class Interpreter:
         return translated
 
     async def translate_for_relational_operator(self, attribute_name: str, attribute_type: str, translated: str) -> str:
-        translated += dict_relational_operator[self.word]
-        tk = self.nextWord()
+        translated += dict_relational_operator[self.word] #prev word could be an attribute or function
+        tk = self.nextWord() #after relational operator a value could be: a url or value.
         if self.sub_path_has_url(tk):
             a_url = self.url_word()
             req = await get_request(a_url)

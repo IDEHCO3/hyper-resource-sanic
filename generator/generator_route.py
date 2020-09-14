@@ -73,7 +73,7 @@ def generate_setup_routes_file(path, file_name="setup_routes", file_names=[], cl
             file.write(f'    {file_names[i]}_routes(app)\n')
 
 def generate_all_router_files(clsmembers):
-    path = r'' + os.getcwd()+ '\\src\\routes\\'
+    path = r'' + os.getcwd()+ '/src/routes/'
     for class_name_class in clsmembers:
         class_name = class_name_class[0]
         file_name = convert_camel_case_to_underline(class_name)
@@ -83,7 +83,7 @@ def generate_all_router_files(clsmembers):
 def generate_all_entry_point_file(clsmembers):
     class_names = [class_name_class[0] for class_name_class in clsmembers]
     file_names_hyfen = [convert_camel_case_to_hifen(class_name_class[0]) for class_name_class in clsmembers]
-    path = r'' + os.getcwd() + '\\src\\routes\\'
+    path = r'' + os.getcwd() + '/src/routes/'
     generate_entry_point_file(path, "entry_point", file_names_hyfen, class_names)
     file_names = [convert_camel_case_to_underline(class_name_class[0]) for class_name_class in clsmembers]
     generate_setup_routes_file(path,"setup_routes",file_names, class_names)

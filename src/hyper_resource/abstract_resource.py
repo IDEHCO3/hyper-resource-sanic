@@ -1,4 +1,6 @@
 from sanic import  response
+from typing import List, Dict
+
 class AbstractResource:
     def __init__(self, request):
         self.request = request
@@ -23,6 +25,17 @@ class AbstractResource:
 
     def fields_from_path_not_in_attribute_names(self, fields_from_path):
         return not self.fields_from_path_in_attribute_names(fields_from_path)
+
+    def dict_name_operation(self) -> Dict[str, 'function']:
+        return {}
+
+    def doc_for_operation(self, operation_name: str) -> List[str]:
+        dic_name_oper = self.entity_class().dict_name_operation()
+        if operation_name not in dic_name_oper:
+            raise LookupError(f'This {operation_name} is not supported')
+        operation = dic_name_oper[operation_name]
+        doc_str = operation.__doc__
+        return [s.trim() for s in doc_str.split('\n') if s != '']
 
     async def get_representation(self):
         raise NotImplementedError("'get_representation' must be implemented in subclasses")

@@ -1,9 +1,9 @@
 import os
 import sys, inspect
-from generator_resource import generate_all_resource_files
-from generator_route import generate_all_router_files,generate_all_entry_point_file
-from all_models import *
-from generate_model_files import generate_all_model_files
+from generator.generator_resource import generate_all_resource_files
+from generator.generator_route import generate_all_router_files,generate_all_entry_point_file
+from generator.all_models import *
+from generator.generate_model_files import generate_all_model_files
 clsmembers = inspect.getmembers(sys.modules['all_models'], inspect.isclass)
 from sqlalchemy import CHAR, Column, Float, Integer, Numeric, SmallInteger, String, Text
 from sqlalchemy.sql.sqltypes import NullType

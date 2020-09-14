@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Sequence, List
+from typing import Dict, Tuple, Sequence, List, Any
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
@@ -44,7 +44,7 @@ class AlchemyBase:
         return [col.name for col in cls.__table__.columns]
 
     @classmethod
-    def column_name(cls, attribute_name) -> str:
+    def column_name(cls, attribute_name: str) -> str:
         return next(att for att, col in cls.list_attribute_column() if att == attribute_name)
 
     @classmethod
@@ -58,3 +58,18 @@ class AlchemyBase:
     @classmethod
     def column_names_as_enum(cls) -> str:
         return ','.join(cls.column_names())
+
+    @classmethod
+    def dict_name_operation(cls) -> Dict:
+        return {
+            "attribute_starts_with" : AlchemyBase.attribute_starts_with
+        }
+
+    @classmethod
+    def reflection_operation(cls, operation_name) -> str:
+
+        if operation_name not in cls.dict_name_operation():
+            raise LookupError(f'This {operation_name} is not supported')
+        return cls.dict_name_operation()[operation_name].__annotations__
+def attribute_starts_with(self, attribute: str) -> 'AlchemyBase':
+        return None

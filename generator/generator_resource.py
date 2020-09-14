@@ -29,7 +29,7 @@ def generate_resource_file(path, file_name, class_name):
         file.write(get_template(file_name, class_name))
 
 def generate_all_resource_files(clsmembers):
-    path = r'' + os.getcwd()+ '\\src\\resources\\'
+    path = r'' + os.getcwd()+ '/src/resources/'
     for class_name_class in clsmembers:
         class_name = class_name_class[0]
         file_name = convert_camel_case_to_underline(class_name)

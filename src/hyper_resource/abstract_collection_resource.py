@@ -126,8 +126,13 @@ class AbstractCollectionResource(AbstractResource):
     async def pre_filter(self, path):
         return await self.filter(path[6:]) #len('filter') = 6
     
-    async def filter(self, path):
-        print(path)
+    async def filter(self, path: str) -> "AbstractCollectionResource":
+        """
+        :param path: expression
+        :return: self
+        :description: Filter a collection given an expression
+        :example: http://server/api/drivers/filter/license/eq/valid
+        """
         interp = Interpreter(path, self.entity_class())
         try:
             whereclause = await interp.translate()

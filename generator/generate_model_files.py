@@ -1,5 +1,5 @@
 import os
-from util import convert_camel_case_to_underline
+from generator.util import convert_camel_case_to_underline
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 def base_template():
@@ -33,10 +33,10 @@ def generate_model_file(path, file_name, class_name, a_class):
                 file.write(f'   {left_part}{right_part}\n')
 
 def generate_all_model_files(clsmembers):
-    passpath = r'' + os.getcwd() + '\\src\\models\\'
+    passpath = r'' + os.getcwd() + '/src/models/'
     
     for class_name_class in clsmembers:
         class_name = class_name_class[0]
         file_name = convert_camel_case_to_underline(class_name)
-        path = r'' + os.getcwd() + '\\src\\models\\'
+        path = r'' + os.getcwd() + '/src/models/'
         generate_model_file(path, file_name, class_name, class_name_class[1])
