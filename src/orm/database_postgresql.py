@@ -1,4 +1,4 @@
-from orm.database import DialectDatabase
+from .database import DialectDatabase
 from sqlalchemy import text
 class DialectDbPostgresql(DialectDatabase):
     def __init__(self, db, metadata_table, entity_class):

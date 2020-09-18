@@ -1,5 +1,5 @@
 from environs import Env
-from util import convert_camel_case_to_underline, convert_camel_case_to_hifen
+from generator.util import convert_camel_case_to_underline, convert_camel_case_to_hifen
 import os
 #Setup env
 env = Env()
@@ -49,12 +49,12 @@ def {file_name}_routes(app):
     return template
 
 def generate_route_file(path, file_name, file_name_hyfen, class_name):
-    file_with_path = f'{path}{file_name}.py'
+    file_with_path = os.path.join(path, f'{file_name}.py')
     with open(file_with_path, 'w') as file:
         file.write(get_template(file_name, file_name_hyfen, class_name))
 
 def generate_entry_point_file(path, file_name, file_names_hyfen, class_names):
-    file_with_path = f'{path}{file_name}.py'
+    file_with_path = os.path.join(path, f'{file_name}.py')
     with open(file_with_path, 'w') as file:
         file.write('def api_entry_point():\n')
         file.write('    return {\n')
@@ -64,7 +64,7 @@ def generate_entry_point_file(path, file_name, file_names_hyfen, class_names):
         file.write('    }\n')
 
 def generate_setup_routes_file(path, file_name="setup_routes", file_names=[], class_names=[]):
-    file_with_path = f'{path}{file_name}.py'
+    file_with_path = os.path.join(path, f'{file_name}.py')
     with open(file_with_path, 'w') as file:
         for i in range(0, len(file_names)):
             file.write(f'from src.routes.{file_names[i]} import {file_names[i]}_routes\n')
@@ -73,7 +73,11 @@ def generate_setup_routes_file(path, file_name="setup_routes", file_names=[], cl
             file.write(f'    {file_names[i]}_routes(app)\n')
 
 def generate_all_router_files(clsmembers):
-    path = r'' + os.getcwd()+ '/src/routes/'
+    path = os.path.join(os.getcwd(), 'src', 'routes')
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        pass
     for class_name_class in clsmembers:
         class_name = class_name_class[0]
         file_name = convert_camel_case_to_underline(class_name)
@@ -81,9 +85,13 @@ def generate_all_router_files(clsmembers):
         generate_route_file(path, file_name, file_name_hyfen, class_name)
 
 def generate_all_entry_point_file(clsmembers):
+    path = os.path.join(os.getcwd(), 'src', 'routes')
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        pass
     class_names = [class_name_class[0] for class_name_class in clsmembers]
     file_names_hyfen = [convert_camel_case_to_hifen(class_name_class[0]) for class_name_class in clsmembers]
-    path = r'' + os.getcwd() + '/src/routes/'
     generate_entry_point_file(path, "entry_point", file_names_hyfen, class_names)
     file_names = [convert_camel_case_to_underline(class_name_class[0]) for class_name_class in clsmembers]
     generate_setup_routes_file(path,"setup_routes",file_names, class_names)
