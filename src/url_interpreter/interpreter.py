@@ -2,6 +2,7 @@ from typing import Dict, Tuple, Sequence, List, Any
 import httpx
 import pandas as pd
 import os
+import inspect
 
 # How to get column type
 # self.dialect_DB().entity_class.ano_referencia.property.columns[0].type
@@ -151,7 +152,16 @@ class Interpreter:
         return tk in dict_null_operator
 
     def word_is_operation(self, tk: str) -> bool:
-        return False
+        try:
+            return callable(getattr(self.modelClass, tk))
+        except AttributeError:
+            return False
+
+    def operation_params_count(self, tk: str):
+        return len(list(getattr(self.modelClass, tk).__annotations__.keys())) -1
+
+    def operation_params_types(self, tk: str):
+        return [param[1] for param in getattr(self.modelClass, tk).__annotations__.items()][:-1]
 
     def word_is_logical_operator(self, tk: str) -> bool:
         return tk in dict_logical_operator
@@ -299,6 +309,7 @@ class Interpreter:
         return translated
 
     async def translate(self) -> str:
+        # getattr(self.modelClass, "somar_ano").__annotations__
         translated = ''
         tk = '' #first state
         while(tk is not None):
