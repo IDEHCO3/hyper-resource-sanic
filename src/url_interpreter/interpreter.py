@@ -1,11 +1,15 @@
+import re
 from typing import Dict, Tuple, Sequence, List, Any
 import httpx
 import pandas as pd
 import os
 import inspect
+from sqlalchemy.orm import Session, aliased
 
 # How to get column type
 # self.dialect_DB().entity_class.ano_referencia.property.columns[0].type
+from src.url_interpreter.datatype import python_to_sqlalchemy_type
+
 
 async def get_request(url):
     async with httpx.AsyncClient() as client:
@@ -77,6 +81,7 @@ VALUE_CATEGORY = "value"
 AND_CATEGORY = "and"
 OR_CATEGORY = "or"
 BETWEEN_CATEGORY = "between"
+OPERATION_CATEGORY = "operation"
 PAREN_OPEN = "("
 PAREN_CLOSE = ")"
 
@@ -86,6 +91,9 @@ class StateMachine:
         self.current_state = 0
 
     def set_next_state(self, token, token_category):
+        if token_category == OPERATION_CATEGORY:
+            return # keep current state
+
         new_state = int(self.transition_table[token_category][self.current_state])
         self.current_state = new_state
 
@@ -152,6 +160,8 @@ class Interpreter:
         return tk in dict_null_operator
 
     def word_is_operation(self, tk: str) -> bool:
+        if tk is None or tk.strip() == "":
+            return False
         try:
             return callable(getattr(self.modelClass, tk))
         except AttributeError:
@@ -162,6 +172,41 @@ class Interpreter:
 
     def operation_params_types(self, tk: str):
         return [param[1] for param in getattr(self.modelClass, tk).__annotations__.items()][:-1]
+
+    def get_operation_params_vals_and_types(self, tk: str):
+        # todo: need to support values referenced by URLs
+        params_and_types = []
+        oper_params_count = self.operation_params_count(tk)
+        oper_params_types = self.operation_params_types(tk)
+        sql_equivalent_types = []
+        for _type in oper_params_types:
+            sql_equivalent_types.append(python_to_sqlalchemy_type(_type))
+        params_vals = self.sub_expression.split("/")[1:oper_params_count + 1]
+
+        for idx, val in enumerate(params_vals):
+            params_and_types.append( (val, sql_equivalent_types[idx]) )
+
+        return params_and_types
+
+    def get_operation_query(self, tk: str):
+
+        converted_vals = []
+        oper_params_vals_and_types = self.get_operation_params_vals_and_types(tk)
+        for _val, _type in oper_params_vals_and_types:
+            converted_vals.append(convert_data(_val, _type))
+
+        query = Session().query(self.modelClass).filter(getattr(self.modelClass, tk)(*converted_vals))
+        whereclause = str(query).split("WHERE")[1]
+
+        attr_full_ref = list(self.modelClass.metadata.tables.items())[0][0] + "." + self.prev_word
+        whereclause = whereclause.replace(attr_full_ref, self.prev_word)
+        for conv_val in converted_vals:
+            whereclause = re.sub(r':[A-Za-z_0-9]+', conv_val, whereclause, count=1)
+
+        oper_params_vals = [op[0] for op in oper_params_vals_and_types]
+        operation_snippet = tk + "/" + "/".join(oper_params_vals) + "/"
+        self.index = self.sub_expression.index(operation_snippet) + len(operation_snippet)
+        return " ( " + whereclause.strip() + " ) "
 
     def word_is_logical_operator(self, tk: str) -> bool:
         return tk in dict_logical_operator
@@ -189,6 +234,8 @@ class Interpreter:
             return PAREN_OPEN
         elif token == PAREN_CLOSE:
             return PAREN_CLOSE
+        elif self.word_is_operation(token):
+            return OPERATION_CATEGORY
         else:
             return VALUE_CATEGORY
 
@@ -197,13 +244,17 @@ class Interpreter:
         url_arr = self.expression[:self.expression.index(self.sub_expression)].split("/")
         url_arr = [snippet for snippet in url_arr if snippet != ""]
 
-        if self.state_machine.current_state in [3, 5]:
-            attribute = url_arr[-2]
-        elif self.state_machine.current_state in [10, 16]:
-            attribute = url_arr[-3]
-        # elif self.state_machine.current_state in [14]:
+        if url_arr[0] == PAREN_OPEN:
+            attribute = url_arr[1]
         else:
-            attribute = url_arr[-7]
+            attribute = url_arr[0]
+        # if self.state_machine.current_state in [3, 5]:
+        #     attribute = url_arr[-2]
+        # elif self.state_machine.current_state in [10, 16]:
+        #     attribute = url_arr[-3]
+        # # elif self.state_machine.current_state in [14]:
+        # else:
+        #     attribute = url_arr[-7]
 
         tuple_attrib_column_type = self.modelClass.attribute_column_type(attribute)
 
@@ -334,6 +385,8 @@ class Interpreter:
                 translated += dict_relational_operator[self.word]
             elif token_category in [IN_OPERATOR]:
                 translated = await self.translate_for_in_operator(translated)
+            elif self.word_is_operation(tk):
+                translated = self.get_operation_query(tk)
             elif token_category == VALUE_CATEGORY:
                 translated += await self.convert_value(tk)
 
