@@ -138,7 +138,7 @@ class AbstractCollectionResource(AbstractResource):
         :description: Filter a collection given an expression
         :example: http://server/api/drivers/filter/license/eq/valid
         """
-        interp = Interpreter(path, self.entity_class())
+        interp = Interpreter(path, self.entity_class(), self.dialect_DB())
         try:
             whereclause = await interp.translate()
         except  (Exception, SyntaxError):

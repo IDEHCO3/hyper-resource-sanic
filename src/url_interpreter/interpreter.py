@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session, aliased
 
 # How to get column type
 # self.dialect_DB().entity_class.ano_referencia.property.columns[0].type
+from src.orm.database import DialectDatabase
 from src.url_interpreter.datatype import python_to_sqlalchemy_type
+from src.url_interpreter.interpretertypes import type_has_operation, get_operation
 
 
 async def get_request(url):
@@ -109,7 +111,7 @@ class StateMachine:
 
 
 class Interpreter:
-    def __init__(self, an_expression, modelClass):
+    def __init__(self, an_expression, modelClass, dialect_db_class):
         self.expression = an_expression[1:] if an_expression[0] == '/' else an_expression
         self.sub_expression = self.expression
         self.word = None
@@ -118,6 +120,7 @@ class Interpreter:
         self.index = 0
         self.balanced_parenthese = 0
         self.state_machine = StateMachine()
+        self.dialect_db_class = dialect_db_class
     
     def after_word(self, path: str) -> str:
         a_word = ''
@@ -159,19 +162,27 @@ class Interpreter:
     def word_is_null_operator(self, tk: str) -> bool:
         return tk in dict_null_operator
 
+    def get_operated_attr_python_type(self):
+        return type(getattr(self.modelClass, self.prev_word).property.columns[0].type)
+
     def word_is_operation(self, tk: str) -> bool:
         if tk is None or tk.strip() == "":
             return False
         try:
-            return callable(getattr(self.modelClass, tk))
+            return type_has_operation(self.get_operated_attr_python_type(), tk)
         except AttributeError:
             return False
 
     def operation_params_count(self, tk: str):
-        return len(list(getattr(self.modelClass, tk).__annotations__.keys())) -1
+        type = self.get_operated_attr_python_type()
+        operation = get_operation(type, tk)
+        return len(list(operation.__annotations__.keys())) -1
 
     def operation_params_types(self, tk: str):
-        return [param[1] for param in getattr(self.modelClass, tk).__annotations__.items()][:-1]
+        type = self.get_operated_attr_python_type()
+        operation = get_operation(type, tk)
+        return [param[1] for param in operation.__annotations__.items()][:-1]
+        # return [param[1] for param in getattr(self.modelClass, tk).__annotations__.items()][:-1]
 
     def get_operation_params_vals_and_types(self, tk: str):
         # todo: need to support values referenced by URLs
@@ -188,23 +199,35 @@ class Interpreter:
 
         return params_and_types
 
-    def get_operation_query(self, tk: str):
+    def get_operation_snippet(self, operation_name: str, oper_params_vals_and_types: List[tuple]) -> str:
+        oper_params_vals = [op[0] for op in oper_params_vals_and_types]
+        operation_snippet = operation_name + "/" + "/".join(oper_params_vals)
+        if len(oper_params_vals) > 0:
+            operation_snippet += "/"
+        return operation_snippet
 
+    def get_operation_query(self, tk: str):
         converted_vals = []
         oper_params_vals_and_types = self.get_operation_params_vals_and_types(tk)
         for _val, _type in oper_params_vals_and_types:
             converted_vals.append(convert_data(_val, _type))
 
-        query = Session().query(self.modelClass).filter(getattr(self.modelClass, tk)(*converted_vals))
-        whereclause = str(query).split("WHERE")[1]
+        # query = self.dialect_db.get_basic_select()#Session().query(self.modelClass).filter(getattr(self.modelClass, tk)(*converted_vals))
 
-        attr_full_ref = list(self.modelClass.metadata.tables.items())[0][0] + "." + self.prev_word
-        whereclause = whereclause.replace(attr_full_ref, self.prev_word)
-        for conv_val in converted_vals:
-            whereclause = re.sub(r':[A-Za-z_0-9]+', conv_val, whereclause, count=1)
+        # constructing WHERE clause
+        # query += " WHERE "
+        type = self.get_operated_attr_python_type()
+        sql_function = self.dialect_db_class.get_sql_function(type, tk)
+        # whereclause = str(query).split("WHERE")[1]
+        attr_full_ref = getattr(self.modelClass, self.prev_word).property.expression.table.__str__() + "." + self.prev_word#list(self.modelClass.metadata.tables.items())[0][0] + "." + self.prev_word
+        whereclause = sql_function + "(" + attr_full_ref + ")"
 
-        oper_params_vals = [op[0] for op in oper_params_vals_and_types]
-        operation_snippet = tk + "/" + "/".join(oper_params_vals) + "/"
+        # whereclause = whereclause.replace(attr_full_ref, self.prev_word)
+        # for conv_val in converted_vals:
+        #     whereclause = re.sub(r':[A-Za-z_0-9]+', conv_val, whereclause, count=1)
+        #
+
+        operation_snippet = self.get_operation_snippet(tk, oper_params_vals_and_types)
         self.index = self.sub_expression.index(operation_snippet) + len(operation_snippet)
         return " ( " + whereclause.strip() + " ) "
 
@@ -244,17 +267,10 @@ class Interpreter:
         url_arr = self.expression[:self.expression.index(self.sub_expression)].split("/")
         url_arr = [snippet for snippet in url_arr if snippet != ""]
 
-        if url_arr[0] == PAREN_OPEN:
-            attribute = url_arr[1]
+        if url_arr[-1] == PAREN_OPEN:
+            attribute = url_arr[-3]
         else:
-            attribute = url_arr[0]
-        # if self.state_machine.current_state in [3, 5]:
-        #     attribute = url_arr[-2]
-        # elif self.state_machine.current_state in [10, 16]:
-        #     attribute = url_arr[-3]
-        # # elif self.state_machine.current_state in [14]:
-        # else:
-        #     attribute = url_arr[-7]
+            attribute = url_arr[-2]
 
         tuple_attrib_column_type = self.modelClass.attribute_column_type(attribute)
 
