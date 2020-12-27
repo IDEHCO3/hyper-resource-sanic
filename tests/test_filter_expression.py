@@ -4,8 +4,10 @@ import unittest
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+
+from src.orm.database_postgis import DialectDbPostgis
 from src.url_interpreter.interpreter import *
-from src.models.unidade_federacao_a import *
+from src.models.lim_unidade_federacao_a import LimUnidadeFederacaoA
 import pytest
 import asyncio
 Base = declarative_base()
@@ -51,7 +53,7 @@ class AlchemyBase:
     def column_names_as_enum(cls) -> str:
         return ",".join(cls.columns_name())
 SERVIDOR = "127.0.0.1"
-PORTA= "8002"
+PORTA= "8000"
 class UnidadeFederativa(AlchemyBase, Base):
     __tablename__ = "lim_unidade_federacao_a"
     __table_args__ = {"schema": "bcim"}
@@ -66,7 +68,7 @@ class UnidadeFederativa(AlchemyBase, Base):
 
 class TestFilterExpression():
     def test_nextWord(self):
-        interp = Interpreter("/id/gt/5/and/id/lte/101", UnidadeFederativa)
+        interp = Interpreter("/id/gt/5/and/id/lte/101", UnidadeFederativa, DialectDbPostgis)
         assert interp.nextWord() == "id"
         assert interp.nextWord() == "gt"
         assert interp.nextWord() == "5"
@@ -75,7 +77,7 @@ class TestFilterExpression():
         assert interp.nextWord() == "lte"
         assert interp.nextWord() == "101"
         assert interp.nextWord() is None
-        interp = Interpreter("/sigla/in/'rj','es','go'/and/geom/within/Point(1,2)", UnidadeFederativa)
+        interp = Interpreter("/sigla/in/'rj','es','go'/and/geom/within/Point(1,2)", UnidadeFederativa, DialectDbPostgis)
         assert interp.nextWord() == "sigla"
         assert interp.nextWord() == "in"
         assert interp.nextWord() == "'rj','es','go'"
@@ -87,18 +89,18 @@ class TestFilterExpression():
 
     @pytest.mark.asyncio
     async def test_translate(self):
-       interp = Interpreter("/id/gt/5/and/id/lte/101", UnidadeFederativa)
+       interp = Interpreter("/id_objeto/gt/5/and/id_objeto/lte/101", LimUnidadeFederacaoA, DialectDbPostgis)
        assert await interp.translate() == "id_objeto>5 and id_objeto<=101"
-       interp = Interpreter("/id/gt/5/and/id/lte/101/or/(/id/eq/200/and/sigla/eq/RJ/)", UnidadeFederativa)
+       interp = Interpreter("/id_objeto/gt/5/and/id_objeto/lte/101/or/(/id_objeto/eq/200/and/sigla/eq/RJ/)", LimUnidadeFederacaoA, DialectDbPostgis)
        assert await interp.translate() == "id_objeto>5 and id_objeto<=101 or  ( id_objeto=200 and sigla='RJ' ) "
-       interp = Interpreter("/(/id/gt/5/and/id/lte/101/)/or/(/id/eq/200/and/sigla/eq/RJ/)", UnidadeFederativa)
-       assert await interp.translate() == " ( id_objeto>5 and id_objeto<=101 )  or  ( id_objeto=200 and sigla='RJ' ) "
-       interp = Interpreter("/sigla/in/RJ,SP,MG,ES/", UnidadeFederativa)
+       interp = Interpreter("/(/id_objeto/gt/5/and/id_objeto/lte/56407/)/or/(/id_objeto/eq/56406/and/sigla/eq/RJ/)", LimUnidadeFederacaoA, DialectDbPostgis)
+       assert await interp.translate() == " ( id_objeto>5 and id_objeto<=56407 )  or  ( id_objeto=56406 and sigla='RJ' ) "
+       interp = Interpreter("/sigla/in/RJ,SP,MG,ES/", LimUnidadeFederacaoA, DialectDbPostgis)
        assert await interp.translate() == "sigla in ('RJ','SP','MG','ES')"
-       interp = Interpreter("/(/id/gt/5/and/id/lte/101/)/or/(/id/eq/200/and/sigla/eq/RJ/)/and/sigla/in/RJ,SP,MG,ES/", UnidadeFederativa)
+       interp = Interpreter("/(/id_objeto/gt/5/and/id_objeto/lte/101/)/or/(/id_objeto/eq/200/and/sigla/eq/RJ/)/and/sigla/in/RJ,SP,MG,ES/", LimUnidadeFederacaoA, DialectDbPostgis)
        assert await interp.translate() == " ( id_objeto>5 and id_objeto<=101 )  or  ( id_objeto=200 and sigla='RJ' )  and sigla in ('RJ','SP','MG','ES')"
-       interp = Interpreter(f"sigla/eq/(/http://{SERVIDOR}:{PORTA}/unidade-federacao-a-list/RJ/sigla/)/or/(/geocodigo/eq/31/)/", UnidadeFederacaoA)
-       assert await interp.translate() == "sigla='RJ' or  ( geocodigo='31' ) "
+       interp = Interpreter(f"sigla/eq/(/http://{SERVIDOR}:{PORTA}/lim-unidade-federacao-a-list/56406/sigla/)/or/(/geocodigo/eq/31/)/", LimUnidadeFederacaoA, DialectDbPostgis)
+       assert await interp.translate() == "sigla= ( 'RJ' )  or  ( geocodigo='31' ) "
 """
 @pytest.mark.asyncio
 async def test_translate():

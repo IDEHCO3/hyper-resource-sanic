@@ -15,6 +15,8 @@ src/resources/
 src/resources/__pycache__
 src/resources/__pycache__/*.pyc
 src/resource/*/*/*.py
+src/hyper_resource/__pycache__
+src/hyper_resource/__pycache__/*.pyx
 src/models/__pycache__
 src/models/__pycache__/*.pyc
 src/models/*/*/*.py
@@ -22,5 +24,8 @@ src/models/*.py
 src/context/
 src/context/__pycache__/*.pyc
 src/context/*/*/*.py
+src/url_interpreter/__pycache__/*.*.pyc
+src/orm/__pycache__/*.*.pyc
+tests/__pycache__/*.*.pyc
 tmp/
 temp/
