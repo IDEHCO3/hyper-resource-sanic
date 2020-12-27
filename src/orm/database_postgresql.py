@@ -1,5 +1,58 @@
 from .database import DialectDatabase
 from sqlalchemy import text
+from sqlalchemy import ARRAY, BIGINT, CHAR, BigInteger, BINARY, Binary, BLOB, BOOLEAN, Boolean, CHAR, CLOB, DATE, Date, DATETIME, \
+    DateTime, DateTime, DECIMAL, Enum, Column, FLOAT, Float, INT, INTEGER, Integer, JSON, LargeBinary, NCHAR, NUMERIC, \
+    Numeric, NVARCHAR, PickleType, REAL, SMALLINT, SmallInteger, String, TEXT, Text, TIME, Time, TIMESTAMP, TypeDecorator, \
+    Unicode, UnicodeText, VARBINARY, VARCHAR
+
+# reference: https://www.postgresql.org/docs/9.1/functions-string.html
+STRING_SQL_OPERATIONS = ["lower", "replace", "upper"]
+SQLALCHEMY_TYPES_SQL_OPERATIONS = {
+    ARRAY:          [],
+    BIGINT:         [],
+    CHAR:           [],
+    BigInteger:     [],
+    BINARY:         [],
+    Binary:         [],
+    BLOB:           [],
+    BOOLEAN:        [],
+    Boolean:        [],
+    CLOB:           [],
+    DATE:           [],
+    Date:           [],
+    DATETIME:       [],
+    DateTime:       [],
+    DECIMAL:        [],
+    Enum:           [],
+    Column:         [],
+    FLOAT:          [],
+    Float:          [],
+    INT:            [],
+    INTEGER:        [],
+    Integer:        [],
+    JSON:           [],
+    LargeBinary:    [],
+    NCHAR:          [],
+    NUMERIC:        [],
+    Numeric:        [],
+    NVARCHAR:       [],
+    PickleType:     [],
+    REAL:           [],
+    SMALLINT:       [],
+    SmallInteger:   [],
+    String:         STRING_SQL_OPERATIONS,
+    TEXT:           [],
+    Text:           [],
+    TIME:           [],
+    Time:           [],
+    TIMESTAMP:      [],
+    TypeDecorator:  [],
+    Unicode:        [],
+    UnicodeText:    [],
+    VARBINARY:      [],
+    VARCHAR:        []
+}
+
 class DialectDbPostgresql(DialectDatabase):
     def __init__(self, db, metadata_table, entity_class):
         super().__init__(db, metadata_table, entity_class)
@@ -57,4 +110,8 @@ class DialectDbPostgresql(DialectDatabase):
         query = f'select {str_attribute_as_comma_list}, sum({attr_to_sum}) from {self.metadata_table.schema}.{self.metadata_table.name}{order_by} group by {str_attribute_as_comma_list}'
         rows = await self.db.fetch_all(query)
         return rows
+
+    # @staticmethod
+    def get_sql_function(self, sql_type, function_name):
+        return [operation for operation in SQLALCHEMY_TYPES_SQL_OPERATIONS[sql_type] if operation == function_name][0]
    
