@@ -228,6 +228,7 @@ class Interpreter:
         #
 
         operation_snippet = self.get_operation_snippet(tk, oper_params_vals_and_types)
+        self.index_last_oper_exec = self.index
         self.index = self.sub_expression.index(operation_snippet) + len(operation_snippet)
         return " ( " + whereclause.strip() + " ) "
 
@@ -262,16 +263,22 @@ class Interpreter:
         else:
             return VALUE_CATEGORY
 
-    async def convert_value(self, token):
-        # value can appear in states: 3, 5, 10, 14 and 16
+    def get_value_related_attribute_with_operation(self, value_token):
+        return self.expression[:self.index_last_oper_exec - 1].split("/")[-1]
+
+    def get_value_related_attribute(self, value_token):
         url_arr = self.expression[:self.expression.index(self.sub_expression)].split("/")
         url_arr = [snippet for snippet in url_arr if snippet != ""]
 
         if url_arr[-1] == PAREN_OPEN:
-            attribute = url_arr[-3]
+            attribute = url_arr[-3] if self.word_is_attribute(url_arr[-3]) else self.get_value_related_attribute_with_operation(value_token)
         else:
-            attribute = url_arr[-2]
+            attribute = url_arr[-2] if self.word_is_attribute(url_arr[-2]) else self.get_value_related_attribute_with_operation(value_token)
+        return attribute
 
+    async def convert_value(self, token):
+
+        attribute = self.get_value_related_attribute(token)
         tuple_attrib_column_type = self.modelClass.attribute_column_type(attribute)
 
         if self.word_is_url(token):
