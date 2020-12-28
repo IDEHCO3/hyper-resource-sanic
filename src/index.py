@@ -8,9 +8,11 @@ from sanic_openapi import swagger_blueprint
 from src.routes.setup_routes import setup_all_routes
 from src.routes.entry_point import api_entry_point
 from src.orm.database_postgresql import DialectDbPostgresql
+from sanic_cors import CORS, cross_origin
 
 #Create Sanic app
 app = Sanic(__name__)
+CORS(app)
 app.blueprint(swagger_blueprint)
 
 #Setup env

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <title>Vector Layer</title>
+      <!-- Pointer events polyfill for old browsers, see https://caniuse.com/#feat=pointer -->
+      <!-- <script src="https://unpkg.com/elm-pep"></script>     -->
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/css/ol.css" type="text/css">
+      <style> #map { width: 100%; height:400px; } </style>
+      <script type="application/ld+json">
+      {
+          "@context": {
+              "geojson": "https://purl.org/geojson/vocab#",
+              "Feature": "geojson:Feature",
+              "FeatureCollection": "geojson:FeatureCollection",
+              "MultiPolygon": "geojson:MultiPolygon",
+              "type": "@type",
+              "coordinates": {
+                  "@container": "@list",
+                  "@id": "geojson:coordinates"
+              },
+              "features": {
+                  "@container": "@set",
+                  "@id": "geojson:features"
+              },
+              "geometry": "geojson:geometry",
+              "properties": "geojson:properties",
+              "type": "@type"
+          }
+      }
+      </script>
+  </head>
+  <body>
+      <div id="map" class="map"></div>
+      <div id="info">&nbsp;</div>
+      <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/build/ol.js"></script>
+
+      <script type="module">
+        var style = new ol.style.Style({
+            fill: new ol.style.Fill({
+                color: 'rgba(255, 255, 255, 0.6)',
+            }),
+            stroke: new ol.style.Stroke({
+                color: '#319FD3',
+                width: 1,
+            }),
+            text: new ol.style.Text({
+                font: '12px Calibri,sans-serif',
+                fill: new ol.style.Fill({
+                    color: '#000',
+                }),
+                stroke: new ol.style.Stroke({
+                    color: '#fff',
+                    width: 3,
+                }),
+            }),
+        });
+
+        var vectorLayer = new ol.layer.Vector({
+            source: new ol.source.Vector({
+                url: 'http://127.0.0.1:8000/lim-unidade-federacao-a-list',
+                format: new ol.format.GeoJSON(),
+            }),
+            style: function (feature) {
+                style.getText().setText(feature.get('name'));
+                return style;
+            }
+        });
+
+        var map = new ol.Map({
+            layers: [
+                new ol.layer.Tile({source: new ol.source.OSM()}),
+                vectorLayer
+            ],
+            target: 'map',
+            view: new ol.View({
+                center: [-6031024.58685793, -1976355.8033415168],
+                //projection: 'EPSG:4326',
+                zoom:5,
+                zoomFactor:1.5,
+                minZoom:2
+            }),
+        });
+      </script>
+      <!--var highlightStyle = new ol.style.Style({-->
+            <!--stroke: new ol.style.Stroke({-->
+                <!--color: '#f00',-->
+                <!--width: 1,-->
+            <!--}),-->
+                <!--fill: new ol.style.Fill({-->
+                <!--color: 'rgba(255,0,0,0.1)',-->
+            <!--}),-->
+            <!--text: new ol.style.Text({-->
+                <!--font: '12px Calibri,sans-serif',-->
+                <!--fill: new ol.style.Fill({-->
+                    <!--color: '#000',-->
+                <!--}),-->
+                <!--stroke: new ol.style.Stroke({-->
+                    <!--color: '#f00',-->
+                    <!--width: 3,-->
+                <!--}),-->
+            <!--}),-->
+        <!--});-->
+  <!--var featureOverlay = new ol.layer.Layer({-->
+    <!--source: new ol.source.VectorSource(),-->
+    <!--map: map,-->
+    <!--style: function (feature) {-->
+        <!--highlightStyle.getText().setText(feature.get('name'));-->
+        <!--return highlightStyle;-->
+    <!--},-->
+<!--});-->
+
+<!--var highlight;-->
+<!--var displayFeatureInfo = function (pixel) {-->
+    <!--var feature = map.forEachFeatureAtPixel(pixel, function (feature) {-->
+        <!--return feature;-->
+    <!--});-->
+
+    <!--var info = document.getElementById('info');-->
+    <!--if (feature) {-->
+        <!--info.innerHTML = feature.getId() + ': ' + feature.get('name');-->
+    <!--} else {-->
+        <!--info.innerHTML = '&nbsp;';-->
+    <!--}-->
+
+    <!--if (feature !== highlight) {-->
+        <!--if (highlight) {-->
+            <!--featureOverlay.getSource().removeFeature(highlight);-->
+        <!--}-->
+        <!--if (feature) {-->
+            <!--featureOverlay.getSource().addFeature(feature);-->
+        <!--}-->
+        <!--highlight = feature;-->
+    <!--}-->
+<!--};-->
+
+<!--map.on('pointermove', function (evt) {-->
+    <!--if (evt.dragging) {-->
+        <!--return;-->
+    <!--}-->
+    <!--var pixel = map.getEventPixel(evt.originalEvent);-->
+    <!--displayFeatureInfo(pixel);-->
+<!--});-->
+
+<!--map.on('click', function (evt) {-->
+    <!--displayFeatureInfo(evt.pixel);-->
+<!--});-->
+
+  </body>
+</html>

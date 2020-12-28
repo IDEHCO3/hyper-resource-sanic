@@ -1,5 +1,6 @@
 from sanic import  response
 from typing import Dict
+import json
 
 from src.hyper_resource.abstract_resource import AbstractResource
 from ..url_interpreter.interpreter import Interpreter
@@ -131,7 +132,7 @@ class AbstractCollectionResource(AbstractResource):
     def dict_name_operation(self) -> Dict[str, 'function']:
         return {'filter': self.filter}
 
-    async def filter(self, path: str) -> "AbstractCollectionResource":
+    async def filter(self, path: str): #-> "AbstractCollectionResource":
         """
         :param path: expression
         :return: self
@@ -146,4 +147,4 @@ class AbstractCollectionResource(AbstractResource):
             raise
         print(f'whereclause: {whereclause}')
         rows =  await self.dialect_DB().filter(whereclause)
-        return response.json(self.rows_as_dict(rows))
+        return response.json( [json.dumps(dict(row)) for row in rows] )#response.json(self.rows_as_dict(rows))
