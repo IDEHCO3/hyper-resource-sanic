@@ -27,5 +27,7 @@ src/context/*/*/*.py
 src/url_interpreter/__pycache__/*.*.pyc
 src/orm/__pycache__/*.*.pyc
 tests/__pycache__/*.*.pyc
+src/static/
+src/static/*.html
 tmp/
 temp/

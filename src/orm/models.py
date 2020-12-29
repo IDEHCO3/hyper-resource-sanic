@@ -74,3 +74,9 @@ class AlchemyBase:
 
     def attribute_starts_with(self, attribute: str) -> 'AlchemyBase':
         return None
+
+
+class AlchemyGeoBase(AlchemyBase):
+    @classmethod
+    def geo_column_name(cls) -> str:
+        return next((tuple_name_type[0] for tuple_name_type in cls.list_attribute_column_type() if tuple_name_type[2].startswith('geometry(')), None)

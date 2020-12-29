@@ -1,4 +1,7 @@
-<!DOCTYPE html>
+import os
+from generator.util import convert_camel_case_to_underline
+def get_geo_template(file_name, class_name):
+    return '''<!DOCTYPE html>
 <html lang="en">
   <head>
       <meta charset="UTF-8">
@@ -82,4 +85,25 @@
         });
       </script>
     </body>
-</html>
+</html>'''
+def get_template(file_name, class_name):
+    return ''''''
+def generate_static_file(path, file_name, class_name, is_geo: bool = False):
+    file_with_path = os.path.join(path, f'{file_name}.html')
+    with open(file_with_path, 'w') as file:
+        if is_geo:
+            file.write(get_geo_template(file_name, class_name))
+        else:
+            file.write(get_template(file_name, class_name))
+
+def generate_all_static_files(clsmembers, is_geo: bool = False):
+    path = os.path.join(os.getcwd(), 'src', 'static')
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        pass
+
+    for class_name_class in clsmembers:
+        class_name = class_name_class[0]
+        file_name = convert_camel_case_to_underline(class_name)
+        generate_static_file(path, file_name, class_name, is_geo)

@@ -1,12 +1,15 @@
 from sanic import response
 
 from settings import BASE_DIR, SOURCE_DIR
-from src.hyper_resource.abstract_collection_resource import AbstractCollectionResource
+from src.hyper_resource.spatial_collection_resource import SpatialCollectionResource
 from src.orm.database_postgis import DialectDbPostgis
 import json, os
 
 
-class FeatureCollectionResource(AbstractCollectionResource):
+class FeatureCollectionResource(SpatialCollectionResource):
+
+    def __init__(self, request):
+        super().__init__(request)
 
     def get_geom_attribute(self):
         for column in self.entity_class().column_names():
@@ -39,15 +42,21 @@ class FeatureCollectionResource(AbstractCollectionResource):
         feature_collection["features"] = response_data
         return feature_collection
 
-    async def get_representation(self):
+    async def get_html_representation(self):
         html_filepath = os.path.join(SOURCE_DIR, "static", self.metadata_table().name + ".html")
         with open(html_filepath, "r") as body:
             return response.html(body.read(), 200)
 
     async def get_json_representation(self):
         rows = await self.dialect_DB().fetch_all()
-        res = self.rows_as_dict(rows)
-        return response.json(res)
+        return response.text(rows, content_type='application/json')
+
+    async def get_representation(self):
+        accept = self.request.headers['accept']
+        if 'text/html' in accept:
+            return await self.get_html_representation()
+        else:
+            return await self.get_json_representation()
 
     def dialect_DB(self):
           return DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())

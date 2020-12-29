@@ -9,9 +9,10 @@ class DialectDbPostgis(DialectDbPostgresql):
         super().__init__(db, metadata_table, entity_class)
 
     async def fetch_all(self):
-        query = self.get_basic_select()
-        rows = await self.db.fetch_all(query)
-        return rows
+        query = self.basic_select()
+        sql = f"select json_build_object('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON(t.*)::json)) from ( {query} ) as t;"
+        rows = await self.db.fetch_all(sql)
+        return rows[0]['json_build_object']
 
     def get_columns_sql(self) -> List[str]:
         full_columns_names = []

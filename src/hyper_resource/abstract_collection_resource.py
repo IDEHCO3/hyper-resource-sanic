@@ -148,3 +148,5 @@ class AbstractCollectionResource(AbstractResource):
         print(f'whereclause: {whereclause}')
         rows =  await self.dialect_DB().filter(whereclause)
         return response.json( [json.dumps(dict(row)) for row in rows] )#response.json(self.rows_as_dict(rows))
+    async def head(self):
+        return response.json({"context": 1})

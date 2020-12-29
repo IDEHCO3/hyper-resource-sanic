@@ -1,5 +1,7 @@
 import os
 import sys, inspect, importlib
+
+from generator.generate_static import generate_all_static_files
 from generator.generator_resource import generate_all_resource_files
 from generator.generator_route import generate_all_router_files,generate_all_entry_point_file
 from generator.all_models import *
@@ -19,17 +21,32 @@ metadata = Base.metadata
 objetos = [CHAR, Column, Float, Integer, Numeric, SmallInteger, String, Text, NullType, Base, metadata, Base, declarative_base, declarative_base()]
 # clsmembers = [clncl for clncl in clsmembers if (clncl[0] != 'Base') and (clncl[1] not in objetos)]
 
-for i in clsmodels:
-    print(i[0])
-generate_all_model_files(clsmodels)
-#Generate all resources
-print("Generating resource files ...")
-generate_all_resource_files(clsmodels)
+def main(argv):
+    #for i in clsmodels:
+    #    print(i[0])
+    is_geo = False
+    if len(argv) > 1:
+        is_geo = argv[1].strip().lower() == 'true'
 
-#Generate all routes
-print("Generating route files ...")
-generate_all_router_files(clsmodels)
+    print(f"Generating final model files ... is_geo = {is_geo}")
 
-#Generate entrypoint file
-print("Generating entrypoint file")
-generate_all_entry_point_file(clsmodels)
+    generate_all_model_files(clsmodels, is_geo)
+
+    # Generate all resources
+    print("Generating resource files ...")
+    generate_all_resource_files(clsmodels, is_geo)
+
+    # Generate all routes
+    print("Generating route files ...")
+    generate_all_router_files(clsmodels)
+
+    # Generate entrypoint file
+    print("Generating entrypoint file...")
+    generate_all_entry_point_file(clsmodels)
+
+    #Generate all static files
+    print("Generating all static files...")
+    generate_all_static_files(clsmodels, is_geo)
+
+if __name__ == "__main__":
+   main(sys.argv)

@@ -41,7 +41,7 @@ class AbstractResource:
         raise NotImplementedError("'get_representation' must be implemented in subclasses")
         
     async def head(self): 
-        return await response.json("Method HEAD not implemented yet.", status=501)
+        return response.json("Method HEAD not implemented yet.", status=501)
     
     #'/string/<parameters:path>'
     async def headGivenParameters(self):
