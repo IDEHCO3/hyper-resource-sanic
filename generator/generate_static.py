@@ -63,11 +63,7 @@ def get_geo_template(file_name, class_name):
             source: new ol.source.Vector({
                 url: window.location.href,
                 format: new ol.format.GeoJSON(),
-            }),
-            style: function (feature) {
-                style.getText().setText(feature.get("name"));
-                return style;
-            }
+            })
         });
 
         var map = new ol.Map({

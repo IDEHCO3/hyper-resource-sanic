@@ -1,7 +1,10 @@
 import os
+
+from sqlalchemy.orm import RelationshipProperty
+
 from generator.util import convert_camel_case_to_underline
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-
+from sqlalchemy.orm.properties import ColumnProperty
 def base_template(is_geo: bool= False):
     if is_geo:
         alchemy_base = 'AlchemyGeoBase'
@@ -9,17 +12,27 @@ def base_template(is_geo: bool= False):
     else:
         alchemy_base = 'AlchemyBase'
         import_geo =''
-    return f"""
-# coding: utf-8
+    return f"""# -*- coding: utf-8 -*-
 {import_geo}
-from sqlalchemy import CHAR, Column, Float, Integer, Numeric, SmallInteger, String, Text
+from sqlalchemy import CHAR, Column, Float, Integer, Numeric, SmallInteger, String, Text, Date
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.ext.declarative import declarative_base
 from src.orm.models import {alchemy_base}, Base
 """
+def generate_string_for_column_property(attribute_name, column_property):
+    schema_column = column_property.columns[0]
+    str_for_attr = 'Column('
+    str_for_attr += "'" + schema_column.name + "'" + ','
+    str_for_attr += schema_column.type.__repr__() + ','
+    if schema_column.primary_key:
+        str_for_attr += 'primary_key=True' + ','
+    str_for_attr += 'nullable=' + schema_column.nullable.__repr__()
+    str_for_attr += ')'
+    return attribute_name + ' = ' + str_for_attr
 def geo_field_name_template(a_class):
     tuple_k_name_col_type = [(key, value.prop.columns[0].name, value.prop.columns[0].type.__str__()) for key, value in
-     a_class.__dict__.items() if isinstance(value, InstrumentedAttribute)]
+     a_class.__dict__.items() if isinstance(value, InstrumentedAttribute) and isinstance(value.prop,ColumnProperty )]
     geo_feld_name = next((tuple_name_type for tuple_name_type in tuple_k_name_col_type if tuple_name_type[2].startswith('geometry(')), None)
     return f"""
    @classmethod
@@ -36,16 +49,14 @@ def generate_model_file(path, file_name, class_name, a_class, is_geo: bool = Fal
         file.write(f"   __tablename__ = '{a_class.__tablename__}'\n")
         file.write(f"   __table_args__ = {a_class.__table_args__.__str__()}\n")
         file.write('\n')
-        for key, value in a_class.__dict__.items():
-             if isinstance(value, InstrumentedAttribute):
-                left_part = key + ' = '
-                str_column = value.prop.columns[0].__repr__()
-                if str_column.split(',')[-1].startswith(' table'):
-                    right_part = ','.join(str_column.split(',')[:-1]) + ')'
-                else:
-                    res = [snippet for snippet in str_column.split(',') if not snippet.startswith(' table')] 
-                    right_part = ','.join(res)
-                file.write(f'   {left_part}{right_part}\n')
+        tuplas = [(key, value) for key, value in a_class.__dict__.items() if isinstance(value, InstrumentedAttribute)]
+        for key, value in tuplas:
+             if isinstance(value.prop, ColumnProperty):
+                str_attrib =  generate_string_for_column_property(key, value.prop)
+                file.write(f'   {str_attrib}\n')
+             elif isinstance(value.prop, RelationshipProperty):
+                str_attrib = f"{key} = relationship('{value.prop.entity.class_.__name__}')"
+                file.write(f'   {str_attrib}\n')
         if is_geo:
             file.write(geo_field_name_template(a_class))
 

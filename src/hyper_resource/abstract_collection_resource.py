@@ -1,6 +1,7 @@
-from sanic import  response
+from settings import BASE_DIR, SOURCE_DIR
+import sanic
 from typing import Dict
-import json
+import json, os
 
 from src.hyper_resource.abstract_resource import AbstractResource
 from ..url_interpreter.interpreter import Interpreter
@@ -27,11 +28,22 @@ class AbstractCollectionResource(AbstractResource):
     
     def rows_as_dict(self, rows):
         return [dict(row) for row in rows]
+
+    async def get_html_representation(self):
+        #Temporario até gerar código em html para recurso não espacial
+        rows = await self.dialect_DB().fetch_all_as_json()
+        return sanic.response.text(rows, content_type='application/json')
+
+    async def get_json_representation(self):
+        rows = await self.dialect_DB().fetch_all_as_json()
+        return sanic.response.text(rows, content_type='application/json')
+
     async def get_representation(self):
-        dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), None)
-        rows = await dialect_db.fetch_all()
-        res = self.rows_as_dict(rows)
-        return response.json(res)
+        accept = self.request.headers['accept']
+        if 'text/html' in accept:
+            return await self.get_html_representation()
+        else:
+            return await self.get_json_representation()
         
     async def get_representation_given_path(self, path):
         #result = getattr(foo, 'bar')(*params)
@@ -46,12 +58,12 @@ class AbstractCollectionResource(AbstractResource):
                 att_names = operation_name_or_atribute_comma.split(',')
                 for att_name in att_names:
                     if att_name not in self.attribute_names():
-                        return response.json(f"The operation or attribute {att_name} does not exists", status=400)        
+                        return sanic.response.json(f"The operation or attribute {att_name} does not exists", status=400)
                 return await self.pre_projection(path)
                 
         except (RuntimeError, TypeError, NameError):
             raise
-            return response.json("error: Error no banco")
+            return sanic.response.json("error: Error no banco")
 
     async def pre_offsetlimit(self, path):
         arguments_from_url_by_slash = path.split('/')
@@ -71,14 +83,14 @@ class AbstractCollectionResource(AbstractResource):
         dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), None)
         rows = await dialect_db.offset_limit(offset, limit, str_lst_attribute_comma, asc)
         res =  self.rows_as_dict(rows)
-        return response.json(res)
+        return sanic.response.json(res)
         
     async def pre_count(self, path):
         return await self.count()
     async def count(self):
         dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), None)
         result = await dialect_db.count()
-        return response.json(result['count'])
+        return sanic.response.json(result['count'])
     
     async def pre_orderby(self, path):
         return await self.orderby(path)
@@ -88,10 +100,10 @@ class AbstractCollectionResource(AbstractResource):
         att_names =  str_attribute_as_comma_list.split(',')
         for att_name in att_names:
             if att_name not in self.attribute_names():
-                return response.json(f"The attribute {att_name} does not exists", status=400)
+                return sanic.response.json(f"The attribute {att_name} does not exists", status=400)
         rows = await dialect_db.order_by(str_attribute_as_comma_list)
         res = self.rows_as_dict(rows)
-        return response.json(res)
+        return sanic.response.json(res)
     
     async def pre_projection(self, path):
         str_att_names_as_comma = path.split('/')[0] # /projection/attri or /attri
@@ -102,7 +114,7 @@ class AbstractCollectionResource(AbstractResource):
     async def projection(self, str_att_names_as_comma):
         rows = await self.dialect_DB().projection(str_att_names_as_comma, None)
         res = self.rows_as_dict(rows)
-        return response.json(res)
+        return sanic.response.json(res)
          
     async def pre_groupbycount(self, path):
         str_atts = path.split('/')[1] #groupbycount/departamento
@@ -111,20 +123,20 @@ class AbstractCollectionResource(AbstractResource):
     async def groupbycount(self, str_att_names_as_comma):
         rows = await self.dialect_DB().group_by_count(str_att_names_as_comma)
         res = self.rows_as_dict(rows)
-        return response.json(res)
+        return sanic.response.json(res)
     
     async def pre_groupbysum(self, path):
         str_atts = path.split('/')[1]  #empolyees/name&salary
         fields_from_path = str_atts[1].split('&')
         if self.fields_from_path_not_in_attribute_names(fields_from_path):
-            return response.json(f"The attribute {str_atts} does not exists", status=400)
+            return sanic.response.json(f"The attribute {str_atts} does not exists", status=400)
         
         return await self.groupbysum(self, path)
 
     async def groupbysum(self, str_att_names_as_comma, att_to_sum):
         rows = await self.dialect_DB().group_by_sum(str_att_names_as_comma, att_to_sum)
         res = self.rows_as_dict(rows)
-        return response.json(res)
+        return sanic.response.json(res)
     
     async def pre_filter(self, path):
         return await self.filter(path[6:]) #len('filter') = 6
@@ -147,6 +159,6 @@ class AbstractCollectionResource(AbstractResource):
             raise
         print(f'whereclause: {whereclause}')
         rows =  await self.dialect_DB().filter(whereclause)
-        return response.json( [json.dumps(dict(row)) for row in rows] )#response.json(self.rows_as_dict(rows))
+        return sanic.response.json([json.dumps(dict(row)) for row in rows])#response.json(self.rows_as_dict(rows))
     async def head(self):
-        return response.json({"context": 1})
+        return sanic.response.json({"context": 1})

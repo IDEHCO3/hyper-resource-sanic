@@ -74,7 +74,14 @@ class DialectDbPostgresql(DialectDatabase):
         query = f'select {all_column} from {self.metadata_table.schema}.{self.metadata_table.name} where {key_or_unique} = :{key_or_unique}'
         row = await self.db.fetch_one(query=query, values=dic)
         return row
-     
+
+    async def fetch_all_as_json(self):
+        query = self.basic_select()
+        sql = f"select json_agg(t.*) from ({query}) as t;"
+        print(sql)
+        rows = await self.db.fetch_all(sql)
+        return rows[0]['json_agg']
+
     async def filter(self, a_filter):
         cols_as_enum = self.column_names_as_enum()
         query = f'select {cols_as_enum} from {self.metadata_table.schema}.{self.metadata_table.name} where {a_filter}'
@@ -107,7 +114,7 @@ class DialectDbPostgresql(DialectDatabase):
     
     async def group_by_sum(self, str_attr_as_comma_list, attr_to_sum, orderby=None):
         order_by = '' if orderby is None else f' order by {orderby} '
-        query = f'select {str_attribute_as_comma_list}, sum({attr_to_sum}) from {self.metadata_table.schema}.{self.metadata_table.name}{order_by} group by {str_attribute_as_comma_list}'
+        query = f'select {str_attr_as_comma_list}, sum({attr_to_sum}) from {self.metadata_table.schema}.{self.metadata_table.name}{order_by} group by {str_attribute_as_comma_list}'
         rows = await self.db.fetch_all(query)
         return rows
 

@@ -45,7 +45,7 @@ async def disconnect_from_db(*args, **kwargs):
 
 def setup_database():
     app.db = Database(env.str("URLDB"), ssl=False, min_size=1, max_size=20)
-    app.dialect_db_class = DialectDbPostgis
+    app.dialect_db_class = DialectDbPostgresql
     
 def setup_routes():
     setup_all_routes(app)

@@ -61,10 +61,7 @@
                 url: window.location.href,
                 format: new ol.format.GeoJSON(),
             }),
-            style: function (feature) {
-                style.getText().setText(feature.get("name"));
-                return style;
-            }
+            renderMode: 'image'
         });
 
         var map = new ol.Map({
