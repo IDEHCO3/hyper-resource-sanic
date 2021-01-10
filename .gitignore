@@ -17,6 +17,7 @@ src/resources/__pycache__/*.pyc
 src/resource/*/*/*.py
 src/hyper_resource/__pycache__
 src/hyper_resource/__pycache__/*.pyx
+src/hyper_resource/context/__pycache__
 src/models/__pycache__
 src/models/__pycache__/*.pyc
 src/models/*/*/*.py

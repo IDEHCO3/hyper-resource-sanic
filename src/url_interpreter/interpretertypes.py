@@ -86,6 +86,53 @@ SQLALCHEMY_TYPES_OPERATIONS = {
     VARCHAR:        []
 }
 
+PREFIX_SCHEMAORG = "schema"
+SQLALCHEMY_SCHEMA_ORG_TYPES = {
+    ARRAY:          None,
+    BIGINT:         f"{PREFIX_SCHEMAORG}:Integer",
+    CHAR:           f"{PREFIX_SCHEMAORG}:Float",
+    BigInteger:     f"{PREFIX_SCHEMAORG}:Integer",
+    BINARY:         None,
+    Binary:         None,
+    BLOB:           None,
+    BOOLEAN:        f"{PREFIX_SCHEMAORG}:Boolean",
+    Boolean:        f"{PREFIX_SCHEMAORG}:Boolean",
+    CLOB:           None,
+    DATE:           None,
+    Date:           None,
+    DATETIME:       None,
+    DateTime:       None,
+    DECIMAL:        f"{PREFIX_SCHEMAORG}:Float",
+    Enum:           None,
+    Column:         None,
+    FLOAT:          f"{PREFIX_SCHEMAORG}:Float",
+    Float:          f"{PREFIX_SCHEMAORG}:Float",
+    INT:            f"{PREFIX_SCHEMAORG}:Integer",
+    INTEGER:        f"{PREFIX_SCHEMAORG}:Integer",
+    Integer:        f"{PREFIX_SCHEMAORG}:Integer",
+    JSON:           None,
+    LargeBinary:    None,
+    NCHAR:          f"{PREFIX_SCHEMAORG}:Text",
+    NUMERIC:        f"{PREFIX_SCHEMAORG}:Float",
+    Numeric:        f"{PREFIX_SCHEMAORG}:Float",
+    NVARCHAR:       f"{PREFIX_SCHEMAORG}:Text",
+    PickleType:     None,
+    REAL:           f"{PREFIX_SCHEMAORG}:Float",
+    SMALLINT:       f"{PREFIX_SCHEMAORG}:Integer",
+    SmallInteger:   f"{PREFIX_SCHEMAORG}:Integer",
+    String:         f"{PREFIX_SCHEMAORG}:Text",
+    TEXT:           f"{PREFIX_SCHEMAORG}:Text",
+    Text:           f"{PREFIX_SCHEMAORG}:Text",
+    TIME:           None,
+    Time:           None,
+    TIMESTAMP:      None,
+    TypeDecorator:  None,
+    Unicode:        None,
+    UnicodeText:    None,
+    VARBINARY:      None,
+    VARCHAR:        f"{PREFIX_SCHEMAORG}:Text",
+}
+
 # --- Geospatial operations ---
 def area() -> float:
     pass

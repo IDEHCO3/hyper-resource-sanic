@@ -42,6 +42,9 @@ class AbstractResource:
         
     async def head(self): 
         return response.json("Method HEAD not implemented yet.", status=501)
+
+    async def options(self, *args, **kwargs):
+        return response.json("Method OPTIONS not implemented yet.", status=501)
     
     #'/string/<parameters:path>'
     async def headGivenParameters(self):

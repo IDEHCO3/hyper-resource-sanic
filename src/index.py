@@ -14,7 +14,7 @@ from sanic_cors import CORS, cross_origin
 
 #Create Sanic app
 app = Sanic(__name__)
-CORS(app)
+# CORS(app)
 app.blueprint(swagger_blueprint)
 
 #Setup env

@@ -1,14 +1,17 @@
 from settings import BASE_DIR, SOURCE_DIR
 import sanic
+
+from src.hyper_resource.context.geocontext import GeoCollectionContext
 from src.hyper_resource.spatial_collection_resource import SpatialCollectionResource
 from src.orm.database_postgis import DialectDbPostgis
 import json, os
-
+MIME_TYPE_JSONLD = "application/ld+json"
 
 class FeatureCollectionResource(SpatialCollectionResource):
 
     def __init__(self, request):
         super().__init__(request)
+        self.context_class = GeoCollectionContext
 
     def get_geom_attribute(self):
         for column in self.entity_class().column_names():
@@ -48,3 +51,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
 
     def dialect_DB(self):
           return DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())
+
+    async def options(self, *args, **kwargs):
+        context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
+        return sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)

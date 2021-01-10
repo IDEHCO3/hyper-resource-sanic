@@ -82,6 +82,9 @@ class DialectDbPostgresql(DialectDatabase):
         rows = await self.db.fetch_all(sql)
         return rows[0]['json_agg']
 
+    async def fetch_one_as_json(self, id_dict):
+        raise NotImplementedError("'fetch_one_as_json' must be implemented in subclasses")
+
     async def filter(self, a_filter):
         cols_as_enum = self.column_names_as_enum()
         query = f'select {cols_as_enum} from {self.metadata_table.schema}.{self.metadata_table.name} where {a_filter}'

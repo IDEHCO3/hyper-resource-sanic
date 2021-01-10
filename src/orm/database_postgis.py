@@ -1,3 +1,4 @@
+import json
 from typing import List
 
 from geoalchemy2 import functions
@@ -14,6 +15,18 @@ class DialectDbPostgis(DialectDbPostgresql):
         print(sql)
         rows = await self.db.fetch_all(sql)
         return rows[0]['json_build_object']
+
+    async def fetch_one_as_json(self, pk):
+        query = self.basic_select_by_id(pk)
+        sql = f"select json_agg(t.*) from ({query}) as t;"
+        print(sql)
+        rows = await self.db.fetch_all(sql)
+        return json.loads(dict(rows[0])['json_agg'])[0]
+
+    def get_geom_attribute(self) -> str:
+        for column in self.metadata_table.columns:
+            if hasattr(column.type, "geometry_type"):
+                return str(column.name)
 
     def get_columns_sql(self) -> List[str]:
         full_columns_names = []

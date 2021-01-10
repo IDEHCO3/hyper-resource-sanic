@@ -17,6 +17,15 @@ class DialectDatabase(AbstractDialectDatabase):
     def basic_select(self):
         query = f'select {self.column_names_as_enum()} from {self.metadata_table.schema}.{self.metadata_table.name}'
         return query
+
+    def basic_select_by_id(self, pk):
+        columns_names = self.column_names_as_enum()
+        schema = self.metadata_table.schema
+        table_name = self.metadata_table.name
+        id_fullname = f'{schema}.{table_name}.{list(self.metadata_table.primary_key.columns)[0].name}'
+        query = f'select {columns_names} from {schema}.{table_name} where {id_fullname}={pk}'
+        return query
+
     async def offset_limit(self, offset, limit, orderby=None, asc=None):
         raise NotImplementedError("'offset_limit' must be implemented in subclasses")
     async def fetch_all(self):
