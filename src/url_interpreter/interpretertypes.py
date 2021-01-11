@@ -3,6 +3,7 @@ from sqlalchemy import ARRAY, BIGINT, CHAR, BigInteger, BINARY, Binary, BLOB, BO
     DateTime, DateTime, DECIMAL, Enum, Column, FLOAT, Float, INT, INTEGER, Integer, JSON, LargeBinary, NCHAR, NUMERIC, \
     Numeric, NVARCHAR, PickleType, REAL, SMALLINT, SmallInteger, String, TEXT, Text, TIME, Time, TIMESTAMP, TypeDecorator, \
     Unicode, UnicodeText, VARBINARY, VARCHAR
+import copy
 
 def is_geom_type(type) -> bool:
     return type in [Geometry, Geography, Raster, WKTElement, WKBElement, RasterElement]
@@ -132,6 +133,14 @@ SQLALCHEMY_SCHEMA_ORG_TYPES = {
     VARBINARY:      None,
     VARCHAR:        f"{PREFIX_SCHEMAORG}:Text",
 }
+
+PYTHON_SCHEMA_ORG_TYPES = {
+    int:            f"{PREFIX_SCHEMAORG}:Integer",
+    float:          f"{PREFIX_SCHEMAORG}:Float",
+    bool:           f"{PREFIX_SCHEMAORG}:Boolean",
+    str:            f"{PREFIX_SCHEMAORG}:Text"
+}
+GEOPYTHON_SCHEMA_ORG_TYPES = copy.deepcopy(PYTHON_SCHEMA_ORG_TYPES)
 
 # --- Geospatial operations ---
 def area() -> float:

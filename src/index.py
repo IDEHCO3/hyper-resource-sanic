@@ -6,6 +6,7 @@ from sanic import Sanic, response
 from sanic.response import text
 from sanic_openapi import swagger_blueprint
 
+from settings import VOCAB_DIR
 from src.orm.database_postgis import DialectDbPostgis
 from src.routes.setup_routes import setup_all_routes
 from src.routes.entry_point import api_entry_point
@@ -24,6 +25,7 @@ port = env.str("PORT", "8002")
 host = env.str("HOST", "127.0.0.1")
 debug=env.bool("DEBUG", False)
 access_log = env.bool("ACESS_LOG", False)
+MIME_TYPE_JSONLD = "application/ld+json"
 
 @app.middleware("request")
 async def print_on_request(request):
@@ -32,6 +34,10 @@ async def print_on_request(request):
 @app.route("/")
 def handle_request(request):
     return response.json(api_entry_point())
+
+@app.route("/core")
+def handle_request(request):
+    return response.file(VOCAB_DIR, mime_type=MIME_TYPE_JSONLD)
 
 @app.listener("after_server_start")
 async def connect_to_db(*args, **kwargs):

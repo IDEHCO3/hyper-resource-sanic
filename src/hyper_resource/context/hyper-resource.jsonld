@@ -1,0 +1,111 @@
+{
+	"@context": {
+		"hr": "http://127.0.0.1:8000/core#",
+		"hydra": "http://www.w3.org/ns/hydra/core#",
+		"rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+		"xsd": "http://www.w3.org/2001/XMLSchema#",
+		"owl": "http://www.w3.org/2002/07/owl#",
+		"schema": "http://schema.org/",
+		"comment": "rdfs:comment",
+		"label": "rdfs:label",
+		"domain": {
+			"@id": "rdfs:domain",
+			"@type": "@vocab"
+		},
+		"range": {
+			"@id": "rdfs:range",
+			"@type": "@vocab"
+		},
+		"subClassOf": {
+			"@id": "rdfs:subClassOf",
+			"@type": "@vocab"
+		},
+		"example": {
+			"@type": "https://schema.org/Text"
+		},
+		"defines": {
+			"@reverse": "rdfs:isDefinedBy"
+		},
+		"domainIncludes": {
+			"@id": "schema:domainIncludes",
+			"@type": "@id"
+		}
+	},
+	"@id": "http://www.hyper-resource.org/core#",
+	"@type": "owl:Ontology",
+	"label": "The Hyper Resource Core Vocabulary",
+	"defines": [
+		{
+			"@id": "hr:Resource",
+			"@type": "rdfs:Resource",
+			"label": "Resource of Hyper Resource",
+			"comment": "The class of dereferenceable resources by means a client can attempt to dereference; however, the received responses should still be verified.",	
+		},
+		{
+			"@id": "hr:Class",
+			"@type": [
+				"hr:Resource",
+				"rdfs:Class"
+			],
+			"subClassOf": [
+				"rdfs:Class"
+			],
+			"label": "Hyper Resource Class",
+			"comment": "The class of Hyper Resource classes."
+		},
+		{
+			"@id": "hr:Operation",
+			"@type": "hr:Class",
+			"label": "Operation",
+			"comment": "An operation."
+		},
+		{
+			"@id": "hr:supportedOperations",
+			"@container": "@list",
+			"@type": "rdf:Property",		
+			"label": "supported operation",
+			"comment": "An list of operations supported by instances of the specific Hyper Resource class",
+			"domain": "hr:Resource",
+			"range": "hydra:Operation"
+		},
+		{
+			"@id": "hydra:method",
+			"@type": "rdf:Property",
+			"label": "method",
+			"comment": "The HTTP method.",
+			"domain": "hr:Operation",
+			"range": "xsd:string"
+        	},
+		{
+			"@id": "hydra:expectsHeader",
+			"@type": "rdf:Property",
+			"label": "expects header",
+			"comment": "Specification of the header expected by the operation.",
+			"domain": "hr:Operation"
+
+		},
+		{
+			"@id": "hr:appendPath",
+			"@type": "rdf:Property",
+			"label": "Operation URL path",
+			"comment": "Specification of the path expected to be appended to current URL with placeholders to be fulfiled according with operation params",
+			"domain": "hr:Operation",
+			"range": "xsd:string"
+		},
+		{
+			"@id": "hr:parameters",
+			"@container": "@list",
+			"@type": "rdf:Property",		
+			"label": "Operation parameters",
+			"comment": "The list of informations expected by the Web API in a given operation",
+			"domain": "hr:Operation",
+			"range": "hr:OperationParameter"
+		},
+		{
+			"@id": "hr:OperationParameter",
+			"@type": "hr:Class",
+			"label": "Operation parameter",
+			"comment": "Parameter of a given operation"
+		}
+	]
+}
