@@ -11,6 +11,7 @@ Steps to run this project:
 6. Still in hyper-resource-sanic folder, for non spatial resources, execute:
    python -m generator.generate_all_files <br>
    6.1 For spatial resource execute: python -m generator.generate_all_files True
+   6.2 By default get, head and options is generated. To generating patch/put, post and delete execute: python -m generator.generate_all_files  True True True True
 7. In hyper-resource-sanic folder rename the file .env_template to .env and configure to your database. See the environment variable URLDB.
 8. In hyper-resource-sanic folder execute: python -m src.index
    See in http://127.0.0.1:8002/

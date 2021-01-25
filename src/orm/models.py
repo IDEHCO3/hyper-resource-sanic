@@ -4,7 +4,6 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 Base = declarative_base()
 
-
 class AlchemyBase:
     @classmethod     
     def schema(cls) -> str:
@@ -36,6 +35,10 @@ class AlchemyBase:
         return [ (key, value.prop.columns[0].name) for key, value in cls.__dict__.items() if isinstance(value, InstrumentedAttribute)]
 
     @classmethod
+    def list_attribute_column_given(cls,attributes_from_path: Tuple[str]) -> List[Tuple]:
+        return [(attrib_name, column_name) for (attrib_name, column_name) in cls.list_attribute_column() if attrib_name in attributes_from_path]
+
+    @classmethod
     def list_attribute_column_type(cls) -> List[Tuple]:
         return [(key, value.prop.columns[0].name, value.prop.columns[0].type.__str__()) for key, value in cls.__dict__.items() if isinstance(value, InstrumentedAttribute)]
 
@@ -50,14 +53,21 @@ class AlchemyBase:
     @classmethod
     def column_names_given_attributes(cls, attributes_from_path) -> List[str]:
         return [ col for att, col in cls.list_attribute_column() if att in attributes_from_path]
-
     @classmethod
-    def column_names_as_enum_given_attributes(cls, attributes_from_path) -> str:
+    def enum_column_names_alias_attribute_given(cls, list_attrib_column: List[Tuple]) -> str:
+        return ','.join((att + ' as ' + col for att, col in list_attrib_column))
+    @classmethod
+    def enum_column_names_as_given_attributes(cls, attributes_from_path) -> str:
         return ','.join(cls.column_names_given_attributes(attributes_from_path))
 
     @classmethod
-    def column_names_as_enum(cls) -> str:
+    def enum_column_names(cls) -> str:
         return ','.join(cls.column_names())
+
+    @classmethod
+    def enum_column_names_colon(cls) -> str:
+         col_name_as_enum = ':,'.join(cls.column_names())
+         return col_name_as_enum + ':'
 
     @classmethod
     def dict_name_operation(cls) -> Dict:

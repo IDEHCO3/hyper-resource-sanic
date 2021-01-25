@@ -19,7 +19,7 @@ class NonSpatialResource(AbstractResource):
            else:
               att_names = operation_name_or_atribute_comma.split(',')
               if self.fields_from_path_in_attribute_names(att_names):
-                 all_column = self.entity_class().column_names_as_enum_given_attributes(att_names)
+                 all_column = self.entity_class().enum_column_names_as_given_attributes(att_names)
                  if type(id_or_key_value) == dict:
                      row = await self.dialect_DB().fetch_one(id_or_key_value, all_column)
                  else:
@@ -32,3 +32,6 @@ class NonSpatialResource(AbstractResource):
               else:
                  msg = f"Some of these attributes {att_names} does not exists in this resource"
                  return response.json(msg, status=400)
+
+    async def delete(self, id):
+        return await self.dialect_DB().delete_one(id)

@@ -1,5 +1,5 @@
 import json
-from typing import List
+from typing import List, Tuple
 
 from geoalchemy2 import functions
 
@@ -9,8 +9,10 @@ class DialectDbPostgis(DialectDbPostgresql):
     def __init__(self, db, metadata_table, entity_class):
         super().__init__(db, metadata_table, entity_class)
 
-    async def fetch_all_as_json(self):
-        query = self.basic_select()
+    async def fetch_all_as_json(self, tuple_attrib : Tuple[str] = None):
+        if (tuple_attrib is not None) and (self.entity_class.geo_column_name() not in tuple_attrib):
+                return await super().fetch_all_as_json(tuple_attrib)
+        query = self.basic_select(tuple_attrib)
         sql = f"select json_build_object('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON(t.*)::json)) from ( {query} ) as t;"
         print(sql)
         rows = await self.db.fetch_all(sql)

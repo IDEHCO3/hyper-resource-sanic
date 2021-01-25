@@ -39,15 +39,29 @@ class AbstractResource:
 
     async def get_representation(self):
         raise NotImplementedError("'get_representation' must be implemented in subclasses")
-        
-    async def head(self): 
+
+    async def get_representation_given_path(self, path):
+        raise NotImplementedError("'get_representation' must be implemented in subclasses")
+
+    async def head(self):
+        return response.json("Method HEAD not implemented yet.", status=501)
+
+    async def head_given_path(self, path):
         return response.json("Method HEAD not implemented yet.", status=501)
 
     async def options(self, *args, **kwargs):
         return response.json("Method OPTIONS not implemented yet.", status=501)
     
     #'/string/<parameters:path>'
-    async def headGivenParameters(self):
+    async def options_given_path(self, path):
+        return await response.json("Method HEAD not implemented yet.", status=501)
+    async def post(self):
+        return await response.json("Method HEAD not implemented yet.", status=501)
+    async def patch(self, id):
+        return await response.json("Method HEAD not implemented yet.", status=501)
+    async def put(self, id):
+        return await response.json("Method HEAD not implemented yet.", status=501)
+    async def delete(self, id):
         return await response.json("Method HEAD not implemented yet.", status=501)
     """
         

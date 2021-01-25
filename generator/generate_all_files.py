@@ -25,9 +25,17 @@ def main(argv):
     #for i in clsmodels:
     #    print(i[0])
     is_geo = False
+    has_patch = False
+    has_post = False
+    has_delete = False
     if len(argv) > 1:
         is_geo = argv[1].strip().lower() == 'true'
-
+    if len(argv) > 2:
+       has_patch = argv[2].strip().lower() == 'true'
+    if len(argv) > 3:
+       has_post = argv[3].strip().lower() == 'true'
+    if len(argv) > 4:
+       has_delete = argv[4].strip().lower() == 'true'
     print(f"Generating final model files ... is_geo = {is_geo}")
 
     generate_all_model_files(clsmodels, is_geo)
@@ -38,7 +46,7 @@ def main(argv):
 
     # Generate all routes
     print("Generating route files ...")
-    generate_all_router_files(clsmodels)
+    generate_all_router_files(clsmodels, has_patch, has_post, has_delete)
 
     # Generate entrypoint file
     print("Generating entrypoint file...")

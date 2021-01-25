@@ -78,20 +78,17 @@ class AbstractCollectionResource(AbstractResource):
             arr_order_asc = arr_order_asc if len(arr_order_asc) == 2 else [arr_order_asc[0], 'asc']
             return await self.offsetlimit(int(arr_off_and_limit[0]), int(arr_off_and_limit[1]), arr_order_asc[0], arr_order_asc[1])
         raise SyntaxError("The operation offsetlimit has two integer arguments.")
-        
     async def offsetlimit(self, offset: int, limit: int, str_lst_attribute_comma = None, asc = None):
         dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), None)
         rows = await dialect_db.offset_limit(offset, limit, str_lst_attribute_comma, asc)
         res =  self.rows_as_dict(rows)
         return sanic.response.json(res)
-        
     async def pre_count(self, path):
         return await self.count()
     async def count(self):
         dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), None)
         result = await dialect_db.count()
         return sanic.response.json(result['count'])
-    
     async def pre_orderby(self, path):
         return await self.orderby(path)
     async def orderby(self, path):
@@ -104,18 +101,17 @@ class AbstractCollectionResource(AbstractResource):
         rows = await dialect_db.order_by(str_attribute_as_comma_list)
         res = self.rows_as_dict(rows)
         return sanic.response.json(res)
-    
     async def pre_projection(self, path):
         str_att_names_as_comma = path.split('/')[0] # /projection/attri or /attri
         if str_att_names_as_comma == "projection":
             str_att_names_as_comma = path.split('/')[1]
         return await self.projection(str_att_names_as_comma)
-    
-    async def projection(self, str_att_names_as_comma):
-        rows = await self.dialect_DB().projection(str_att_names_as_comma, None)
-        res = self.rows_as_dict(rows)
-        return sanic.response.json(res)
-         
+    async def projection(self, enum_attribute_name : str):
+        attr_names = tuple(a.strip() for a in enum_attribute_name.split(','))
+        rows = await self.dialect_DB().fetch_all_as_json(attr_names)
+        return sanic.response.text(rows, content_type='application/json')
+
+
     async def pre_groupbycount(self, path):
         str_atts = path.split('/')[1] #groupbycount/departamento
         return await self.groupbycount(str_atts)

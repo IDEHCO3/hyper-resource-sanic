@@ -26,6 +26,26 @@ def {file_name}_routes(app):
         r = {class_name}Resource(request)
         return await r.get_representation(id, path)
 
+    @app.route('/{file_name_hyfen}-list/<id:int>', methods=['HEAD'])
+    async def head_{file_name}_id(request, id):
+        r = {class_name}Resource(request)
+        return await r.head(id)
+    
+    @app.route('/{file_name_hyfen}-list/<id:int>/<path:path>', methods=['HEAD'])
+    async def {file_name}_resource_id_path(request, id, path):
+        r = {class_name}Resource(request)
+        return await r.head_given_path(id, path)
+    
+    @app.route('/{file_name_hyfen}-list/<id:int>', methods=['OPTIONS'])
+    async def options_{file_name}_id(request, id):
+        r = {class_name}Resource(request)
+        return await r.head(id)
+    
+    @app.route('/{file_name_hyfen}-list/<id:int>/<path:path>', methods=['OPTIONS'])
+    async def options_{file_name}_resource_id_path(request, id, path):
+        r = {class_name}Resource(request)
+        return await r.options_given_path(id, path)
+            
     @app.route("/{file_name_hyfen}-list")
     async def {file_name}_list(request):
         cr = {class_name}CollectionResource(request)
@@ -45,13 +65,59 @@ def {file_name}_routes(app):
     async def head_{file_name}_list_path(request, path):
         cr = {class_name}CollectionResource(request)
         return await cr.head_given_path(path)
+   
+    @app.route("/{file_name_hyfen}-list", methods=['OPTIONS'] )
+    async def options_{file_name}_list(request):
+        cr = {class_name}CollectionResource(request)
+        return await cr.options()
+
+    @app.route("/{file_name_hyfen}-list/<path:path>", methods=['OPTIONS'] )
+    async def options_{file_name}_list_path(request, path):
+        cr = {class_name}CollectionResource(request)
+        return await cr.options_given_path(path)     
 """
     return template
+def get_template_patch(file_name, file_name_hyfen, class_name):
+    return f"""
+    @app.route('/{file_name_hyfen}-list/<id:int>', methods=['PATCH'])
+    async def patch_{file_name}_id(request, id):
+        r = {class_name}Resource(request)
+        return await r.patch(id)
+"""
+def get_template_put(file_name, file_name_hyfen, class_name):
+    return f"""
+    @app.route('/{file_name_hyfen}-list/<id:int>', methods=['PUT'])
+    async def put_{file_name}_id(request, id):
+        r = {class_name}Resource(request)
+        return await r.put(id)
+"""
 
-def generate_route_file(path, file_name, file_name_hyfen, class_name):
+def get_template_post(file_name, file_name_hyfen, class_name):
+    return f"""
+    @app.route('/{file_name_hyfen}-list', methods=['POST'])
+    async def post_{file_name}_id(request, id):
+        r = {class_name}CollectionResource(request)
+        return await r.post()
+"""
+
+def get_template_delete(file_name, file_name_hyfen, class_name):
+    return f"""
+    @app.route('/{file_name_hyfen}-list/<id:int>', methods=['DELETE'])
+    async def delete_{file_name}_id(request, id):
+        r = {class_name}Resource(request)
+        return await r.delete(id)
+"""
+
+def generate_route_file(path, file_name, file_name_hyfen, class_name, has_patch=False, has_post=False, has_delete=False):
     file_with_path = os.path.join(path, f'{file_name}.py')
     with open(file_with_path, 'w') as file:
         file.write(get_template(file_name, file_name_hyfen, class_name))
+        if has_patch:
+            file.write(get_template_patch(file_name, file_name_hyfen, class_name))
+        if has_post:
+            file.write(get_template_post(file_name, file_name_hyfen, class_name))
+        if has_delete:
+            file.write(get_template_delete(file_name, file_name_hyfen, class_name))
 
 def generate_entry_point_file(path, file_name, file_names_hyfen, class_names):
     file_with_path = os.path.join(path, f'{file_name}.py')
@@ -72,7 +138,7 @@ def generate_setup_routes_file(path, file_name="setup_routes", file_names=[], cl
         for i in range(0, len(file_names)):
             file.write(f'    {file_names[i]}_routes(app)\n')
 
-def generate_all_router_files(clsmembers):
+def generate_all_router_files(clsmembers, has_patch=False, has_post=False, has_delete=False):
     path = os.path.join(os.getcwd(), 'src', 'routes')
     try:
         os.mkdir(path)
@@ -82,7 +148,7 @@ def generate_all_router_files(clsmembers):
         class_name = class_name_class[0]
         file_name = convert_camel_case_to_underline(class_name)
         file_name_hyfen = convert_camel_case_to_hifen(class_name)
-        generate_route_file(path, file_name, file_name_hyfen, class_name)
+        generate_route_file(path, file_name, file_name_hyfen, class_name, has_patch, has_post, has_delete)
 
 def generate_all_entry_point_file(clsmembers):
     path = os.path.join(os.getcwd(), 'src', 'routes')
