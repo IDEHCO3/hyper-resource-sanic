@@ -1,5 +1,5 @@
 from geoalchemy2 import Geometry, Geography, Raster, WKTElement, WKBElement, RasterElement
-from sqlalchemy import ARRAY, BIGINT, CHAR, BigInteger, BINARY, Binary, BLOB, BOOLEAN, Boolean, CHAR, CLOB, DATE, Date, DATETIME, \
+from sqlalchemy import ARRAY, BIGINT, CHAR, BigInteger, BINARY, BLOB, BOOLEAN, Boolean, CHAR, CLOB, DATE, Date, DATETIME, \
     DateTime, DateTime, DECIMAL, Enum, Column, FLOAT, Float, INT, INTEGER, Integer, JSON, LargeBinary, NCHAR, NUMERIC, \
     Numeric, NVARCHAR, PickleType, REAL, SMALLINT, SmallInteger, String, TEXT, Text, TIME, Time, TIMESTAMP, TypeDecorator, \
     Unicode, UnicodeText, VARBINARY, VARCHAR
@@ -47,7 +47,6 @@ SQLALCHEMY_TYPES_OPERATIONS = {
     CHAR:           [],
     BigInteger:     [],
     BINARY:         [],
-    Binary:         [],
     BLOB:           [],
     BOOLEAN:        [],
     Boolean:        [],
@@ -94,7 +93,6 @@ SQLALCHEMY_SCHEMA_ORG_TYPES = {
     CHAR:           f"{PREFIX_SCHEMAORG}:Float",
     BigInteger:     f"{PREFIX_SCHEMAORG}:Integer",
     BINARY:         None,
-    Binary:         None,
     BLOB:           None,
     BOOLEAN:        f"{PREFIX_SCHEMAORG}:Boolean",
     Boolean:        f"{PREFIX_SCHEMAORG}:Boolean",

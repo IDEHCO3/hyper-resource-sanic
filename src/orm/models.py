@@ -2,9 +2,11 @@ from typing import Dict, Tuple, Sequence, List, Any
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
+
 Base = declarative_base()
 
 class AlchemyBase:
+    dialect_db = None
     @classmethod     
     def schema(cls) -> str:
         return cls.__table_args__ ['schema']
@@ -14,7 +16,7 @@ class AlchemyBase:
 
     @classmethod
     def primary_key(cls) -> str:
-        return next(c.key for c in cls.__table__.columns if c.primary_key)
+        return cls.__table__.primary_key.columns[0].name
 
     @classmethod
     def attribute_names(cls) ->List[str]:
@@ -36,11 +38,18 @@ class AlchemyBase:
 
     @classmethod
     def list_attribute_column_given(cls,attributes_from_path: Tuple[str]) -> List[Tuple]:
+        if attributes_from_path is None:
+            return cls.list_attribute_column_type()
         return [(attrib_name, column_name) for (attrib_name, column_name) in cls.list_attribute_column() if attrib_name in attributes_from_path]
 
     @classmethod
     def list_attribute_column_type(cls) -> List[Tuple]:
         return [(key, value.prop.columns[0].name, value.prop.columns[0].type.__str__()) for key, value in cls.__dict__.items() if isinstance(value, InstrumentedAttribute)]
+
+    @classmethod
+    def list_attribute_column_type_given(cls, attributes : List[str]) -> List[Tuple]:
+        return [(key, value.prop.columns[0].name, value.prop.columns[0].type.__str__()) for key, value in
+                cls.__dict__.items() if isinstance(value, InstrumentedAttribute) and (key in attributes)]
 
     @classmethod
     def column_names(cls)-> List[str]:
@@ -55,33 +64,20 @@ class AlchemyBase:
         return [ col for att, col in cls.list_attribute_column() if att in attributes_from_path]
     @classmethod
     def enum_column_names_alias_attribute_given(cls, list_attrib_column: List[Tuple]) -> str:
-        return ','.join((att + ' as ' + col for att, col in list_attrib_column))
+        return ','.join((col + ' as ' + att for att, col in list_attrib_column))
     @classmethod
     def enum_column_names_as_given_attributes(cls, attributes_from_path) -> str:
         return ','.join(cls.column_names_given_attributes(attributes_from_path))
-
-    @classmethod
-    def enum_column_names(cls) -> str:
-        return ','.join(cls.column_names())
-
-    @classmethod
-    def enum_column_names_colon(cls) -> str:
-         col_name_as_enum = ':,'.join(cls.column_names())
-         return col_name_as_enum + ':'
-
     @classmethod
     def dict_name_operation(cls) -> Dict:
         return {
             "attribute_starts_with" : AlchemyBase.attribute_starts_with
         }
-
     @classmethod
     def reflection_operation(cls, operation_name) -> str:
-
         if operation_name not in cls.dict_name_operation():
             raise LookupError(f'This {operation_name} is not supported')
         return cls.dict_name_operation()[operation_name].__annotations__
-
     def attribute_starts_with(self, attribute: str) -> 'AlchemyBase':
         return None
 

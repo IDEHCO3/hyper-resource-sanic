@@ -4,9 +4,11 @@ from typing import List, Dict
 class AbstractResource:
     def __init__(self, request):
         self.request = request
-    
+        self.dialect_db = None
     def dialect_DB(self):
-          return self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), self.entity_class())    
+        if self.dialect_db is None:
+            self.dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), self.entity_class())
+        return self.dialect_db
 
     def entity_class(self):
         raise NotImplementedError("'entity_class' must be implemented in subclasses")
@@ -56,13 +58,23 @@ class AbstractResource:
     async def options_given_path(self, path):
         return await response.json("Method HEAD not implemented yet.", status=501)
     async def post(self):
-        return await response.json("Method HEAD not implemented yet.", status=501)
+        return await response.json("Method POST not implemented yet.", status=501)
     async def patch(self, id):
-        return await response.json("Method HEAD not implemented yet.", status=501)
+        return await response.json("Method PATCH not implemented yet.", status=501)
     async def put(self, id):
-        return await response.json("Method HEAD not implemented yet.", status=501)
+        return await response.json("Method PUT not implemented yet.", status=501)
     async def delete(self, id):
-        return await response.json("Method HEAD not implemented yet.", status=501)
+        return await response.json("Method DELETE not implemented yet.", status=501)
+    def validate_attribute_names(self, attribute_names: List[str]) -> bool:
+        s1 = set(self.dialect_DB().attribute_names())
+        s2 = set(attribute_names)
+        set_final = s2.difference(s1)
+        if len(set_final) > 0:
+            raise NameError(f"The attribute list was not found: {set_final.__str__()}")
+        return True
+    def validate_data(self, attribute_value: dict):
+        attribute_names = attribute_value.keys()
+        self.validate_attribute_names(attribute_names)
     """
         
     

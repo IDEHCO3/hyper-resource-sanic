@@ -9,21 +9,21 @@ class DialectDbPostgis(DialectDbPostgresql):
     def __init__(self, db, metadata_table, entity_class):
         super().__init__(db, metadata_table, entity_class)
 
-    async def fetch_all_as_json(self, tuple_attrib : Tuple[str] = None):
-        if (tuple_attrib is not None) and (self.entity_class.geo_column_name() not in tuple_attrib):
-                return await super().fetch_all_as_json(tuple_attrib)
-        query = self.basic_select(tuple_attrib)
+    def has_geom_column(self, tuple_attrib) -> bool:
+        return self.entity_class.geo_column_name()  in tuple_attrib
+    def has_not_geom_column(self,tuple_attrib) -> bool:
+        return not self.has_geom_column(tuple_attrib)
+    async def fetch_all_as_json(self, tuple_attrib : Tuple[str] = None,  a_query: str = None):
+        if (tuple_attrib is not None) and (self.has_not_geom_column(tuple_attrib) ):
+            return await super().fetch_all_as_json(tuple_attrib)
+        query = self.basic_select(tuple_attrib) if a_query is None else a_query
         sql = f"select json_build_object('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON(t.*)::json)) from ( {query} ) as t;"
         print(sql)
         rows = await self.db.fetch_all(sql)
         return rows[0]['json_build_object']
 
-    async def fetch_one_as_json(self, pk):
-        query = self.basic_select_by_id(pk)
-        sql = f"select json_agg(t.*) from ({query}) as t;"
-        print(sql)
-        rows = await self.db.fetch_all(sql)
-        return json.loads(dict(rows[0])['json_agg'])[0]
+    def function_db(self) -> str:
+        return 'st_asgeojson'
 
     def get_geom_attribute(self) -> str:
         for column in self.metadata_table.columns:

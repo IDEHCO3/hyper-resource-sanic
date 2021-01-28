@@ -1,0 +1,10 @@
+import asyncio
+from databases import Database
+from src.models.lim_unidade_federacao_a import *
+URLDB="postgresql://postgres:desenv@127.0.0.1:5432/postgres"
+db = Database(URLDB, ssl=False, min_size=1, max_size=20)
+loop = asyncio.get_event_loop()
+con = loop.run_until_complete(db.connect())
+query_uf_one = "select * from adm.ator where id_ator = :id_ator"
+query_uf_one_values = {"id_ator": 1}
+result = loop.run_until_complete(db.fetch_one(query=query_uf_one, values=query_uf_one_values))

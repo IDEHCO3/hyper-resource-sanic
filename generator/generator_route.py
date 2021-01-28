@@ -12,6 +12,7 @@ protocol = env.str("PROTOCOL", "http:")
 
 def get_template(file_name, file_name_hyfen, class_name):
     template = f"""from sanic.response import json
+from src.middlewares.security import authentication,permission
 from src.resources.{file_name} import {class_name}Resource, {class_name}CollectionResource
 
 def {file_name}_routes(app):
@@ -80,6 +81,8 @@ def {file_name}_routes(app):
 def get_template_patch(file_name, file_name_hyfen, class_name):
     return f"""
     @app.route('/{file_name_hyfen}-list/<id:int>', methods=['PATCH'])
+    @authentication()
+    @permission()
     async def patch_{file_name}_id(request, id):
         r = {class_name}Resource(request)
         return await r.patch(id)
@@ -87,6 +90,8 @@ def get_template_patch(file_name, file_name_hyfen, class_name):
 def get_template_put(file_name, file_name_hyfen, class_name):
     return f"""
     @app.route('/{file_name_hyfen}-list/<id:int>', methods=['PUT'])
+    @authentication()
+    @permission()
     async def put_{file_name}_id(request, id):
         r = {class_name}Resource(request)
         return await r.put(id)
@@ -95,7 +100,9 @@ def get_template_put(file_name, file_name_hyfen, class_name):
 def get_template_post(file_name, file_name_hyfen, class_name):
     return f"""
     @app.route('/{file_name_hyfen}-list', methods=['POST'])
-    async def post_{file_name}_id(request, id):
+    @authentication()
+    @permission()
+    async def post_{file_name}(request):
         r = {class_name}CollectionResource(request)
         return await r.post()
 """
@@ -103,6 +110,8 @@ def get_template_post(file_name, file_name_hyfen, class_name):
 def get_template_delete(file_name, file_name_hyfen, class_name):
     return f"""
     @app.route('/{file_name_hyfen}-list/<id:int>', methods=['DELETE'])
+    @authentication()
+    @permission()
     async def delete_{file_name}_id(request, id):
         r = {class_name}Resource(request)
         return await r.delete(id)
@@ -114,6 +123,7 @@ def generate_route_file(path, file_name, file_name_hyfen, class_name, has_patch=
         file.write(get_template(file_name, file_name_hyfen, class_name))
         if has_patch:
             file.write(get_template_patch(file_name, file_name_hyfen, class_name))
+            file.write(get_template_put(file_name, file_name_hyfen, class_name))
         if has_post:
             file.write(get_template_post(file_name, file_name_hyfen, class_name))
         if has_delete:

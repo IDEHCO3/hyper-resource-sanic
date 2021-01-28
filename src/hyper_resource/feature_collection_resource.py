@@ -45,7 +45,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
         return feature_collection
 
     async def get_html_representation(self):
-        html_filepath = os.path.join(SOURCE_DIR, "static", self.metadata_table().name + ".html")
+        html_filepath = os.path.join(SOURCE_DIR, "static", "basic_geo.html")
         with open(html_filepath, "r") as body:
             return sanic.response.html(body.read(), 200)
 
