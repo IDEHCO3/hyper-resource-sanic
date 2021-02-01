@@ -1,7 +1,9 @@
 import copy
+
+from src.hyper_resource.context.abstract_context import AbstractContext, ACONTEXT_KEYWORK, CONTEXT_TEMPLATE
 from src.orm.database import DialectDatabase
-from src.url_interpreter.interpretertypes import SQLALCHEMY_SCHEMA_ORG_TYPES, GEOALCHEMY_TYPES_OPERATIONS, \
-    PYTHON_SCHEMA_ORG_TYPES
+from src.url_interpreter.interpreter_types import GEOALCHEMY_TYPES_OPERATIONS
+from src.hyper_resource.context.context_types import SQLALCHEMY_SCHEMA_ORG_TYPES, PYTHON_SCHEMA_ORG_TYPES
 from environs import Env
 
 env = Env()
@@ -11,13 +13,13 @@ host = env.str("HOST", "127.0.0.1")
 
 PREFIX_GEOJSONLD = "geojson"
 PREFIX_HYPER_RESOURCE = "hr"
-ACONTEXT_KEYWORK = "@context"
+
 SUPPORTED_OPERATIONS_KEYWORD = f"{PREFIX_HYPER_RESOURCE}:supportedOperations"
 
 GEOCONTEXT_TEMPLATE = {
-    "@context": {
-        f"{PREFIX_HYPER_RESOURCE}": f"http://{host}:{port}/core",
-        "schema": "http://schema.org/",
+    f"{ACONTEXT_KEYWORK}": {
+        # f"{PREFIX_HYPER_RESOURCE}": f"http://{host}:{port}/core",
+        # "schema": "http://schema.org/",
         f"{PREFIX_GEOJSONLD}": "https://purl.org/geojson/vocab#",
 
         "Feature": "geojson:Feature",
@@ -37,15 +39,16 @@ GEOCONTEXT_TEMPLATE = {
         "properties": "geojson:properties"
     }
 }
+GEOCONTEXT_TEMPLATE[ACONTEXT_KEYWORK].update(CONTEXT_TEMPLATE[ACONTEXT_KEYWORK])
 
-class GeoContext(object):
-    def __init__(self, db_dialect:DialectDatabase, metadata_table, entity_class):
-        self.db_dialect = db_dialect
-        self.metadata_table = metadata_table
-        self.entity_class = entity_class
+class GeoContext(AbstractContext):
+    # def __init__(self, db_dialect:DialectDatabase, metadata_table, entity_class):
+    #     self.db_dialect = db_dialect
+    #     self.metadata_table = metadata_table
+    #     self.entity_class = entity_class
 
-    def get_basic_context(self):
-        raise NotImplementedError("'get_basic_context' must be implemented in subclasses")
+    # def get_basic_context(self):
+    #     raise NotImplementedError("'get_basic_context' must be implemented in subclasses")
 
     def get_properties_term_definition_dict(self):
         term_definition_dict = {}

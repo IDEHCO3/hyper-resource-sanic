@@ -9,8 +9,7 @@ from sqlalchemy.orm import Session, aliased
 # How to get column type
 # self.dialect_DB().entity_class.ano_referencia.property.columns[0].type
 from src.orm.database import DialectDatabase
-from src.url_interpreter.datatype import python_to_sqlalchemy_type
-from src.url_interpreter.interpretertypes import type_has_operation, get_operation
+from src.url_interpreter.interpreter_types import type_has_operation, get_operation, python_to_sqlalchemy_type
 
 
 async def get_request(url):

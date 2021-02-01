@@ -1,8 +1,15 @@
 import sanic
+from sanic import response
 
-from src.hyper_resource.abstract_resource import AbstractResource
+from src.hyper_resource.abstract_resource import AbstractResource, MIME_TYPE_JSONLD
+from src.hyper_resource.context.abstract_context import AbstractDetailContext
+
 nonspatial_function_names = []
 class NonSpatialResource(AbstractResource):
+    def __init__(self, request):
+        super().__init__(request)
+        self.context_class = AbstractDetailContext
+
     async def get_html_representation(self, id_or_key_value):
         row = await self.dialect_DB().fetch_one_as_json(id_or_key_value)
         if row is None:
@@ -66,3 +73,7 @@ class NonSpatialResource(AbstractResource):
             return sanic.response.json({"Error": f"{err}"}, status=400)
 
         return sanic.response.json(an_id, status=200)
+
+    async def options(self, *args, **kwargs):
+        context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
+        return response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)

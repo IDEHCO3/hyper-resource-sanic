@@ -11,7 +11,6 @@ class FeatureCollectionResource(SpatialCollectionResource):
 
     def __init__(self, request):
         super().__init__(request)
-        self.context_class = GeoCollectionContext
 
     def get_geom_attribute(self):
         for column in self.entity_class().column_names():

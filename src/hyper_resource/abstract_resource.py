@@ -1,5 +1,6 @@
 from sanic import  response
 from typing import List, Dict
+MIME_TYPE_JSONLD = "application/ld+json"
 
 class AbstractResource:
     def __init__(self, request):

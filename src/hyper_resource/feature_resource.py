@@ -1,4 +1,7 @@
 import os
+
+from sanic import response
+
 from settings import SOURCE_DIR
 from src.hyper_resource.context.geocontext import GeoDetailContext
 from src.hyper_resource.spatial_resource import SpatialResource
@@ -10,7 +13,6 @@ MIME_TYPE_JSONLD = "application/ld+json"
 class FeatureResource(SpatialResource):
     def __init__(self, request):
         super().__init__(request)
-        self.context_class = GeoDetailContext
 
     def dialect_DB(self):
           return DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())
@@ -57,7 +59,6 @@ class FeatureResource(SpatialResource):
         except (Exception, SyntaxError, NameError) as err:
             print(err)
             return sanic.response.json({"Error": f"{err}"})
-
 
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())

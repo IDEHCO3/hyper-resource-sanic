@@ -5,7 +5,8 @@ import sanic
 from typing import Dict, List
 import json, os
 
-from src.hyper_resource.abstract_resource import AbstractResource
+from src.hyper_resource.abstract_resource import AbstractResource, MIME_TYPE_JSONLD
+from src.hyper_resource.context.abstract_context import AbstractCollectionContext
 from ..url_interpreter.interpreter import Interpreter
 
 collection_function_names = [
@@ -30,6 +31,7 @@ collection_function_names = [
 class AbstractCollectionResource(AbstractResource):
     def __init__(self, request):
         super().__init__(request)
+        self.context_class = AbstractCollectionContext
 
     def rows_as_dict(self, rows):
         return [dict(row) for row in rows]
@@ -194,3 +196,7 @@ class AbstractCollectionResource(AbstractResource):
 
 
         return sanic.response.json(id, status=201, headers={'Content-Location': content_location })
+
+    async def options(self, *args, **kwargs):
+        context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
+        return sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
