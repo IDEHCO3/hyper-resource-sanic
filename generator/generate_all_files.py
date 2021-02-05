@@ -24,25 +24,25 @@ objetos = [CHAR, Column, Float, Integer, Numeric, SmallInteger, String, Text, Nu
 def main(argv):
     #for i in clsmodels:
     #    print(i[0])
-    is_geo = False
+    # is_geo = False
     has_patch = False
     has_post = False
     has_delete = False
+    # if len(argv) > 1:
+    #     is_geo = argv[1].strip().lower() == 'true'
     if len(argv) > 1:
-        is_geo = argv[1].strip().lower() == 'true'
+       has_patch = argv[1].strip().lower() == 'true'
     if len(argv) > 2:
-       has_patch = argv[2].strip().lower() == 'true'
+       has_post = argv[2].strip().lower() == 'true'
     if len(argv) > 3:
-       has_post = argv[3].strip().lower() == 'true'
-    if len(argv) > 4:
-       has_delete = argv[4].strip().lower() == 'true'
-    print(f"Generating final model files ... is_geo = {is_geo}")
+       has_delete = argv[3].strip().lower() == 'true'
+    # print(f"Generating final model files ... is_geo = {is_geo}")
 
-    generate_all_model_files(clsmodels, is_geo)
+    generate_all_model_files(clsmodels)#, is_geo)
 
     # Generate all resources
     print("Generating resource files ...")
-    generate_all_resource_files(clsmodels, is_geo)
+    generate_all_resource_files(clsmodels)#, is_geo)
 
     # Generate all routes
     print("Generating route files ...")
@@ -54,7 +54,7 @@ def main(argv):
 
     #Generate all static files
     print("Generating all static files...")
-    generate_all_static_files(clsmodels, is_geo)
+    generate_all_static_files(clsmodels)#), is_geo)
 
 if __name__ == "__main__":
    main(sys.argv)

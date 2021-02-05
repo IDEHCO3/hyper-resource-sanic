@@ -23,7 +23,9 @@ class DialectDatabase(AbstractDialectDatabase):
         return self.metadata_table.name
 
     def primary_key(self) -> str:
-        return self.metadata_table.primary_key.columns[0].name
+        # return self.metadata_table.primary_key.columns[0].name
+        return list(self.metadata_table.primary_key.columns)[0].name
+
     def schema_table_name(self) -> str:
         return f'{self.schema()}.{self.table_name()}'
 
@@ -88,6 +90,7 @@ class DialectDatabase(AbstractDialectDatabase):
         pk_value = int(pk)
         query = f'select {enum_col_names} from {self.schema_table_name()} where {self.primary_key()}={pk_value}'
         return query
+
     async def next_val(sequence_name: str):
         raise NotImplementedError("'offset_limit' must be implemented in subclasses")
 

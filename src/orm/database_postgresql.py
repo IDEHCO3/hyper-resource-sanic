@@ -86,8 +86,10 @@ class DialectDbPostgresql(DialectDatabase):
         print(sql)
         rows = await self.db.fetch_all(sql)
         return rows[0]['json_agg']
+
     def function_db(self) -> str:
         return 'row_to_json'
+
     async def fetch_one_as_json(self, pk):
         query = self.basic_select_by_id(pk)
         sql = f"select {self.function_db()}(t.*) from ({query}) as t;"

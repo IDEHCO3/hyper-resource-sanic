@@ -1,4 +1,6 @@
 import os
+
+from generator.pre_generator import is_geo_class
 from generator.util import convert_camel_case_to_underline
 def get_template(file_name, class_name, is_geo: bool = False):
     if is_geo:
@@ -39,7 +41,7 @@ def generate_resource_file(path, file_name, class_name, is_geo: bool = False):
     with open(file_with_path, 'w') as file:
         file.write(get_template(file_name, class_name, is_geo))
 
-def generate_all_resource_files(clsmembers, is_geo: bool = False):
+def generate_all_resource_files(clsmembers):#, is_geo: bool = False):
     path = os.path.join(os.getcwd(), 'src', 'resources')
     try:
         os.mkdir(path)
@@ -47,6 +49,7 @@ def generate_all_resource_files(clsmembers, is_geo: bool = False):
         pass
 
     for class_name_class in clsmembers:
+        is_geo = is_geo_class(class_name_class[1])
         class_name = class_name_class[0]
         file_name = convert_camel_case_to_underline(class_name)
         generate_resource_file(path, file_name, class_name, is_geo)

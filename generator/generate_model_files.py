@@ -2,9 +2,12 @@ import os
 
 from sqlalchemy.orm import RelationshipProperty
 
+from generator.pre_generator import is_geo_class
 from generator.util import convert_camel_case_to_underline
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.properties import ColumnProperty
+
+
 def base_template(is_geo: bool= False):
     if is_geo:
         alchemy_base = 'AlchemyGeoBase'
@@ -30,6 +33,7 @@ def generate_string_for_column_property(attribute_name, column_property):
     str_for_attr += 'nullable=' + schema_column.nullable.__repr__()
     str_for_attr += ')'
     return attribute_name + ' = ' + str_for_attr
+
 def geo_field_name_template(a_class):
     tuple_k_name_col_type = [(key, value.prop.columns[0].name, value.prop.columns[0].type.__str__()) for key, value in
      a_class.__dict__.items() if isinstance(value, InstrumentedAttribute) and isinstance(value.prop,ColumnProperty )]
@@ -38,6 +42,7 @@ def geo_field_name_template(a_class):
    @classmethod
    def geo_column_name(cls) -> str:
        return '{geo_feld_name[0]}'"""
+
 def generate_model_file(path, file_name, class_name, a_class, is_geo: bool = False):
     #from templates.resource_template import template
     file_with_path = f'{path}{file_name}.py'
@@ -60,10 +65,10 @@ def generate_model_file(path, file_name, class_name, a_class, is_geo: bool = Fal
         if is_geo:
             file.write(geo_field_name_template(a_class))
 
-def generate_all_model_files(clsmembers, is_geo: bool = False):
-    passpath = r'' + os.getcwd() + '/src/models/'
-    
+def generate_all_model_files(clsmembers):#, is_geo: bool = False):
+    # passpath = r'' + os.getcwd() + '/src/models/'
     for class_name_class in clsmembers:
+        is_geo = is_geo_class(class_name_class[1])
         class_name = class_name_class[0]
         file_name = convert_camel_case_to_underline(class_name)
         path = r'' + os.getcwd() + '/src/models/'
