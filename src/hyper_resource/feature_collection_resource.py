@@ -2,6 +2,7 @@ from settings import BASE_DIR, SOURCE_DIR
 import sanic
 
 from src.hyper_resource.context.geocontext import GeoCollectionContext
+from src.hyper_resource import feature_utils
 from src.hyper_resource.spatial_collection_resource import SpatialCollectionResource
 from src.orm.database_postgis import DialectDbPostgis
 import json, os
@@ -43,10 +44,25 @@ class FeatureCollectionResource(SpatialCollectionResource):
         feature_collection["features"] = response_data
         return feature_collection
 
+    def set_html_variables(self, html_content:str)-> str:
+        return feature_utils.set_html_variables(
+            html_content, self.metadata_table().name,
+            json.dumps(
+                self.context_class(
+                    self.dialect_DB(),
+                    self.metadata_table(),
+                    self.entity_class()
+                ).get_basic_context(),
+                indent=2
+            )
+        )
+
     async def get_html_representation(self):
-        html_filepath = os.path.join(SOURCE_DIR, "static", "basic_geo.html")
+        html_filepath = os.path.join(SOURCE_DIR, "hyper_resource", "templates" ,"basic_geo.html")
         with open(html_filepath, "r") as body:
-            return sanic.response.html(body.read(), 200)
+            html_content = body.read()
+            content = self.set_html_variables(html_content)
+            return sanic.response.html(content, 200)
 
     def dialect_DB(self):
           return DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())

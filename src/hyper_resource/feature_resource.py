@@ -1,8 +1,10 @@
+import json
 import os
 
 from sanic import response
 
 from settings import SOURCE_DIR
+from src.hyper_resource import feature_utils
 from src.hyper_resource.context.geocontext import GeoDetailContext
 from src.hyper_resource.spatial_resource import SpatialResource
 import sanic
@@ -38,10 +40,26 @@ class FeatureResource(SpatialResource):
             return sanic.response.json("The resource was not found.", status=404)
         return sanic.response.text(row, content_type='application/json')
     """
+
+    def set_html_variables(self, html_content:str)-> str:
+        return feature_utils.set_html_variables(
+            html_content, self.metadata_table().name,
+            json.dumps(
+                self.context_class(
+                    self.dialect_DB(),
+                    self.metadata_table(),
+                    self.entity_class()
+                ).get_basic_context(),
+                indent=2
+            )
+        )
+
     async def get_html_representation(self, id_or_key_value):
-        html_filepath = os.path.join(SOURCE_DIR, "static", "basic_geo.html")
+        html_filepath = os.path.join(SOURCE_DIR, "hyper_resource", "templates", "basic_geo.html")
         with open(html_filepath, "r") as body:
-            return sanic.response.html(body.read(), 200)
+            html_content = body.read()
+            content = self.set_html_variables(html_content)
+            return sanic.response.html(content, 200)
 
     async def get_json_representation(self, id_or_key_value):
         row = await self.dialect_DB().fetch_one_as_json(id_or_key_value)
