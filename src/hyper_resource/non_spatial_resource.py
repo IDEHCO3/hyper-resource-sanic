@@ -15,11 +15,13 @@ class NonSpatialResource(AbstractResource):
         if row is None:
             return sanic.response.json("The resource was not found.", status=404)
         return sanic.response.text(row, content_type='application/json')
+
     async def get_json_representation(self, id_or_key_value):
         row = await self.dialect_DB().fetch_one_as_json(id_or_key_value)
         if row is None:
             return sanic.response.json("The resource was not found.", status=404)
         return sanic.response.text(row, content_type='application/json')
+
     async def get_representation(self, id_or_key_value):
         try:
             accept = self.request.headers['accept']
@@ -30,6 +32,7 @@ class NonSpatialResource(AbstractResource):
         except (Exception, SyntaxError, NameError) as err:
             print(err)
             return sanic.response.json({"Error": f"{err}"})
+
     async def get_representation_given_path(self, id_or_key_value, a_path):
            if a_path[-1] == '/':  # Removes trail slash
                 a_path = a_path[:-1]
@@ -53,6 +56,7 @@ class NonSpatialResource(AbstractResource):
               else:
                  msg = f"Some of these attributes {att_names} does not exists in this resource"
                  return sanic.response.json(msg, status=400)
+
     async def delete(self, an_id: int):
         try:
             await self.dialect_DB().delete_one(an_id)
@@ -60,8 +64,10 @@ class NonSpatialResource(AbstractResource):
             print(err)
             return sanic.response.json({"Error": f"{err}"}, status=400)
         return sanic.response.json(an_id, status=200)
+
     async def put(self, an_id: int):
         return await self.patch(an_id)
+
     async def patch(self, an_id: int):
         data = self.request.json
         print(f"Dados enviados para atualizar: {data}")

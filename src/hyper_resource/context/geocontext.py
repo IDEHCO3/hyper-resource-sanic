@@ -42,14 +42,6 @@ GEOCONTEXT_TEMPLATE = {
 GEOCONTEXT_TEMPLATE[ACONTEXT_KEYWORK].update(CONTEXT_TEMPLATE[ACONTEXT_KEYWORK])
 
 class GeoContext(AbstractContext):
-    # def __init__(self, db_dialect:DialectDatabase, metadata_table, entity_class):
-    #     self.db_dialect = db_dialect
-    #     self.metadata_table = metadata_table
-    #     self.entity_class = entity_class
-
-    # def get_basic_context(self):
-    #     raise NotImplementedError("'get_basic_context' must be implemented in subclasses")
-
     def get_properties_term_definition_dict(self):
         term_definition_dict = {}
         for column in self.metadata_table.columns:
