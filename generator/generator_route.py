@@ -40,7 +40,7 @@ def {file_name}_routes(app):
     @app.route('/{file_name_hyfen}-list/<id:int>', methods=['OPTIONS'])
     async def options_{file_name}_id(request, id):
         r = {class_name}Resource(request)
-        return await r.head(id)
+        return await r.options(id)
     
     @app.route('/{file_name_hyfen}-list/<id:int>/<path:path>', methods=['OPTIONS'])
     async def options_{file_name}_resource_id_path(request, id, path):
