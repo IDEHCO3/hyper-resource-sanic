@@ -1,0 +1,13 @@
+Pegar gasto com seu respectivo tipo de gasto. gasto tem um tipo de gasto
+SELECT json_agg(row_to_json(t))
+from (
+	select g.id_gasto, (select row_to_json(tg.*) from pessoal.tipo_gasto as tg where g.id_tipo_gasto = tg.id_tipo_gasto) tipo_gasto 
+	from pessoal.gasto as g
+) as t
+
+// Pegar todas as pessoas com seus respectivos gastos => pessoa tem N gastos
+SELECT json_agg(row_to_json(t))
+from (
+	select p.*, (select json_agg(row_to_json(g.*)) from pessoal.gasto as g where g.id_pessoa = p.id_pessoa) gasto 
+	from pessoal.pessoa as p
+) as t

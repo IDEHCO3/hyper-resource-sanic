@@ -67,6 +67,13 @@ class FeatureCollectionResource(SpatialCollectionResource):
     def dialect_DB(self):
           return DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())
 
+    async def projection(self, enum_attribute_name: str):
+        attr_names = tuple(a.strip() for a in enum_attribute_name.split(','))
+        if self.get_geom_attribute() in attr_names and ('text/html' in self.request.headers['accept']):
+            return await self.get_representation()
+        rows = await self.dialect_DB().fetch_all_as_json(attr_names)
+        return sanic.response.text(rows, content_type='application/json')
+
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
         return sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)

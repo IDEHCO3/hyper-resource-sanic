@@ -59,7 +59,7 @@ class NonSpatialResource(AbstractResource):
 
     async def delete(self, an_id: int):
         try:
-            await self.dialect_DB().delete_one(an_id)
+            await self.dialect_DB().delete(an_id)
         except (Exception, SyntaxError, NameError) as err:
             print(err)
             return sanic.response.json({"Error": f"{err}"}, status=400)
@@ -69,11 +69,11 @@ class NonSpatialResource(AbstractResource):
         return await self.patch(an_id)
 
     async def patch(self, an_id: int):
-        data = self.request.json
-        print(f"Dados enviados para atualizar: {data}")
         try:
+            data = self.request.json
+            print(f"Dados enviados para atualizar: {data}")
             self.validate_data(data)
-            await self.dialect_DB().update_one(an_id, data)
+            await self.dialect_DB().update(an_id, data)
         except (Exception, SyntaxError, NameError) as err:
             print(err)
             return sanic.response.json({"Error": f"{err}"}, status=400)

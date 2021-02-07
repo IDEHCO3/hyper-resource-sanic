@@ -2,7 +2,7 @@
 name = "hyper-resource-sanic"
 version = "0.1.0"
 description = ""
-authors = ["RogerioBorba <rogerio.borba17@gmail.com>"]
+authors = ["RogerioBorba <rogerio.borba17@gmail.com>", "gabrielcardoso95 <gabrielcardoso95@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"

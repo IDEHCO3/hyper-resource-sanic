@@ -3,7 +3,7 @@ Converters to handle python/SQLAlchemy types -> JSON-LD/Schema.org conversions
 """
 
 from geoalchemy2 import Geometry, Geography, Raster, WKTElement, WKBElement, RasterElement
-from sqlalchemy import ARRAY, BIGINT, BigInteger, BINARY, Binary, BLOB, BOOLEAN, Boolean, CHAR, CLOB, DATE, Date, DATETIME, \
+from sqlalchemy import ARRAY, BIGINT, BigInteger, BINARY,  BLOB, BOOLEAN, CHAR, CLOB, DATE, Date, DATETIME, \
     DateTime, DECIMAL, Enum, Column, FLOAT, Float, INT, INTEGER, Integer, JSON, LargeBinary, NCHAR, NUMERIC, \
     Numeric, NVARCHAR, PickleType, REAL, SMALLINT, SmallInteger, String, TEXT, Text, TIME, Time, TIMESTAMP, TypeDecorator, \
     Unicode, UnicodeText, VARBINARY, VARCHAR
@@ -51,10 +51,10 @@ SQLALCHEMY_TYPES_OPERATIONS = {
     CHAR:           [],
     BigInteger:     [],
     BINARY:         [],
-    Binary:         [],
+    #Binary:         [],
     BLOB:           [],
     BOOLEAN:        [],
-    Boolean:        [],
+    #Boolean:        [],
     CLOB:           [],
     DATE:           [],
     Date:           [],

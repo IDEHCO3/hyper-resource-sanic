@@ -12,6 +12,9 @@ class AbstractResource:
             self.dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), self.entity_class())
         return self.dialect_db
 
+    def is_content_type_in_accept(self, accept_type: str):
+        return accept_type in self.request.headers['accept']
+
     def entity_class(self):
         raise NotImplementedError("'entity_class' must be implemented in subclasses")
 

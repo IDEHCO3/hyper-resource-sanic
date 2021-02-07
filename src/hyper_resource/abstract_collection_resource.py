@@ -35,16 +35,13 @@ class AbstractCollectionResource(AbstractResource):
 
     def rows_as_dict(self, rows):
         return [dict(row) for row in rows]
-
     async def get_html_representation(self):
         # Temporario até gerar código em html para recurso não espacial
         rows = await self.dialect_DB().fetch_all_as_json()
         return sanic.response.text(rows or [], content_type='application/json')
-
     async def get_json_representation(self):
         rows = await self.dialect_DB().fetch_all_as_json()
         return sanic.response.text(rows or [], content_type='application/json')
-
     async def get_representation(self):
         accept = self.request.headers['accept']
         if 'text/html' in accept:
@@ -57,12 +54,12 @@ class AbstractCollectionResource(AbstractResource):
         if path[-1] == '/':  # Removes trail slash
             path = path[:-1]
         try:
-            operation_name_or_atribute_comma = path.split('/')[0].strip().lower()
-            if operation_name_or_atribute_comma in collection_function_names:
-                method_execute_name = "pre_" + operation_name_or_atribute_comma
+            operation_name_or_attribute_comma = path.split('/')[0].strip().lower()
+            if operation_name_or_attribute_comma in collection_function_names:
+                method_execute_name = "pre_" + operation_name_or_attribute_comma
                 return await getattr(self, method_execute_name)(*[path])
             else:
-                att_names = operation_name_or_atribute_comma.split(',')
+                att_names = operation_name_or_attribute_comma.split(',')
                 for att_name in att_names:
                     if att_name not in self.attribute_names():
                         return sanic.response.json(f"The operation or attribute {att_name} does not exists", status=400)
@@ -71,89 +68,69 @@ class AbstractCollectionResource(AbstractResource):
         except (RuntimeError, TypeError, NameError):
             raise
             return sanic.response.json("error: Error no banco")
-
     async def pre_offsetlimit(self, path):
         arguments_from_url_by_slash = path.split('/')
         arguments_from_url = arguments_from_url_by_slash[1].split('&')
         # offsetlimit with 2 arguments. Ex.: offsetlimit/1&10
-        if len(arguments_from_url_by_slash) == 2:
-            return await self.offsetlimit(int(arguments_from_url[0]), int(arguments_from_url[1]))
+        if len(arguments_from_url_by_slash) != 2:
+            raise SyntaxError("The operation offsetlimit has two mandatory integer arguments.")
         # offsetlimit with 4 arguments. Ex.: offsetlimit/1&10/orderby/name,sexo&desc
-        if len(arguments_from_url_by_slash) == 4:
-            arr_off_and_limit = arguments_from_url_by_slash[1].split('&')
-            arr_order_asc = arguments_from_url_by_slash[3].split('&')
-            arr_order_asc = arr_order_asc if len(arr_order_asc) == 2 else [arr_order_asc[0], 'asc']
-            return await self.offsetlimit(int(arr_off_and_limit[0]), int(arr_off_and_limit[1]), arr_order_asc[0],
-                                          arr_order_asc[1])
-        raise SyntaxError("The operation offsetlimit has two integer arguments.")
-
-    async def offsetlimit(self, offset: int, limit: int, str_lst_attribute_comma=None, asc=None):
-        dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), None)
-        rows = await dialect_db.offset_limit(offset, limit, str_lst_attribute_comma, asc)
-        res = self.rows_as_dict(rows)
-        return sanic.response.json(res)
-
+        if len(arguments_from_url) == 2:
+            return await self.offsetlimit(int(arguments_from_url[0]), int(arguments_from_url[1]))
+        if len(arguments_from_url) == 3:
+            return await self.offsetlimit(int(arguments_from_url[0]), int(arguments_from_url[1]), arguments_from_url[2] )
+        if len(arguments_from_url) == 4:
+            return await self.offsetlimit(int(arguments_from_url[0]), int(arguments_from_url[1]), arguments_from_url[2],arguments_from_url[3] )
+        raise SyntaxError("The operation offsetlimit has two mandatory integer arguments.")
+    async def offsetlimit(self, offset: int, limit: int, str_lst_attribute_comma: str=None, asc: str=None):
+        if self.is_content_type_in_accept('text/html'):
+            return await self.get_html_representation()
+        rows = await self.dialect_DB().offset_limit(offset, limit, str_lst_attribute_comma, asc, 'JSON')
+        return sanic.response.text(rows or [], content_type='application/json')
     async def pre_count(self, path):
         return await self.count()
-
     async def count(self):
-        dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), None)
-        result = await dialect_db.count()
+        result = await self.dialect_DB().count()
         return sanic.response.json(result['count'])
-
     async def pre_orderby(self, path):
         return await self.orderby(path)
-
     async def orderby(self, path):
-        dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), None)
         str_attribute_as_comma_list = path.split('/')[1]
         att_names = str_attribute_as_comma_list.split(',')
         for att_name in att_names:
             if att_name not in self.attribute_names():
                 return sanic.response.json(f"The attribute {att_name} does not exists", status=400)
-        rows = await dialect_db.order_by(str_attribute_as_comma_list)
+        rows = await self.dialect_DB().order_by(str_attribute_as_comma_list)
         res = self.rows_as_dict(rows)
         return sanic.response.json(res)
-
     async def pre_projection(self, path):
         str_att_names_as_comma = path.split('/')[0]  # /projection/attri or /attri
         if str_att_names_as_comma == "projection":
             str_att_names_as_comma = path.split('/')[1]
         return await self.projection(str_att_names_as_comma)
-
     async def projection(self, enum_attribute_name: str):
         attr_names = tuple(a.strip() for a in enum_attribute_name.split(','))
         rows = await self.dialect_DB().fetch_all_as_json(attr_names)
         return sanic.response.text(rows, content_type='application/json')
-
     async def pre_groupbycount(self, path):
         str_atts = path.split('/')[1]  # groupbycount/departamento
         return await self.groupbycount(str_atts)
-
     async def groupbycount(self, str_att_names_as_comma):
-        rows = await self.dialect_DB().group_by_count(str_att_names_as_comma)
-        res = self.rows_as_dict(rows)
-        return sanic.response.json(res)
-
+        rows = await self.dialect_DB().group_by_count(str_att_names_as_comma, None, 'JSON')
+        return sanic.response.text(rows or [], content_type='application/json')
     async def pre_groupbysum(self, path):
         str_atts = path.split('/')[1]  # empolyees/name&salary
         fields_from_path = str_atts[1].split('&')
         if self.fields_from_path_not_in_attribute_names(fields_from_path):
             return sanic.response.json(f"The attribute {str_atts} does not exists", status=400)
-
-        return await self.groupbysum(self, path)
-
+        return await self.groupbysum(self, path, 'JSON')
     async def groupbysum(self, str_att_names_as_comma, att_to_sum):
-        rows = await self.dialect_DB().group_by_sum(str_att_names_as_comma, att_to_sum)
-        res = self.rows_as_dict(rows)
-        return sanic.response.json(res)
-
+        rows = await self.dialect_DB().group_by_sum(str_att_names_as_comma, att_to_sum, 'JSON')
+        return sanic.response.json(rows)
     async def pre_filter(self, path):
         return await self.filter(path[6:])  # len('filter') = 6
-
     def dict_name_operation(self) -> Dict[str, 'function']:
         return {'filter': self.filter}
-
     async def filter(self, path: str):  # -> "AbstractCollectionResource":
         """
         :param path: expression
@@ -161,6 +138,8 @@ class AbstractCollectionResource(AbstractResource):
         :description: Filter a collection given an expression
         :example: http://server/api/drivers/filter/license/eq/valid
         """
+        if self.is_content_type_in_accept('text/html'):
+            return await self.get_html_representation()
         interp = Interpreter(path, self.entity_class(), self.dialect_DB())
         try:
             whereclause = await interp.translate()
@@ -171,21 +150,19 @@ class AbstractCollectionResource(AbstractResource):
         rows = await self.dialect_DB().filter_as_json(whereclause)
         return sanic.response.text(rows or [], content_type='application/json')
         #return sanic.response.json([json.dumps(dict(row)) for row in rows])  # response.json(self.rows_as_dict(rows))
-
     async def head(self):
         return sanic.response.json({"context": 1})
-
     async def post(self):
         data = self.request.json
         print(f"Dados enviados: {data}")
         try:
             self.validate_data(data)
-            id = await self.dialect_DB().insert_one_raw(data)
+            id = await self.dialect_DB().insert(data)
             path = self.request.path if self.request.path[-1] != '/' else self.request.path[:-1]
             content_location = f'{self.request.host}{path}/{str(id)}'
         except UniqueViolationError as err:
             print(err)
-            return sanic.response.json({"Error": "Recurso já existe"}, status=409)
+            return sanic.response.json({"Error": "Resource already exists"}, status=409)
         except DataError as err:
             print(err)
             return sanic.response.json({"Error": "Data type"}, status=409)
