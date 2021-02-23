@@ -2,6 +2,8 @@ from environs import Env
 from generator.util import convert_camel_case_to_underline, convert_camel_case_to_hifen
 import os
 #Setup env
+from settings import ROUTERS_DIR
+
 env = Env()
 env.read_env()  # read .env file, if it exists
 port = env.str("PORT", "8000")
@@ -149,7 +151,7 @@ def generate_setup_routes_file(path, file_name="setup_routes", file_names=[], cl
             file.write(f'    {file_names[i]}_routes(app)\n')
 
 def generate_all_router_files(clsmembers, has_patch=False, has_post=False, has_delete=False):
-    path = os.path.join(os.getcwd(), 'src', 'routes')
+    path = ROUTERS_DIR#os.path.join(os.getcwd(), 'src', 'routes')
     try:
         os.mkdir(path)
     except FileExistsError:
@@ -161,7 +163,7 @@ def generate_all_router_files(clsmembers, has_patch=False, has_post=False, has_d
         generate_route_file(path, file_name, file_name_hyfen, class_name, has_patch, has_post, has_delete)
 
 def generate_all_entry_point_file(clsmembers):
-    path = os.path.join(os.getcwd(), 'src', 'routes')
+    path = ROUTERS_DIR#os.path.join(os.getcwd(), 'src', 'routes')
     try:
         os.mkdir(path)
     except FileExistsError:

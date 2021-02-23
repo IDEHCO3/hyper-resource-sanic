@@ -1,6 +1,10 @@
 from typing import List, Tuple, Optional, Any
 
+from sqlalchemy import Column
+from sqlalchemy.inspection import inspect
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm import sessionmaker
+from src.orm.models import AlchemyBase, Base
 
 from src.orm.models import AlchemyBase
 
@@ -23,6 +27,44 @@ class DialectDatabase(AbstractDialectDatabase):
     def primary_key(self) -> str:
         # return self.metadata_table.primary_key.columns[0].name
         return list(self.metadata_table.primary_key.columns)[0].name
+
+    def foreign_keys_columns(self):
+        attrs = [attribute for attribute in list(self.entity_class.__table__.c) if isinstance(attribute, Column)]
+        fk_columns = [att for att in attrs if len(att.foreign_keys) > 0]
+        return fk_columns
+
+    def foreign_key_column_by_name(self, column_name:str):
+        fk_columns = self.foreign_keys_columns()
+        col = [column for column in fk_columns if column.key == column_name]
+        if(len(col) == 0):
+            raise NameError(f"The attribute is not existent or does not represent a foreign key: {column_name}")
+        else:
+            return col[0]
+
+    def get_model_by_foreign_key(self, fk_column:Column):
+        refered_model_name = list(fk_column.foreign_keys)[0].column.table.name
+        for c in Base._decl_class_registry.values():
+            if hasattr(c, '__tablename__') and c.__tablename__ == refered_model_name:
+                return c
+
+    def foreign_keys_names(self):
+        # entity_relations = inspect( self.entity_class).relationships.items()
+        # self.entity_class.__table__.c.<attribute>.foreign_keys
+        """
+        self.entity_class.usuario.parent._init_properties:OrderedDict
+	    con_tipo_gasto:RelationshipProperty
+	    con_usuario:RelationshipProperty
+		comparator.prop.class_attribute.prop.entity._identity_class
+
+        self.entity_class.usuario.parent._init_properties._list:List<str>
+        :return:
+        """
+        # attrs = [attribute for key, attribute in self.entity_class.__dict__.items() if isinstance(attribute, Column)]
+        fk_columns = self.foreign_keys_columns()
+        # mapper = attrs[0].parent
+        # fk_dict = mapper._init_properties
+        # return fk_dict.keys()
+        return [col.key for col in fk_columns]
 
     def schema_table_name(self) -> str:
         return f'{self.schema()}.{self.table_name()}'

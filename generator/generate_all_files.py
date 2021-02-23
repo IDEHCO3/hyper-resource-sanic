@@ -2,6 +2,7 @@ import os
 import sys, inspect, importlib
 
 from generator.generate_static import generate_all_static_files
+from generator.generator_context import generate_all_context_files
 from generator.generator_resource import generate_all_resource_files
 from generator.generator_route import generate_all_router_files,generate_all_entry_point_file
 from generator.all_models import *
@@ -40,6 +41,9 @@ def main(argv):
 
     generate_all_model_files(clsmodels)#, is_geo)
 
+    generate_all_context_files(clsmodels)
+    print("Generating context files ...")
+
     # Generate all resources
     print("Generating resource files ...")
     generate_all_resource_files(clsmodels)#, is_geo)
@@ -54,7 +58,7 @@ def main(argv):
 
     #Generate all static files
     print("Generating all static files...")
-    generate_all_static_files(clsmodels)#), is_geo)
+    # generate_all_static_files(clsmodels)#), is_geo)
 
 if __name__ == "__main__":
    main(sys.argv)

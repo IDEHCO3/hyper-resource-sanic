@@ -3,6 +3,8 @@ from typing import List, Dict
 MIME_TYPE_JSONLD = "application/ld+json"
 
 class AbstractResource:
+    MAP_MODEL_FOR_CONTEXT = {}
+
     def __init__(self, request):
         self.request = request
         self.dialect_db = None

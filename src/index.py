@@ -8,6 +8,7 @@ from sanic_openapi import swagger_blueprint
 
 from settings import VOCAB_DIR
 from src.orm.database_postgis import DialectDbPostgis
+from src.resources.setup_resources import setup_all_resources
 from src.routes.setup_routes import setup_all_routes
 from src.routes.entry_point import api_entry_point
 from src.orm.database_postgresql import DialectDbPostgresql
@@ -55,9 +56,13 @@ def setup_database():
     
 def setup_routes():
     setup_all_routes(app)
+
+def setup_resources():
+    setup_all_resources()
     
 def init():
     setup_database()
+    setup_resources()
     setup_routes()
 
 if __name__ == "__main__":

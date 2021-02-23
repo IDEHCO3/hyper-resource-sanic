@@ -3,10 +3,11 @@ Converters to handle python/SQLAlchemy types -> JSON-LD/Schema.org conversions
 """
 import copy
 
-from sqlalchemy import ARRAY, BIGINT, CHAR, BigInteger, BINARY,  BLOB, BOOLEAN,  CLOB, DATE, \
+from sqlalchemy import ARRAY, BIGINT, CHAR, BigInteger, BINARY, BLOB, BOOLEAN, CLOB, DATE, \
     DATETIME, DateTime, DECIMAL, Enum, Column, FLOAT, Float, INT, INTEGER, Integer, JSON, LargeBinary, NCHAR, NUMERIC, \
     Numeric, NVARCHAR, PickleType, REAL, SMALLINT, SmallInteger, String, TEXT, Text, TIME, Time, TIMESTAMP, \
-    TypeDecorator, Unicode, UnicodeText, VARBINARY, VARCHAR
+    TypeDecorator, Unicode, UnicodeText, VARBINARY, VARCHAR, Date
+
 PREFIX_SCHEMAORG = "schema"
 SQLALCHEMY_SCHEMA_ORG_TYPES = {
     ARRAY:          None,
@@ -19,8 +20,8 @@ SQLALCHEMY_SCHEMA_ORG_TYPES = {
     BOOLEAN:        f"{PREFIX_SCHEMAORG}:Boolean",
     #Boolean:        f"{PREFIX_SCHEMAORG}:Boolean",
     CLOB:           None,
-    DATE:           None,
-    #Date:           None,
+    DATE:           f"{PREFIX_SCHEMAORG}:Date",
+    Date:           f"{PREFIX_SCHEMAORG}:Date",
     DATETIME:       None,
     DateTime:       None,
     DECIMAL:        f"{PREFIX_SCHEMAORG}:Float",
@@ -57,6 +58,7 @@ PYTHON_SCHEMA_ORG_TYPES = {
     int:            f"{PREFIX_SCHEMAORG}:Integer",
     float:          f"{PREFIX_SCHEMAORG}:Float",
     bool:           f"{PREFIX_SCHEMAORG}:Boolean",
-    str:            f"{PREFIX_SCHEMAORG}:Text"
+    str:            f"{PREFIX_SCHEMAORG}:Text",
+    object:         f"{PREFIX_SCHEMAORG}:Thing",
 }
 GEOPYTHON_SCHEMA_ORG_TYPES = copy.deepcopy(PYTHON_SCHEMA_ORG_TYPES)

@@ -22,9 +22,10 @@ src/models/__pycache__
 src/models/__pycache__/*.pyc
 src/models/*/*/*.py
 src/models/*.py
-src/context/
-src/context/__pycache__/*.pyc
-src/context/*/*/*.py
+src/contexts/
+src/contexts/__pycache__
+src/contexts/__pycache__/*.pyc
+src/contexts/*/*/*.py
 src/url_interpreter/__pycache__/*.*.pyc
 src/orm/__pycache__/*.*.pyc
 tests/__pycache__/*.*.pyc
