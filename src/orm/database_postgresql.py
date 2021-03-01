@@ -1,6 +1,6 @@
 from datetime import date
 from typing import List, Tuple, Optional, Any
-
+import copy
 from .database import DialectDatabase
 from sqlalchemy import text
 from sqlalchemy import ARRAY, BIGINT, CHAR, BigInteger, BINARY, BLOB, BOOLEAN, Boolean, CHAR, CLOB, DATE, Date, DATETIME, \
@@ -75,10 +75,12 @@ class DialectDbPostgresql(DialectDatabase):
         query = self.metadata_table.select()
         rows = await self.db.fetch_all(query)
         return rows
+
     async def next_val(self, schema_sequence: str = None) -> int:
         sequence = schema_sequence if schema_sequence is not None else self.schema_sequence()
         row = await self.db.fetch_one(f"select nextval('{sequence}')")
         return row['nextval']
+
     async def fetch_one(self, dic: dict, all_column: str='*'):
         key_or_unique = next(key for key in dic.keys())
         query = f'select {all_column} from {self.schema_table_name()} where {key_or_unique} = :{key_or_unique}'
@@ -171,14 +173,15 @@ class DialectDbPostgresql(DialectDatabase):
     async def insert(self, attribute_value: dict):
         list_attr_col_type = self.list_attribute_column_type_given(attribute_value.keys())
         dict_column_value = self.convert_all_to_db(list_attr_col_type, attribute_value)
-        column_names = dict_column_value.keys()
+        column_names = copy.deepcopy(list(dict_column_value.keys()))
         pk_name = self.entity_class.primary_key()
         if pk_name not in column_names:
             pk_value = await self.next_val()
-            dict_column_value[pk_name] = pk_value
+            # dict_column_value[pk_name] = pk_value
         query = f"INSERT INTO {self.schema_table_name()}({self.enum_column_names(column_names)}) VALUES ({self.enum_colon_column_names(column_names)})"
         await self.db.execute(query=query, values=dict_column_value)
         return pk_value
+
     def convert_to_db(self, a_type: str, val, is_update: bool= False) -> Any:
         if a_type in ('VARCHAR', 'CHAR'):
             return f"'{val}'" if is_update else val
@@ -187,6 +190,7 @@ class DialectDbPostgresql(DialectDatabase):
         if a_type in ('DATE'):
             return date.fromisoformat(val) #iso => yyyy-mm-dd
         return val
+
     def convert_all_to_db(self, attribute_column_type: List[tuple], attribute_value: dict, is_update : bool = False) -> dict:
         column_value = {}
         for attr, col,typ  in attribute_column_type:

@@ -16,7 +16,7 @@ class AlchemyBase:
         return cls.__table__.name
     @classmethod
     def primary_key(cls) -> str:
-        return cls.__table__.primary_key.columns[0].name
+        return list(cls.__table__.primary_key.columns)[0]
 
     @classmethod
     def is_attribute_without_relationship(cls, attribute):

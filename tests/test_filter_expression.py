@@ -1,4 +1,4 @@
-#(hyper-resource-sanic-JWRMp1xC-py3.7) C:\desenv\python-des\hyper-resource-sanic\tests>pytest -q  test_filter_expression.py
+#(hyper-resource-sanic-JWRMp1xC-py3.7) C:\desenv\python-des\hyper-resource-sanic\tests>pytest -q test_filter_expression.py
 from typing import Dict, Tuple, Sequence, List
 import unittest
 from sqlalchemy import Column, Integer, String
@@ -68,7 +68,7 @@ class UnidadeFederativa(AlchemyBase, Base):
 
 class TestFilterExpression():
     def test_nextWord(self):
-        interp = Interpreter("/id/gt/5/and/id/lte/101", UnidadeFederativa, DialectDbPostgis)
+        interp = Interpreter("/id/gt/5/and/id/lte/101", LimUnidadeFederacaoA, DialectDbPostgis)
         assert interp.nextWord() == "id"
         assert interp.nextWord() == "gt"
         assert interp.nextWord() == "5"
@@ -77,7 +77,7 @@ class TestFilterExpression():
         assert interp.nextWord() == "lte"
         assert interp.nextWord() == "101"
         assert interp.nextWord() is None
-        interp = Interpreter("/sigla/in/'rj','es','go'/and/geom/within/Point(1,2)", UnidadeFederativa, DialectDbPostgis)
+        interp = Interpreter("/sigla/in/'rj','es','go'/and/geom/within/Point(1,2)", LimUnidadeFederacaoA, DialectDbPostgis)
         assert interp.nextWord() == "sigla"
         assert interp.nextWord() == "in"
         assert interp.nextWord() == "'rj','es','go'"

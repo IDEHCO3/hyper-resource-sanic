@@ -68,16 +68,22 @@ class DialectDatabase(AbstractDialectDatabase):
 
     def schema_table_name(self) -> str:
         return f'{self.schema()}.{self.table_name()}'
+
+    # todo: hardcoded
     def sequence_name(self) -> str:
-        return 's_' + self.table_name()
+        # return 's_' + self.table_name()
+        return self.table_name() + "_seq"
+
     def schema_sequence(self) -> str:
         return f'{self.schema()}.{self.sequence_name()}'
     def columns_as_comma_list_str(self, columns) -> str:
         return ','.join([column.name for column in columns])
+
     def enum_column_names(self, column_names: List[str] = None) -> str:
         if column_names is not None:
             return ','.join(column_names)
         return ','.join(self.entity_class.column_names())
+
     def enum_colon_column_names(self, column_names: List[str] = None) -> str:
         if column_names is not None:
             return (','.join((':' + s for s in column_names)))
