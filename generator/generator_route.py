@@ -27,7 +27,7 @@ def {file_name}_routes(app):
     @app.route('/{file_name_hyfen}-list/<id:int>/<path:path>')
     async def {file_name}_resource_id_path(request, id, path):
         r = {class_name}Resource(request)
-        return await r.get_representation(id, path)
+        return await r.get_representation_given_path(id, path)
 
     @app.route('/{file_name_hyfen}-list/<id:int>', methods=['HEAD'])
     async def head_{file_name}_id(request, id):

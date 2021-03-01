@@ -49,7 +49,7 @@ class AbstractResource:
     async def get_representation(self):
         raise NotImplementedError("'get_representation' must be implemented in subclasses")
 
-    async def get_representation_given_path(self, path):
+    async def get_representation_given_path(self, id_or_key_value, a_path):
         raise NotImplementedError("'get_representation' must be implemented in subclasses")
 
     async def head(self):

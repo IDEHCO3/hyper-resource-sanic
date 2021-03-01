@@ -78,6 +78,17 @@ class FeatureResource(SpatialResource):
             print(err)
             return sanic.response.json({"Error": f"{err}"})
 
+    async def get_representation_given_path(self, id_or_key_value, a_path):
+        try:
+            accept = self.request.headers['accept']
+            if 'text/html' in accept:
+                return await self.get_html_representation(id_or_key_value)
+            else:
+                return await self.get_json_representation(id_or_key_value)
+        except (Exception, SyntaxError, NameError) as err:
+            print(err)
+            return sanic.response.json({"Error": f"{err}"})
+
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
         return response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
