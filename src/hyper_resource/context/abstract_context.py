@@ -7,6 +7,7 @@ from sqlalchemy.inspection import inspect
 
 ACONTEXT_KEYWORK = "@context"
 ATYPE_KEYWORK = "@type"
+AID_KEYWORK = "@id"
 env = Env()
 env.read_env()
 port = env.str("PORT", "8002")
@@ -33,6 +34,11 @@ class AbstractContext(object):
         # context.update(self.get_type_by_model_class())
         return context
 
+    def get_foreign_key_context(self, fk_model):
+        d = AbstractResource.MAP_MODEL_FOR_CONTEXT[fk_model].get_type_by_model_class()
+        fk_context = {ATYPE_KEYWORK: AID_KEYWORK}
+        fk_context[AID_KEYWORK] = d[ATYPE_KEYWORK]
+        return fk_context
 
     def get_properties_term_definition_dict(self):
         # print(self.metadata_table.foreign_keys)
@@ -42,7 +48,8 @@ class AbstractContext(object):
             if str(column.name) in fk_column_names:
                 fk_col = self.db_dialect.foreign_key_column_by_name(column.name)
                 fk_model = self.db_dialect.get_model_by_foreign_key(fk_col)
-                term_definition_dict[str(column.name)] = AbstractResource.MAP_MODEL_FOR_CONTEXT[fk_model].get_type_by_model_class()
+                # term_definition_dict[str(column.name)] = AbstractResource.MAP_MODEL_FOR_CONTEXT[fk_model].get_type_by_model_class()
+                term_definition_dict[str(column.name)] = self.get_foreign_key_context(fk_model)
             else:
                 term_definition_dict[str(column.name)] = SQLALCHEMY_SCHEMA_ORG_TYPES[type(column.type)]
         return term_definition_dict

@@ -67,10 +67,12 @@ EXPECTED_RELATIONSHIP_CONTEXT = {
         "id": "schema:Integer",
         "data": "schema:Date",
         "tipo_gasto": {
-            "@type": "schema:Thing"
+            "@type": "@id",
+            "@id": "schema:Thing"
         },
         "usuario": {
-            "@type": "schema:Person"
+            "@type": "@id",
+            "@id": "schema:Person"
         },
         "valor": "schema:Float",
         "detalhe": "schema:Text"
