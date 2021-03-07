@@ -1,7 +1,8 @@
 import json
 
 from sanic import  response
-from typing import List, Dict
+from typing import List, Dict, Union
+
 MIME_TYPE_JSONLD = "application/ld+json"
 
 class AbstractResource:
@@ -66,9 +67,10 @@ class AbstractResource:
         # url = [v for v in record.values()][0]
         # return url
 
-    def add_foreign_keys_references(self, data:str):
+    def add_foreign_keys_references(self, data:Union[str,Dict]):
+        serialized = json.loads(data) if type(data) == str else data
+
         fk_names = self.dialect_DB().foreign_keys_names()
-        serialized = json.loads(data)
         for name in fk_names:
             url = self.create_url_to_foreign_key(name, serialized[name])
             serialized[name] = url

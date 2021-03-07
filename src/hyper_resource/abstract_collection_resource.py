@@ -39,9 +39,21 @@ class AbstractCollectionResource(AbstractResource):
         # Temporario até gerar código em html para recurso não espacial
         rows = await self.dialect_DB().fetch_all_as_json()
         return sanic.response.text(rows or [], content_type='application/json')
+
+    def add_foreign_keys_references(self, data:str):
+        data_list = json.loads(data)
+        data_result = '['
+        for key, data in enumerate(data_list):
+            data_result += super().add_foreign_keys_references(data) if key == len(data_list)-1 else super().add_foreign_keys_references(data) + ","
+        data_result += ']'
+        return data_result
+
     async def get_json_representation(self):
         rows = await self.dialect_DB().fetch_all_as_json()
-        return sanic.response.text(rows or [], content_type='application/json')
+        serialized = self.add_foreign_keys_references(rows)
+        # return sanic.response.text(rows or [], content_type='application/json')
+        return sanic.response.text(serialized, content_type='application/json')
+
     async def get_representation(self):
         accept = self.request.headers['accept']
         if 'text/html' in accept:
