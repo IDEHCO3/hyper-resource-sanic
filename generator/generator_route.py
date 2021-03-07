@@ -160,7 +160,7 @@ def generate_setup_routes_file(path, file_name="setup_routes", file_names=[], cl
         file.write(TAB + '\nAbstractResource.MAP_MODEL_FOR_ROUTE = {\n')
         for class_name in file_names:
             camel_case_name = convert_underline_to_camel_case(class_name)
-            file.write((TAB * 2) + f"{camel_case_name}Resource.model_class: {file_names[i]}_routes,\n")
+            file.write((TAB * 2) + f"{camel_case_name}Resource.model_class: {class_name}_routes,\n")
         file.write(TAB + '}')
 
 def generate_all_router_files(clsmembers, has_patch=False, has_post=False, has_delete=False):
