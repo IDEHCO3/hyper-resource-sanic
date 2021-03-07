@@ -1,9 +1,12 @@
+import json
+
 from sanic import  response
 from typing import List, Dict
 MIME_TYPE_JSONLD = "application/ld+json"
 
 class AbstractResource:
     MAP_MODEL_FOR_CONTEXT = {}
+    MAP_MODEL_FOR_ROUTE = {}
 
     def __init__(self, request):
         self.request = request
@@ -45,6 +48,39 @@ class AbstractResource:
         operation = dic_name_oper[operation_name]
         doc_str = operation.__doc__
         return [s.strip() for s in doc_str.split('\n') if s.strip() != '']
+
+    def remove_last_slash(self, uri:str):
+        return uri[:-1] if uri.endswith("/") else uri
+
+    def create_url_to_foreign_key(self, column_name:str, fk_id:int):
+        fk_model = self.dialect_DB().get_model_by_foreign_key(self.dialect_DB().foreign_key_column_by_name(column_name))
+        fk_schema_with_name = fk_model.__table__.fullname
+        # WARNING: Only supports single fields primary keys
+        id_field = [pk_cols.name for pk_cols in self.dialect_DB().get_model_by_foreign_key(self.dialect_DB().foreign_key_column_by_name(column_name)).__table__.primary_key.columns][0]
+        related_route = self.get_related_route(fk_model)
+
+        path = "".join(self.remove_last_slash(related_route.uri).split("/")[:-1]) + "/"
+        return self.request.scheme + "://" + self.request.host + "/" + path + str(fk_id)
+        # query = f'select CONCAT(\'http://teste/\', {fk_id}) from {fk_schema_with_name} where {id_field}={fk_id}'
+        # record = await self.dialect_DB().db.fetch_one(query)
+        # url = [v for v in record.values()][0]
+        # return url
+
+    def add_foreign_keys_references(self, data:str):
+        fk_names = self.dialect_DB().foreign_keys_names()
+        serialized = json.loads(data)
+        for name in fk_names:
+            url = self.create_url_to_foreign_key(name, serialized[name])
+            serialized[name] = url
+
+        return json.dumps(serialized)
+
+    def get_related_route(self, model):
+        for key, _tuple in self.request.app.router.routes_names.items():
+            _name, _route = _tuple
+            parent_function = _route[0]
+            if parent_function.__module__ == self.MAP_MODEL_FOR_ROUTE[model].__module__ and _route[2].pattern.endswith("(-?\\d+)$"):
+                return _route
 
     async def get_representation(self):
         raise NotImplementedError("'get_representation' must be implemented in subclasses")

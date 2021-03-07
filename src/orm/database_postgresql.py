@@ -86,6 +86,7 @@ class DialectDbPostgresql(DialectDatabase):
         query = f'select {all_column} from {self.schema_table_name()} where {key_or_unique} = :{key_or_unique}'
         row = await self.db.fetch_one(query=query, values=dic)
         return row
+
     async def fetch_all_as_json(self, tuple_attrib : Tuple[str] = None, a_query: str = None):
         query = self.basic_select(tuple_attrib) if a_query is None else a_query
         sql = f"select json_agg(t.*) from ({query}) as t;"
@@ -94,12 +95,15 @@ class DialectDbPostgresql(DialectDatabase):
         return rows[0]['json_agg']
     def function_db(self) -> str:
         return 'row_to_json'
+
     async def fetch_one_as_json(self, pk):
         query = self.basic_select_by_id(pk)
         sql = f"select {self.function_db()}(t.*) from ({query}) as t;"
         print(sql)
         rows = await self.db.fetch_one(sql)
-        return rows if rows is None else rows[self.function_db()]
+        data = rows if rows is None else rows[self.function_db()]
+        return data
+
     async def find_one_as_model(self, pk: int , all_column: str ='*' ) -> Optional[AlchemyBase]:
 
         query = self.basic_select_by_id(pk)
