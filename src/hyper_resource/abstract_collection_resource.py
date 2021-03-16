@@ -37,10 +37,11 @@ class AbstractCollectionResource(AbstractResource):
         return [dict(row) for row in rows]
     async def get_html_representation(self):
         # Temporario até gerar código em html para recurso não espacial
-        rows = await self.dialect_DB().fetch_all_as_json()
+        rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
         return sanic.response.text(rows or [], content_type='application/json')
     async def get_json_representation(self):
-        rows = await self.dialect_DB().fetch_all_as_json()
+
+        rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
         return sanic.response.text(rows or [], content_type='application/json')
     async def get_representation(self):
         accept = self.request.headers['accept']
@@ -59,10 +60,13 @@ class AbstractCollectionResource(AbstractResource):
                 method_execute_name = "pre_" + operation_name_or_attribute_comma
                 return await getattr(self, method_execute_name)(*[path])
             else:
-                att_names = operation_name_or_attribute_comma.split(',')
-                for att_name in att_names:
-                    if att_name not in self.attribute_names():
-                        return sanic.response.json(f"The operation or attribute {att_name} does not exists", status=400)
+                att_names = set(operation_name_or_attribute_comma.split(','))
+                atts = att_names.difference(set(self.attribute_names()))
+                if len(atts) ==1 :
+                   return sanic.response.json(f"The operation or attribute in this {list(atts)} does not exists", status=400)
+                elif len(atts) > 1:
+                    return sanic.response.json(f"The operations or attributes {list(atts)} do not exists",
+                                               status=400)
                 return await self.pre_projection(path)
 
         except (RuntimeError, TypeError, NameError):
@@ -110,7 +114,7 @@ class AbstractCollectionResource(AbstractResource):
         return await self.projection(str_att_names_as_comma)
     async def projection(self, enum_attribute_name: str):
         attr_names = tuple(a.strip() for a in enum_attribute_name.split(','))
-        rows = await self.dialect_DB().fetch_all_as_json(attr_names)
+        rows = await self.dialect_DB().fetch_all_as_json(attr_names, None, self.protocol_host())
         return sanic.response.text(rows, content_type='application/json')
     async def pre_groupbycount(self, path):
         str_atts = path.split('/')[1]  # groupbycount/departamento
@@ -147,7 +151,7 @@ class AbstractCollectionResource(AbstractResource):
             print(f"path: {path}")
             raise
         print(f'whereclause: {whereclause}')
-        rows = await self.dialect_DB().filter_as_json(whereclause)
+        rows = await self.dialect_DB().filter_as_json(whereclause, None ,self.protocol_host())
         return sanic.response.text(rows or [], content_type='application/json')
         #return sanic.response.json([json.dumps(dict(row)) for row in rows])  # response.json(self.rows_as_dict(rows))
     async def head(self):

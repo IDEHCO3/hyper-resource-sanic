@@ -11,13 +11,13 @@ class NonSpatialResource(AbstractResource):
         self.context_class = AbstractDetailContext
 
     async def get_html_representation(self, id_or_key_value):
-        row = await self.dialect_DB().fetch_one_as_json(id_or_key_value)
+        row = await self.dialect_DB().fetch_one_as_json(id_or_key_value,None, self.protocol_host())
         if row is None:
             return sanic.response.json("The resource was not found.", status=404)
         return sanic.response.text(row, content_type='application/json')
 
     async def get_json_representation(self, id_or_key_value):
-        row = await self.dialect_DB().fetch_one_as_json(id_or_key_value)
+        row = await self.dialect_DB().fetch_one_as_json(id_or_key_value, None, self.protocol_host())
         if row is None:
             return sanic.response.json("The resource was not found.", status=404)
         return sanic.response.text(row, content_type='application/json')
@@ -42,15 +42,15 @@ class NonSpatialResource(AbstractResource):
               return await getattr(self, method_execute_name)(*[a_path])
            else:
               att_names = operation_name_or_atribute_comma.split(',')
+              att_names = [at_name.strip().lower() for at_name in att_names]
               if self.fields_from_path_in_attribute_names(att_names):
-                 all_column = self.entity_class().enum_column_names_as_given_attributes(att_names)
-                 if type(id_or_key_value) == dict:
-                     row = await self.dialect_DB().fetch_one(id_or_key_value, all_column)
-                 else:
-                     row = await self.dialect_DB().fetch_one({self.entity_class().primary_key(): id_or_key_value}, all_column)
+                 #all_column = self.entity_class().enum_column_names_as_given_attributes(att_names)
+                 a_key =  id_or_key_value if type(id_or_key_value) == dict else {self.entity_class().primary_key(): id_or_key_value}
+                 row = await self.dialect_DB().fetch_one(a_key, att_names, self.protocol_host())
                  print(row)
                  if len(att_names) == 1:
-                     val = row[self.entity_class().column_name(att_names[0])]
+                    # col_name = self.entity_class().column_name(att_names[0])
+                     val = row[att_names[0]]
                      return sanic.response.json(val)
                  return sanic.response.json(dict(row))
               else:

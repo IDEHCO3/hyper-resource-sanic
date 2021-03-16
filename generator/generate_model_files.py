@@ -20,7 +20,7 @@ def base_template(is_geo: bool= False):
         import_geo =''
     return f"""# -*- coding: utf-8 -*-
 {import_geo}
-from sqlalchemy import CHAR, Column, Float, Integer, Numeric, SmallInteger, String, Text, Date, ForeignKey
+from sqlalchemy import CHAR, Column, Float, Boolean, Integer, Numeric, SmallInteger, String, Text, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.ext.declarative import declarative_base
@@ -75,13 +75,14 @@ def generate_model_file(path, file_name, class_name, a_class, is_geo: bool = Fal
              if is_foreign_key(a_class, value):
                 str_fk_attrib = generate_string_for_foreign_key_property(key, value.prop)
                 file.write(f'   {str_fk_attrib}\n')
+
              elif isinstance(value.prop, ColumnProperty):
                 str_attrib =  generate_string_for_column_property(key, value.prop)
                 file.write(f'   {str_attrib}\n')
 
-             # elif isinstance(value.prop, RelationshipProperty):
-             #    str_attrib = f"{key} = relationship('{value.prop.entity.class_.__name__}')"
-             #    file.write(f'   {str_attrib}\n')
+             elif isinstance(value.prop, RelationshipProperty):
+                str_attrib = f"{key} = relationship('{value.prop.entity.class_.__name__}',foreign_keys=[id_{key}])"
+                file.write(f'   {str_attrib}\n')
         if is_geo:
             file.write(geo_field_name_template(a_class))
 

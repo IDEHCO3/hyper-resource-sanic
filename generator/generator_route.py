@@ -19,62 +19,62 @@ from src.resources.{file_name} import {class_name}Resource, {class_name}Collecti
 
 def {file_name}_routes(app):
     
-    @app.route('/{file_name_hyfen}-list/<id:int>')
+    @app.route({class_name}Resource.router_id())
     async def {file_name}_id(request, id):
         r = {class_name}Resource(request)
         return await r.get_representation(id)
     
-    @app.route('/{file_name_hyfen}-list/<id:int>/<path:path>')
+    @app.route({class_name}Resource.router_id_path())
     async def {file_name}_resource_id_path(request, id, path):
         r = {class_name}Resource(request)
         return await r.get_representation_given_path(id, path)
 
-    @app.route('/{file_name_hyfen}-list/<id:int>', methods=['HEAD'])
+    @app.route({class_name}Resource.router_id(), methods=['HEAD'])
     async def head_{file_name}_id(request, id):
         r = {class_name}Resource(request)
         return await r.head(id)
     
-    @app.route('/{file_name_hyfen}-list/<id:int>/<path:path>', methods=['HEAD'])
+    @app.route({class_name}Resource.router_id_path(), methods=['HEAD'])
     async def {file_name}_resource_id_path(request, id, path):
         r = {class_name}Resource(request)
         return await r.head_given_path(id, path)
     
-    @app.route('/{file_name_hyfen}-list/<id:int>', methods=['OPTIONS'])
+    @app.route({class_name}Resource.router_id(), methods=['OPTIONS'])
     async def options_{file_name}_id(request, id):
         r = {class_name}Resource(request)
         return await r.options(id)
     
-    @app.route('/{file_name_hyfen}-list/<id:int>/<path:path>', methods=['OPTIONS'])
+    @app.route({class_name}Resource.router_id_path(), methods=['OPTIONS'])
     async def options_{file_name}_resource_id_path(request, id, path):
         r = {class_name}Resource(request)
         return await r.options_given_path(id, path)
             
-    @app.route("/{file_name_hyfen}-list")
+    @app.route({class_name}CollectionResource.router_list())
     async def {file_name}_list(request):
         cr = {class_name}CollectionResource(request)
         return await cr.get_representation()
         
-    @app.route("/{file_name_hyfen}-list/<path:path>")
+    @app.route({class_name}CollectionResource.router_list_path())
     async def {file_name}_list_path(request, path):
         cr = {class_name}CollectionResource(request)
         return await cr.get_representation_given_path(path)
 
-    @app.route("/{file_name_hyfen}-list", methods=['HEAD'] )
+    @app.route({class_name}CollectionResource.router_list(), methods=['HEAD'] )
     async def head_{file_name}_list(request):
         cr = {class_name}CollectionResource(request)
         return await cr.head()
 
-    @app.route("/{file_name_hyfen}-list/<path:path>", methods=['HEAD'] )
+    @app.route({class_name}CollectionResource.router_list_path(), methods=['HEAD'] )
     async def head_{file_name}_list_path(request, path):
         cr = {class_name}CollectionResource(request)
         return await cr.head_given_path(path)
    
-    @app.route("/{file_name_hyfen}-list", methods=['OPTIONS'] )
+    @app.route({class_name}CollectionResource.router_list(), methods=['OPTIONS'] )
     async def options_{file_name}_list(request):
         cr = {class_name}CollectionResource(request)
         return await cr.options()
 
-    @app.route("/{file_name_hyfen}-list/<path:path>", methods=['OPTIONS'] )
+    @app.route({class_name}CollectionResource.router_list_path(), methods=['OPTIONS'] )
     async def options_{file_name}_list_path(request, path):
         cr = {class_name}CollectionResource(request)
         return await cr.options_given_path(path)     
@@ -82,7 +82,7 @@ def {file_name}_routes(app):
     return template
 def get_template_patch(file_name, file_name_hyfen, class_name):
     return f"""
-    @app.route('/{file_name_hyfen}-list/<id:int>', methods=['PATCH'])
+    @app.route({class_name}Resource.router_id(), methods=['PATCH'])
     @authentication()
     @permission()
     async def patch_{file_name}_id(request, id):
@@ -91,7 +91,7 @@ def get_template_patch(file_name, file_name_hyfen, class_name):
 """
 def get_template_put(file_name, file_name_hyfen, class_name):
     return f"""
-    @app.route('/{file_name_hyfen}-list/<id:int>', methods=['PUT'])
+    @app.route({class_name}Resource.router_id(), methods=['PUT'])
     @authentication()
     @permission()
     async def put_{file_name}_id(request, id):
@@ -101,7 +101,7 @@ def get_template_put(file_name, file_name_hyfen, class_name):
 
 def get_template_post(file_name, file_name_hyfen, class_name):
     return f"""
-    @app.route('/{file_name_hyfen}-list', methods=['POST'])
+    @app.route({class_name}CollectionResource.router_list(), methods=['POST'])
     @authentication()
     @permission()
     async def post_{file_name}(request):
@@ -111,7 +111,7 @@ def get_template_post(file_name, file_name_hyfen, class_name):
 
 def get_template_delete(file_name, file_name_hyfen, class_name):
     return f"""
-    @app.route('/{file_name_hyfen}-list/<id:int>', methods=['DELETE'])
+    @app.route({class_name}Resource.router_id(), methods=['DELETE'])
     @authentication()
     @permission()
     async def delete_{file_name}_id(request, id):

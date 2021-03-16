@@ -13,7 +13,6 @@ class AbstractDialectDatabase():
     def __init__(self, db):
         self.db = db
 
-
 class DialectDatabase(AbstractDialectDatabase):
     def __init__(self, db, metadata_table=None, entity_class: AlchemyBase = None):
         super().__init__(db)
@@ -93,8 +92,8 @@ class DialectDatabase(AbstractDialectDatabase):
         return (','.join((key + ' = :' + key for key, value in column_value.items())))
     def column_names_given_attributes(self, attributes_from_path) -> List[str]:
         return self.entity_class.column_names_given_attributes(attributes_from_path)
-    def enum_column_names_alias_attribute_given(self, tuple_attrib: Tuple[str]) -> str:
-        list_attrib_column = self.list_attribute_column_given(tuple_attrib)
+    def enum_column_names_alias_attribute_given(self, list_attrib: Tuple[InstrumentedAttribute], prefix_col_val: str = None) -> str:
+        list_attrib_column = self.list_attribute_column_given(list_attrib)
         return self.entity_class.enum_column_names_alias_attribute_given(list_attrib_column)
     def list_attribute_column_given(self, attributes_from_path: Optional[Tuple[str]]) -> List[Tuple]:
         return self.entity_class.list_attribute_column_given(attributes_from_path)
@@ -103,22 +102,13 @@ class DialectDatabase(AbstractDialectDatabase):
     def list_attribute_column_type_given(self, attributes: List[str]) -> List[tuple]:
         return self.entity_class.list_attribute_column_type_given(attributes)
     def attribute_names(self) -> List[str]:
-        return self.entity_class.attribute_names()
-    def basic_select(self, tuple_attrib: Tuple[str] = None) -> str:
-        if tuple_attrib is not None:
-            enum_col_names = self.enum_column_names_alias_attribute_given(tuple_attrib)
-        else:
-            enum_col_names = self.enum_column_names_alias_attribute_given(self.attribute_names())
-        query = f'select {enum_col_names} from {self.schema_table_name()}'
-        return query
-    def basic_select_by_id(self, pk, tuple_attrib: Tuple[str] = None):
-        if tuple_attrib is not None:
-            enum_col_names = self.enum_column_names_alias_attribute_given(tuple_attrib)
-        else:
-            enum_col_names = self.enum_column_names_alias_attribute_given(self.attribute_names())
-        pk_value = pk
-        query = f'select {enum_col_names} from {self.schema_table_name()} where {self.primary_key()}={pk_value}'
-        return query
+        return [key for key, value in self.entity_class.attributes_with_dereferenceable()]
+    def basic_select(self, tuple_attrib: Tuple[str] = None, prefix_col_val: str = None ) -> str:
+        raise NotImplementedError("'basic_select' must be implemented in subclasses")
+    def basic_select_by_id(self, pk, tuple_attrib: Tuple[str] = None, prefix_col_val: str=None):
+        raise NotImplementedError("'basic_select_by_id' must be implemented in subclasses")
+    def alias_column(self, inst_attr: InstrumentedAttribute, prefix_col: str = None):
+        raise NotImplementedError("'alias_column' must be implemented in subclasses")
 
     async def next_val(sequence_name: str):
         raise NotImplementedError("'offset_limit' must be implemented in subclasses")
@@ -128,9 +118,9 @@ class DialectDatabase(AbstractDialectDatabase):
         raise NotImplementedError("'fetch_all' must be implemented in subclasses")
     async def fetch_one(self):
         raise NotImplementedError("'fetch_one' must be implemented in subclasses")
-    async def fetch_one_as_json(self, id_dict):
+    async def fetch_one_as_json(self, id_dict, prefix_col_val: str=None):
         raise NotImplementedError("'fetch_one_as_json' must be implemented in subclasses")
-    async def fetch_all_as_json(self, tuple_attrib : Tuple[str] = None, a_query: str = None):
+    async def fetch_all_as_json(self, tuple_attrib : Tuple[str] = None, a_query: str = None, prefix_col_val: str=None):
         raise NotImplementedError("'fetch_all_as_json' must be implemented in subclasses")
     async def count(self) -> int:
         raise NotImplementedError("'count' must be implemented in subclasses")
@@ -144,7 +134,7 @@ class DialectDatabase(AbstractDialectDatabase):
         raise NotImplementedError("'groupbycount' must be implemented in subclasses")
     async def filter(self, a_filter: str):
         raise NotImplementedError("'filter' must be implemented in subclasses")
-    async def filter_as_json(self, a_filter, e_column_names: str = None):
+    async def filter_as_json(self, a_filter, e_column_names: str = None, prefix_col_val: str=None):
         raise NotImplementedError("'filter_as_json' must be implemented in subclasses")
     async def delete(self, id_or_dict):
         raise NotImplementedError("'delete' must be implemented in subclasses")

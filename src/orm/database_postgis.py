@@ -13,7 +13,7 @@ class DialectDbPostgis(DialectDbPostgresql):
         return self.entity_class.geo_column_name()  in tuple_attrib
     def has_not_geom_column(self,tuple_attrib) -> bool:
         return not self.has_geom_column(tuple_attrib)
-    async def fetch_all_as_json(self, tuple_attrib : Tuple[str] = None,  a_query: str = None):
+    async def fetch_all_as_json(self, tuple_attrib : Tuple[str] = None,  a_query: str = None, prefix_col_val: str=None):
         if (tuple_attrib is not None) and (self.has_not_geom_column(tuple_attrib) ):
             return await super().fetch_all_as_json(tuple_attrib)
         query = self.basic_select(tuple_attrib) if a_query is None else a_query

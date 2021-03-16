@@ -1,0 +1,20 @@
+[{
+ "nome":"rio",
+ "data_nascimento":"2020-01-01",
+  "id_pessoa":1,
+  "cpf":"01223344   ",
+  "is_usuario":true,
+  "senha":"12345",
+  "email":null,
+  "gasto":null}, 
+  {
+  "nome":"Gabriel",
+  "data_nascimento":"1995-07-04",
+  "id_pessoa":10,
+  "cpf":null,
+  "is_usuario":false,
+  "senha":null,
+  "email":null,
+  "gasto":[{"id_gasto":1,"valor":100,"data":"2021-01-31","id_pessoa":10,"tipo_gasto": {"descricao":  "educação", "id_tipo_gasto": 6}},
+           {"id_gasto":2,"valor":150,"data":"2031-12-20","id_pessoa":10,"id_tipo_gasto":6}]}, 
+		   {"nome":"Planeta Vermelho","data_nascimento":"2021-10-10","id_pessoa":9,"cpf":null,"is_usuario":true,"senha":null,"email":null,"gasto":[{"id_gasto":3,"valor":200,"data":"2020-11-11","id_pessoa":9,"id_tipo_gasto":2}]}]

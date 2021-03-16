@@ -1,9 +1,23 @@
 from sanic import  response
 from typing import List, Dict
 MIME_TYPE_JSONLD = "application/ld+json"
-
+from src.hyper_resource.basic_route import *
 class AbstractResource:
     MAP_MODEL_FOR_CONTEXT = {}
+    model_class = None
+
+    @classmethod
+    def router_id(cls):
+        return BasicRoute.router_id(cls.model_class)
+    @classmethod
+    def router_id_path(cls):
+        return BasicRoute.router_id_path(cls.model_class)
+    @classmethod
+    def router_list(cls):
+        return BasicRoute.router_list(cls.model_class)
+    @classmethod
+    def router_list_path(cls):
+        return BasicRoute.router_list_path(cls.model_class)
 
     def __init__(self, request):
         self.request = request
@@ -12,10 +26,14 @@ class AbstractResource:
     def dialect_DB(self):
         if self.dialect_db is None:
             self.dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), self.entity_class())
+
         return self.dialect_db
 
     def is_content_type_in_accept(self, accept_type: str):
         return accept_type in self.request.headers['accept']
+
+    def protocol_host(self):
+        return self.request.scheme + '://' + self.request.host
 
     def entity_class(self):
         raise NotImplementedError("'entity_class' must be implemented in subclasses")
@@ -24,7 +42,7 @@ class AbstractResource:
         return self.entity_class().__table__
 
     def attribute_names(self):
-        return self.entity_class().attribute_names()
+        return self.entity_class().all_attributes_with_dereferenceable()
         
     def fields_from_path_in_attribute_names(self, fields_from_path):
         for att_name in fields_from_path:
