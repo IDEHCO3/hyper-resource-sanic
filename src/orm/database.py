@@ -47,22 +47,7 @@ class DialectDatabase(AbstractDialectDatabase):
                 return c
 
     def foreign_keys_names(self):
-        # entity_relations = inspect( self.entity_class).relationships.items()
-        # self.entity_class.__table__.c.<attribute>.foreign_keys
-        """
-        self.entity_class.usuario.parent._init_properties:OrderedDict
-	    con_tipo_gasto:RelationshipProperty
-	    con_usuario:RelationshipProperty
-		comparator.prop.class_attribute.prop.entity._identity_class
-
-        self.entity_class.usuario.parent._init_properties._list:List<str>
-        :return:
-        """
-        # attrs = [attribute for key, attribute in self.entity_class.__dict__.items() if isinstance(attribute, Column)]
         fk_columns = self.foreign_keys_columns()
-        # mapper = attrs[0].parent
-        # fk_dict = mapper._init_properties
-        # return fk_dict.keys()
         return [col.key for col in fk_columns]
 
     def schema_table_name(self) -> str:

@@ -1,5 +1,5 @@
 from environs import Env
-from generator.util import convert_camel_case_to_underline, convert_camel_case_to_hifen
+from generator.util import convert_camel_case_to_underline, convert_camel_case_to_hifen, convert_underline_to_camel_case
 import os
 #Setup env
 from settings import ROUTERS_DIR
@@ -142,13 +142,26 @@ def generate_entry_point_file(path, file_name, file_names_hyfen, class_names):
         file.write('    }\n')
 
 def generate_setup_routes_file(path, file_name="setup_routes", file_names=[], class_names=[]):
+    TAB = " " * 4
     file_with_path = os.path.join(path, f'{file_name}.py')
     with open(file_with_path, 'w') as file:
+        file.write(f'from src.hyper_resource.abstract_resource import AbstractResource\n')
         for i in range(0, len(file_names)):
             file.write(f'from src.routes.{file_names[i]} import {file_names[i]}_routes\n')
+
+        for i in range(0, len(file_names)):
+            camel_case_name = convert_underline_to_camel_case(file_names[i])
+            file.write(f'from src.resources.{file_names[i]} import {camel_case_name}Resource, {camel_case_name}CollectionResource\n')
+
         file.write('def setup_all_routes(app):\n')
         for i in range(0, len(file_names)):
             file.write(f'    {file_names[i]}_routes(app)\n')
+
+        file.write(TAB + '\nAbstractResource.MAP_MODEL_FOR_ROUTE = {\n')
+        for class_name in file_names:
+            camel_case_name = convert_underline_to_camel_case(class_name)
+            file.write((TAB * 2) + f"{camel_case_name}Resource.model_class: {class_name}_routes,\n")
+        file.write(TAB + '}')
 
 def generate_all_router_files(clsmembers, has_patch=False, has_post=False, has_delete=False):
     path = ROUTERS_DIR#os.path.join(os.getcwd(), 'src', 'routes')
