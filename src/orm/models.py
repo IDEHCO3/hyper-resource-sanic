@@ -19,6 +19,10 @@ class AlchemyBase:
     @classmethod
     def primary_key(cls) -> str:
         return cls.__table__.primary_key.columns[0].name
+
+    @classmethod
+    def is_primary_key(cls, attribute: InstrumentedAttribute) -> bool:
+        return isinstance(attribute.prop, ColumnProperty) and attribute.prop.columns[0].primary_key
     @classmethod
     def is_foreign_key_attribute(cls, attribute) -> bool:
         return isinstance(attribute, InstrumentedAttribute) and isinstance(attribute.prop, ColumnProperty) and (len(attribute.prop.columns[0].foreign_keys) > 0)
@@ -56,6 +60,9 @@ class AlchemyBase:
     @classmethod
     def has_attribute(cls, attribute_name) -> bool:
         return attribute_name in cls.attribute_names()
+    @classmethod
+    def attribute_name_given(cls, attribute: InstrumentedAttribute)-> str:
+        return attribute.prop.key
     @classmethod
     def attribute_column_type(cls, attribute_name) -> tuple:
         lst_a_c_t = cls.list_attribute_column_type()

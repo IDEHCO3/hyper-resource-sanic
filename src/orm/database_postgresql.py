@@ -83,15 +83,21 @@ class DialectDbPostgresql(DialectDatabase):
         row = await self.db.fetch_one(f"select nextval('{sequence}')")
         return row['nextval']
     def alias_column(self, inst_attr: InstrumentedAttribute, prefix_col: str = None):
-        if self.entity_class.is_relationship_fk_attribute(inst_attr) and prefix_col is not None:
+        if self.entity_class.is_relationship_fk_attribute(inst_attr)  and prefix_col is not None:
             col_name = self.entity_class.column_name_or_None(inst_attr) #inst_attr.prop._user_defined_foreign_keys[0].name
             model_class = self.entity_class.class_given_relationship_fk(inst_attr)
-            return f"CASE WHEN {col_name} is not null THEN '{prefix_col}{BasicRoute.router_list(model_class)}/' || {col_name} ELSE null  END AS {inst_attr.prop.key}"
+            return f"CASE WHEN {col_name} is not null THEN '{prefix_col}{BasicRoute.router_list(model_class)}/' || {col_name} ELSE null  END AS {self.entity_class.attribute_name_given(inst_attr)}"
+        elif self.entity_class.is_primary_key(inst_attr):
+            pref = f'{prefix_col}{BasicRoute.router_list(self.entity_class)}/' if prefix_col is not None  else ''
+            col_name = self.entity_class.column_name_or_None(inst_attr)
+            attr_name = self.entity_class.attribute_name_given(inst_attr)
+            return f"'{pref}' || {col_name} as {attr_name}"
         elif self.entity_class.is_relationship_attribute(inst_attr):
             return None
         else:
-            col_name = inst_attr.prop.columns[0].name
-            return f'{col_name} as {inst_attr.prop.key}'
+            col_name = self.entity_class.column_name_or_None(inst_attr)
+            attr_name = self.entity_class.attribute_name_given(inst_attr)
+            return f'{col_name} as {attr_name}'
     def enum_column_names_alias_attribute_given(self, attributes: List[InstrumentedAttribute], prefix_col_val: str = None):
         list_alias = []
         for att in attributes:
