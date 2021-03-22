@@ -44,13 +44,13 @@ class AbstractResource:
     def attribute_names(self):
         return self.entity_class().all_attributes_with_dereferenceable()
         
-    def fields_from_path_in_attribute_names(self, fields_from_path):
+    def fields_from_path_in_attribute_names(self, fields_from_path) -> bool:
         for att_name in fields_from_path:
             if att_name not in self.attribute_names():
                 return False
         return True
 
-    def fields_from_path_not_in_attribute_names(self, fields_from_path):
+    def fields_from_path_not_in_attribute_names(self, fields_from_path)-> bool :
         return not self.fields_from_path_in_attribute_names(fields_from_path)
 
     def dict_name_operation(self) -> Dict[str, 'function']:
@@ -106,44 +106,3 @@ class AbstractResource:
     def validate_data(self, attribute_value: dict):
         attribute_names = attribute_value.keys()
         self.validate_attribute_names(attribute_names)
-    """
-        
-    
-    public async patch() {
-        return this.response.status(501).json("Method PATCH not implemented yet.");
-    }
-    public async options() {
-        return this.response.json(this.context.contextResource());
-    }
-    public async optionsGivenParameters() {
-        return;
-    }
-    public async post(attributeNameValueJsonObject) {
-        let repository = connection.getRepository(this.entity_class());
-        const entity = await repository.save(attributeNameValueJsonObject);
-        return this.response.status(201).json(entity[this.primaryKeyName()]);
-    }
-    public async delete() {
-        let whereStr = `${this.primaryKeyName()} = :${this.primaryKeyName()}`;
-        let whereParam = { [this.primaryKeyName()]: this.request.params["id"] };
-        const res = await connection
-        .createQueryBuilder()
-        .delete()
-        .from(this.entity_class())
-        .where(whereStr, whereParam)
-        .execute();
-        return this.response.status(200).json(1);
-    }
-    public async put(attributeNameValueJsonObject) {
-        let res = await connection
-        .createQueryBuilder()
-        .update(this.entity_class())
-        .set(attributeNameValueJsonObject)
-        .where(`${this.primaryKeyName()} = :${this.primaryKeyName()}`, {
-            [this.primaryKeyName()]: this.request.params["id"],
-        })
-        .execute();
-        return this.response.status(200).json(1);
-    }
-    """
-    

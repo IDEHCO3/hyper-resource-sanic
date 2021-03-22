@@ -1,7 +1,7 @@
 from datetime import date
 from typing import List, Tuple, Optional, Any
 import copy
-
+import time
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from .database import DialectDatabase
@@ -76,7 +76,11 @@ class DialectDbPostgresql(DialectDatabase):
         return rows
     async def fetch_all(self):
         query = self.metadata_table.select()
+        start = time.time()
+        print(f"time: {start} start query: {query}")
         rows = await self.db.fetch_all(query)
+        end = time.time()
+        print(f"time: {end - start} end query: {query}")
         return rows
     async def next_val(self, schema_sequence: str = None) -> int:
         sequence = schema_sequence if schema_sequence is not None else self.schema_sequence()
@@ -86,9 +90,9 @@ class DialectDbPostgresql(DialectDatabase):
         if self.entity_class.is_relationship_fk_attribute(inst_attr)  and prefix_col is not None:
             col_name = self.entity_class.column_name_or_None(inst_attr) #inst_attr.prop._user_defined_foreign_keys[0].name
             model_class = self.entity_class.class_given_relationship_fk(inst_attr)
-            return f"CASE WHEN {col_name} is not null THEN '{prefix_col}{BasicRoute.router_list(model_class)}/' || {col_name} ELSE null  END AS {self.entity_class.attribute_name_given(inst_attr)}"
+            return f"CASE WHEN {col_name} is not null THEN '{prefix_col}{model_class.router_list()}/' || {col_name} ELSE null  END AS {self.entity_class.attribute_name_given(inst_attr)}"
         elif self.entity_class.is_primary_key(inst_attr):
-            pref = f'{prefix_col}{BasicRoute.router_list(self.entity_class)}/' if prefix_col is not None  else ''
+            pref = f'{prefix_col}{self.entity_class.router_list()}/' if prefix_col is not None  else ''
             col_name = self.entity_class.column_name_or_None(inst_attr)
             attr_name = self.entity_class.attribute_name_given(inst_attr)
             return f"'{pref}' || {col_name} as {attr_name}"

@@ -22,6 +22,12 @@ class DialectDbPostgis(DialectDbPostgresql):
         rows = await self.db.fetch_all(sql)
         return rows[0]['json_build_object']
 
+    async def fetch_all_as_geobuf(self, tuple_attrib : Tuple[str] = None,  a_query: str = None, prefix_col_val: str=None ):
+        sub_query = self.basic_select(tuple_attrib, prefix_col_val) if a_query is None else a_query
+        geom = self.entity_class.geo_column_name()
+        query = f"SELECT  ST_AsGeobuf(q, '{geom}') FROM ({sub_query}) AS q"
+        rows = await self.db.fetch_all(query)
+        return rows[0]['st_asgeobuf']
     def function_db(self) -> str:
         return 'st_asgeojson'
 

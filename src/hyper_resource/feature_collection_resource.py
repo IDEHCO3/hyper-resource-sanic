@@ -1,3 +1,5 @@
+import time
+
 from settings import BASE_DIR, SOURCE_DIR
 import sanic
 
@@ -7,7 +9,7 @@ from src.hyper_resource.spatial_collection_resource import SpatialCollectionReso
 from src.orm.database_postgis import DialectDbPostgis
 import json, os
 MIME_TYPE_JSONLD = "application/ld+json"
-
+from geoalchemy2.shape import to_shape
 class FeatureCollectionResource(SpatialCollectionResource):
 
     def __init__(self, request):
@@ -19,7 +21,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
             if hasattr(column_type, "geometry_type"):
                 return column
 
-    def rows_as_dict(self, rows):
+    async def rows_as_dict(self, rows):
         response_data = []
         geom_attrubute = self.get_geom_attribute()
         feature_collection = {
@@ -31,12 +33,13 @@ class FeatureCollectionResource(SpatialCollectionResource):
             #     }
             # }
         }
+
         for row in rows:
             row_dict = dict(row)
             feature = {"type": "Feature"}
-            geometry = json.loads(row_dict[geom_attrubute])
+            geometry = to_shape(row_dict[geom_attrubute]).__geo_interface__ #json.loads(row_dict[geom_attrubute])
             row_dict.pop(geom_attrubute, None)
-            geometry.pop("crs", None)
+            #geometry.pop("crs", None)
             feature["geometry"] = geometry
 
             feature["properties"] = row_dict
@@ -63,6 +66,23 @@ class FeatureCollectionResource(SpatialCollectionResource):
             html_content = body.read()
             content = self.set_html_variables(html_content)
             return sanic.response.html(content, 200)
+
+    async def get_geobuf_representation(self):
+        start = time.time()
+        print(f"time: {start} start rows in python")
+        rows = await self.dialect_DB().fetch_all_as_geobuf(prefix_col_val=self.protocol_host())
+        res = sanic.response.raw(rows or [], content_type='application/octet-stream')
+        end = time.time()
+        print(f"time: {end - start} end rows in python")
+        return res
+    async def get_representation(self):
+        accept = self.request.headers['accept']
+        if 'text/html' in accept:
+            return await self.get_html_representation()
+        elif 'application/octet-stream' in accept:
+            return await self.get_geobuf_representation()
+        else:
+            return await self.get_json_representation()
 
     def dialect_DB(self):
           return DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())

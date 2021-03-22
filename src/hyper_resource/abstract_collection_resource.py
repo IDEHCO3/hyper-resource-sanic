@@ -1,3 +1,5 @@
+import time
+
 from asyncpg import UniqueViolationError, DataError
 
 from settings import BASE_DIR, SOURCE_DIR
@@ -32,17 +34,30 @@ class AbstractCollectionResource(AbstractResource):
     def __init__(self, request):
         super().__init__(request)
         self.context_class = AbstractCollectionContext
-
-    def rows_as_dict(self, rows):
+    def list_function_names(self) -> List[str]:
+        return collection_function_names
+    async def rows_as_dict(self, rows):
         return [dict(row) for row in rows]
     async def get_html_representation(self):
         # Temporario até gerar código em html para recurso não espacial
-        rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
+        #rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
+        rows = await self.dialect_DB().fetch_all()
+        rows = self.rows_as_dict(rows)
         return sanic.response.text(rows or [], content_type='application/json')
     async def get_json_representation(self):
 
+        start = time.time()
+        print(f"time: {start} start rows in python")
+
+        #rows = await self.dialect_DB().fetch_all()
+        #rows_from_db = await self.rows_as_dict(rows)
+        #res = sanic.response.json(rows_from_db or [])
         rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
-        return sanic.response.text(rows or [], content_type='application/json')
+        res = sanic.response.text(rows or [], content_type='application/json')
+        end = time.time()
+        print(f"time: {end - start} end rows in python")
+        return res
+
     async def get_representation(self):
         accept = self.request.headers['accept']
         if 'text/html' in accept:

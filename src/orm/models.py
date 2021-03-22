@@ -6,6 +6,8 @@ from sqlalchemy.orm import ColumnProperty, RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 
+from src.hyper_resource.basic_route import BasicRoute
+
 Base = declarative_base()
 
 class AlchemyBase:
@@ -159,6 +161,22 @@ class AlchemyBase:
         return cls.dict_name_operation()[operation_name].__annotations__
     def attribute_starts_with(self, attribute: str) -> 'AlchemyBase':
         return None
+
+    @classmethod
+    def router_id(cls):
+        return BasicRoute.router_id(cls.model_class)
+
+    @classmethod
+    def router_id_path(cls):
+        return BasicRoute.router_id_path(cls)
+
+    @classmethod
+    def router_list(cls):
+        return BasicRoute.router_list(cls)
+
+    @classmethod
+    def router_list_path(cls):
+        return BasicRoute.router_list_path(cls)
 
 class AlchemyGeoBase(AlchemyBase):
     @classmethod
