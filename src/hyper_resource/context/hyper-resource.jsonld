@@ -39,7 +39,7 @@
 			"@id": "hr:Resource",
 			"@type": "rdfs:Resource",
 			"label": "Resource of Hyper Resource",
-			"comment": "The class of dereferenceable resources by means a client can attempt to dereference; however, the received responses should still be verified.",	
+			"comment": "The class of dereferenceable resources by means a client can attempt to dereference; however, the received responses should still be verified."
 		},
 		{
 			"@id": "hr:Class",
@@ -75,7 +75,7 @@
 			"comment": "The HTTP method.",
 			"domain": "hr:Operation",
 			"range": "xsd:string"
-        	},
+		},
 		{
 			"@id": "hydra:expectsHeader",
 			"@type": "rdf:Property",
@@ -106,6 +106,68 @@
 			"@type": "hr:Class",
 			"label": "Operation parameter",
 			"comment": "Parameter of a given operation"
-		}
+		},
+
+		{
+			"@id": "hydra:SupportedProperty",
+			"@type": "hydra:Class",
+			"label": "Supported Property",
+			"comment": "A property known to be supported by a Hyper Resource Class.",
+			"isDefinedBy": "http://127.0.0.1:8000/core#"
+		},
+		{
+			"@id": "hr:property",
+			"@type": "rdf:Property",
+			"label": "property",
+			"comment": "The HTTP method.",
+			"domain": "hr:SupportedProperty",
+			"range": "xsd:string",
+			"isDefinedBy": "http://127.0.0.1:8000/core#"
+		},
+		{
+			"@id": "hr:isExternal",
+			"@type": "rdf:Property",
+			"label": "isExternal",
+			"comment": "The HTTP method.",
+			"domain": "hr:SupportedProperty",
+			"range": "xsd:boolean",
+			"isDefinedBy": "http://127.0.0.1:8000/core#"
+		},
+		{
+            "@id": "hr:required",
+            "@type": "rdf:Property",
+            "label": "required",
+            "comment": "True if the property is required, false otherwise.",
+            "range": "xsd:boolean",
+            "domain": "hr:SupportedProperty",
+            "isDefinedBy": "http://127.0.0.1:8000/core#"
+        },
+		 {
+            "@id": "hr:readable",
+            "@type": "rdf:Property",
+            "label": "readable",
+            "comment": "True if the client can retrieve the property's value, false otherwise.",
+            "domain": "hr:SupportedProperty",
+            "range": "xsd:boolean",
+            "isDefinedBy": "http://127.0.0.1:8000/core#"
+        },
+        {
+            "@id": "hr:writable",
+            "@type": "rdf:Property",
+            "label": "writable",
+            "comment": "True if the client can change the property's value, false otherwise.",
+            "domain": "hr:SupportedProperty",
+            "range": "xsd:boolean",
+            "isDefinedBy": "http://127.0.0.1:8000/core#"
+        },
+		{
+			"@id": "hr:supportedProperties",
+			"@container": "@list",
+			"@type": "rdf:Property",
+			"label": "supported properties",
+			"comment": "An list of properties supported by instances of the specific Hyper Resource class",
+			"domain": "hr:Resource",
+			"range": "hydra:SupportedProperty"
+		},
 	]
 }
