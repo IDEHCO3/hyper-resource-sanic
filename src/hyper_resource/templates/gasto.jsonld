@@ -1,0 +1,180 @@
+{
+    "@context": {
+        "hr": "http://127.0.0.1:8000/core#",
+        "hydra": "http://www.w3.org/ns/hydra/core#",
+        "schema": "http://schema.org/",
+        "id": "schema:Integer",
+        "data": "schema:Date",
+        "tipo_gasto": {
+            "@reverse": "schema:relatedLink"
+        },
+        "tipo_gasto_pai": {
+            "@reverse": "schema:relatedLink"
+        },
+        "usuario": {
+            "@reverse": "schema:relatedLink"
+        },
+        "valor": "schema:Float",
+        "detalhe": "schema:Text"
+    },
+    "@type": "schema:Thing",
+
+    "hydra:supportedProperty": [
+        {
+            "@type": "hydra:SupportedProperty",
+            "hydra:property": "id",
+            "hydra:required": false,
+            "hydra:readable": true,
+            "hydra:writable": false,
+            "hr:external": false
+        },
+        {
+            "@type": "hydra:SupportedProperty",
+            "hydra:property": "data",
+            "hydra:required": false,
+            "hydra:readable": true,
+            "hydra:writable": true,
+            "hr:external": false
+        },
+        {
+            "@type": "hydra:SupportedProperty",
+            "hydra:property": "valor",
+            "hydra:required": true,
+            "hydra:readable": true,
+            "hydra:writable": true,
+            "hr:external": false
+        },
+        {
+            "@type": "hydra:SupportedProperty",
+            "hydra:property": "detalhe",
+            "hydra:required": false,
+            "hydra:readable": true,
+            "hydra:writable": true,
+            "hr:external": false
+        },
+        {
+            "@type": "hydra:SupportedProperty",
+            "hydra:property": "tipo_gasto",
+            "hydra:required": true,
+            "hydra:readable": true,
+            "hydra:writable": true,
+            "hr:external": true
+        },
+        {
+            "@type": "hydra:SupportedProperty",
+            "hydra:property": "usuario",
+            "hydra:required": true,
+            "hydra:readable": true,
+            "hydra:writable": true,
+            "hr:external": true
+        }
+    ],
+    "tipo_gasto": [
+        {
+            "hydra:supportedProperty": [
+                {
+                    "@type": "hydra:SupportedProperty",
+                    "hydra:property": "id",
+                    "hydra:required": false,
+                    "hydra:readable": true,
+                    "hydra:writable": false,
+                    "hr:external": false
+                },
+                {
+                    "@type": "hydra:SupportedProperty",
+                    "hydra:property": "nome",
+                    "hydra:required": true,
+                    "hydra:readable": true,
+                    "hydra:writable": true,
+                    "hr:external": false
+                }
+            ],
+            "tipo_gasto_pai": {
+                "hydra:supportedProperty": [
+                    {
+                        "@type": "hydra:SupportedProperty",
+                        "hydra:property": "id",
+                        "hydra:required": false,
+                        "hydra:readable": true,
+                        "hydra:writable": false,
+                        "hr:external": false
+                    },
+                    {
+                        "@type": "hydra:SupportedProperty",
+                        "hydra:property": "nome",
+                        "hydra:required": true,
+                        "hydra:readable": true,
+                        "hydra:writable": true,
+                        "hr:external": false
+                    }
+                ],
+                "@type": ["@id", "schema:Thing"]
+            },
+          	"@type": ["@id", "schema:Thing"]
+        }
+    ],
+    "usuario": [
+        {
+            "@id": "http://127.0.0.1:8000/con-usuario-list/13",
+            "hydra:supportedProperty": [
+                {
+                    "@type": "hydra:SupportedProperty",
+                    "hydra:property": "id",
+                    "hydra:required": false,
+                    "hydra:readable": true,
+                    "hydra:writable": false,
+                    "hr:external": false
+                },
+                {
+                    "@type": "hydra:SupportedProperty",
+                    "hydra:property": "nome",
+                    "hydra:required": true,
+                    "hydra:readable": true,
+                    "hydra:writable": true,
+                    "hr:external": false
+                },
+                {
+                    "@type": "hydra:SupportedProperty",
+                    "hydra:property": "nome_usuario",
+                    "hydra:required": true,
+                    "hydra:readable": true,
+                    "hydra:writable": true,
+                    "hr:external": false
+                },
+                {
+                    "@type": "hydra:SupportedProperty",
+                    "hydra:property": "avatar",
+                    "hydra:required": false,
+                    "hydra:readable": true,
+                    "hydra:writable": true,
+                    "hr:external": false
+                },
+                {
+                    "@type": "hydra:SupportedProperty",
+                    "hydra:property": "data_nascimento",
+                    "hydra:required": false,
+                    "hydra:readable": true,
+                    "hydra:writable": true,
+                    "hr:external": false
+                },
+                {
+                    "@type": "hydra:SupportedProperty",
+                    "hydra:property": "email",
+                    "hydra:required": false,
+                    "hydra:readable": true,
+                    "hydra:writable": true,
+                    "hr:external": false
+                },
+                {
+                    "@type": "hydra:SupportedProperty",
+                    "hydra:property": "senha",
+                    "hydra:required": true,
+                    "hydra:readable": false,
+                    "hydra:writable": true,
+                    "hr:external": false
+                }
+            ],
+          	"@type": ["@id", "schema:Person"]
+        }
+    ]
+}

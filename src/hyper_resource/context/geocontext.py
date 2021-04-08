@@ -15,6 +15,7 @@ PREFIX_GEOJSONLD = "geojson"
 PREFIX_HYPER_RESOURCE = "hr"
 
 SUPPORTED_OPERATIONS_KEYWORD = f"{PREFIX_HYPER_RESOURCE}:supportedOperations"
+SUPPORTED_PROPERTIES_KEYWORD = f"{PREFIX_HYPER_RESOURCE}:supportedProperties"
 
 GEOCONTEXT_TEMPLATE = {
     f"{ACONTEXT_KEYWORK}": {
@@ -96,10 +97,28 @@ class GeoDetailContext(GeoContext):
         d =  {SUPPORTED_OPERATIONS_KEYWORD: supported_operations}
         return d
 
+    def get_basic_supported_properties(self) -> dict:
+        supported_properties = []
+        for column in self.metadata_table.columns:
+             # WARNING: must check if the property is a dereferencable
+            is_fk = column.name in self.db_dialect.foreign_keys_names()
+            property_dict = {
+                "@type": "hr:SupportedProperty",
+                "hr:property": column.name,
+                "hr:required": not column.nullable,
+                "hr:readable": True,
+                "hr:writable": True,
+                "hr:external": is_fk
+            }
+            supported_properties.append(property_dict)
+        d = {SUPPORTED_PROPERTIES_KEYWORD: supported_properties}
+        return d
+
     def get_basic_context(self):
         context = copy.deepcopy(GEOCONTEXT_TEMPLATE)
         context[ACONTEXT_KEYWORK][self.get_geometry_type()] = f"{PREFIX_GEOJSONLD}:{self.get_geometry_type()}"
         context[ACONTEXT_KEYWORK].update(self.get_properties_term_definition_dict())
 
         context.update(self.get_basic_supported_operations())
+        context.update(self.get_basic_supported_properties())
         return context

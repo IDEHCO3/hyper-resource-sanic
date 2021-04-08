@@ -76,7 +76,8 @@ EXPECTED_RELATIONSHIP_CONTEXT = {
         },
         "valor": "schema:Float",
         "detalhe": "schema:Text"
-    }
+    },
+    "@type": "schema:Thing"
 }
 
 class TestBasicContext():
@@ -101,5 +102,6 @@ class TestBasicContext():
         dialect = DialectDbPostgis(Database(env.str("URLDB"), ssl=False, min_size=1, max_size=20), ConGasto.__table__, ConGasto )
 
         context = ConGastoCollectionContext(dialect, ConGasto.__table__, ConGasto).get_basic_context()
-
+        # print(context)
+        # print(EXPECTED_RELATIONSHIP_CONTEXT)
         TestCase().assertDictEqual(EXPECTED_RELATIONSHIP_CONTEXT, context)
