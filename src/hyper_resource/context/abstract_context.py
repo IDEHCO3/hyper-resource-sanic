@@ -1,3 +1,5 @@
+from typing import List
+
 from src.hyper_resource.abstract_resource import AbstractResource
 from src.orm.database import DialectDatabase
 from src.hyper_resource.context.context_types import SQLALCHEMY_SCHEMA_ORG_TYPES, PYTHON_SCHEMA_ORG_TYPES
@@ -14,11 +16,12 @@ port = env.str("PORT", "8002")
 host = env.str("HOST", "127.0.0.1")
 
 PREFIX_HYPER_RESOURCE = "hr"
+PREFIX_SCHEMA_ORG = "schema"
 
-CONTEXT_TEMPLATE = {
-    "@context": {
+VOCABS_TEMPLATE = {
+    f"{ACONTEXT_KEYWORK}": {
         f"{PREFIX_HYPER_RESOURCE}": f"http://{host}:{port}/core",
-        "schema": "http://schema.org/",
+        f"{PREFIX_SCHEMA_ORG}": "http://schema.org/",
     }
 }
 
@@ -29,9 +32,20 @@ class AbstractContext(object):
         self.entity_class = entity_class
 
     def get_basic_context(self):
-        context = copy.deepcopy(CONTEXT_TEMPLATE)
+        context = copy.deepcopy(VOCABS_TEMPLATE)
         context[ACONTEXT_KEYWORK].update(self.get_properties_term_definition_dict())
         # context.update(self.get_type_by_model_class())
+        context.update(AbstractResource.MAP_MODEL_FOR_CONTEXT[self.entity_class].get_type_by_model_class())
+        return context
+
+    def get_projection_context(self, attributes: List[str]):
+        context = copy.deepcopy(VOCABS_TEMPLATE)
+        context[ACONTEXT_KEYWORK].pop(PREFIX_HYPER_RESOURCE)
+        filtered_term_def_dict = dict()
+        for term, definition in self.get_properties_term_definition_dict().items():
+            if term in attributes:
+                filtered_term_def_dict.update({term: definition})
+        context[ACONTEXT_KEYWORK].update(filtered_term_def_dict)
         context.update(AbstractResource.MAP_MODEL_FOR_CONTEXT[self.entity_class].get_type_by_model_class())
         return context
 

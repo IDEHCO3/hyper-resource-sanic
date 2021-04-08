@@ -99,8 +99,8 @@ class TestFilterExpression():
        assert await interp.translate() == "sigla in ('RJ','SP','MG','ES')"
        interp = Interpreter("/(/id_objeto/gt/5/and/id_objeto/lte/101/)/or/(/id_objeto/eq/200/and/sigla/eq/RJ/)/and/sigla/in/RJ,SP,MG,ES/", LimUnidadeFederacaoA, DialectDbPostgis)
        assert await interp.translate() == " ( id_objeto>5 and id_objeto<=101 )  or  ( id_objeto=200 and sigla='RJ' )  and sigla in ('RJ','SP','MG','ES')"
-       interp = Interpreter(f"sigla/eq/(/http://{SERVIDOR}:{PORTA}/lim-unidade-federacao-a-list/56406/sigla/)/or/(/geocodigo/eq/31/)/", LimUnidadeFederacaoA, DialectDbPostgis)
-       assert await interp.translate() == "sigla= ( 'RJ' )  or  ( geocodigo='31' ) "
+       # interp = Interpreter(f"sigla/eq/(/http://{SERVIDOR}:{PORTA}/lim-unidade-federacao-a-list/56406/sigla/)/or/(/geocodigo/eq/31/)/", LimUnidadeFederacaoA, DialectDbPostgis)
+       # assert await interp.translate() == "sigla= ( 'RJ' )  or  ( geocodigo='31' ) "
 
     # @pytest.mark.asyncio
     # async def test_translate_with_operation(self):

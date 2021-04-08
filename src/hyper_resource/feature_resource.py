@@ -92,3 +92,20 @@ class FeatureResource(SpatialResource):
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
         return response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
+
+    async def options_given_path(self, id, path):
+        context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
+
+        if path[-1] == '/':  # Removes trail slash
+            path = path[:-1]
+
+        operation_name_or_attribute_comma = path.split('/')[0].strip().lower()
+        att_names = set(operation_name_or_attribute_comma.split(','))
+        diff_atts = att_names.difference(set(self.attribute_names()))
+
+        if len(diff_atts) == 1:
+            return sanic.response.json(f"The operation or attribute in this {list(diff_atts)} does not exists", status=400)
+        elif len(diff_atts) > 1:
+            return sanic.response.json(f"The operations or attributes {list(diff_atts)} do not exists", status=400)
+
+        return response.json(context.get_projection_context(list(att_names)), content_type=MIME_TYPE_JSONLD)
