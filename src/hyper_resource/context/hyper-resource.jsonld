@@ -3,7 +3,6 @@
 		"hr": "http://127.0.0.1:8000/core#",
 		"hydra": "http://www.w3.org/ns/hydra/core#",
 		"rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-		"xsd": "http://www.w3.org/2001/XMLSchema#",
 		"owl": "http://www.w3.org/2002/07/owl#",
 		"schema": "http://schema.org/",
 		"comment": "rdfs:comment",
@@ -74,7 +73,7 @@
 			"label": "method",
 			"comment": "The HTTP method.",
 			"domain": "hr:Operation",
-			"range": "xsd:string"
+			"range": "schema:Text"
 		},
 		{
 			"@id": "hydra:expectsHeader",
@@ -90,7 +89,7 @@
 			"label": "Operation URL path",
 			"comment": "Specification of the path expected to be appended to current URL with placeholders to be fulfiled according with operation params",
 			"domain": "hr:Operation",
-			"range": "xsd:string"
+			"range": "schema:Text"
 		},
 		{
 			"@id": "hr:parameters",
@@ -109,8 +108,8 @@
 		},
 
 		{
-			"@id": "hydra:SupportedProperty",
-			"@type": "hydra:Class",
+			"@id": "hr:SupportedProperty",
+			"@type": "hr:Class",
 			"label": "Supported Property",
 			"comment": "A property known to be supported by a Hyper Resource Class.",
 			"isDefinedBy": "http://127.0.0.1:8000/core#"
@@ -119,18 +118,18 @@
 			"@id": "hr:property",
 			"@type": "rdf:Property",
 			"label": "property",
-			"comment": "The HTTP method.",
+			"comment": "The property name",
 			"domain": "hr:SupportedProperty",
-			"range": "xsd:string",
+			"range": "schema:Text",
 			"isDefinedBy": "http://127.0.0.1:8000/core#"
 		},
 		{
 			"@id": "hr:isExternal",
 			"@type": "rdf:Property",
 			"label": "isExternal",
-			"comment": "The HTTP method.",
+			"comment": "True if the property value is a dereferencable, false if the property value belongs to the current resource",
 			"domain": "hr:SupportedProperty",
-			"range": "xsd:boolean",
+			"range": "schema:Boolean",
 			"isDefinedBy": "http://127.0.0.1:8000/core#"
 		},
 		{
@@ -138,7 +137,7 @@
             "@type": "rdf:Property",
             "label": "required",
             "comment": "True if the property is required, false otherwise.",
-            "range": "xsd:boolean",
+            "range": "schema:Boolean",
             "domain": "hr:SupportedProperty",
             "isDefinedBy": "http://127.0.0.1:8000/core#"
         },
@@ -148,7 +147,7 @@
             "label": "readable",
             "comment": "True if the client can retrieve the property's value, false otherwise.",
             "domain": "hr:SupportedProperty",
-            "range": "xsd:boolean",
+            "range": "schema:Boolean",
             "isDefinedBy": "http://127.0.0.1:8000/core#"
         },
         {
@@ -157,7 +156,7 @@
             "label": "writable",
             "comment": "True if the client can change the property's value, false otherwise.",
             "domain": "hr:SupportedProperty",
-            "range": "xsd:boolean",
+            "range": "schema:Boolean",
             "isDefinedBy": "http://127.0.0.1:8000/core#"
         },
 		{
@@ -167,7 +166,7 @@
 			"label": "supported properties",
 			"comment": "An list of properties supported by instances of the specific Hyper Resource class",
 			"domain": "hr:Resource",
-			"range": "hydra:SupportedProperty"
-		},
+			"range": "hr:SupportedProperty"
+		}
 	]
 }

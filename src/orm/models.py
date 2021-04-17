@@ -5,7 +5,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import ColumnProperty, RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.orm.decl_api import DeclarativeMeta
+# from sqlalchemy.orm.decl_api import DeclarativeMeta
 
 from src.hyper_resource.basic_route import BasicRoute
 from src.orm.dictionary_actions import *
@@ -123,7 +123,7 @@ class AlchemyBase:
                 arr = arr + cls.model_class_given(attrib).all_attributes_with_dereferenceable(level + 1)
         return arr
     @classmethod
-    def model_class_for_relationship_attribute(cls, instrumentedAttribute : InstrumentedAttribute) -> DeclarativeMeta:
+    def model_class_for_relationship_attribute(cls, instrumentedAttribute : InstrumentedAttribute):
         return instrumentedAttribute.prop.entity.class_
     @classmethod
     def fk_or_none_n_relationship_given(cls, attribute_name : str) -> str:

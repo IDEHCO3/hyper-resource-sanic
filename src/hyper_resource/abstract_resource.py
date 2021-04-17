@@ -86,7 +86,7 @@ class AbstractResource:
     
     #'/string/<parameters:path>'
     async def options_given_path(self, path):
-        return await response.json("Method HEAD not implemented yet.", status=501)
+        return await response.json("Method OPTIONS not implemented yet.", status=501)
 
     async def post(self):
         return await response.json("Method POST not implemented yet.", status=501)
