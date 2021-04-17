@@ -7,6 +7,24 @@ from src.orm.models import AlchemyBase, Base
 from src.orm.geo_models import AlchemyGeoBase
 import unittest
 import pytest
+class Ator(AlchemyBase, Base):
+   __tablename__ = 'ator'
+   __table_args__ = {'schema': 'adm'}
+   nome = Column('nome',String(length=500),nullable=False)
+   status_adesao = Column('status_adesao',String(length=30),nullable=False)
+   documento_solicitacao = Column('documento_solicitacao',Text(),nullable=True)
+   capacitacao = Column('capacitacao',String(length=20),nullable=True)
+   modalidade = Column('modalidade',String(length=20),nullable=True)
+   observacao = Column('observacao',Text(),nullable=True)
+   id_ator = Column('id_ator',Integer(),primary_key=True,nullable=False)
+   no_implementado = Column('no_implementado',String(length=20),nullable=True)
+   data_oficio = Column('data_oficio',Date(),nullable=True)
+   esfera = Column('esfera',String(length=20),nullable=True)
+   nome_instituicao_origem = Column('nome_instituicao_origem',String(length=100),nullable=True)
+   data_adesao = Column('data_adesao',Date(),nullable=True)
+   data_interesse = Column('data_interesse',Date(),nullable=True)
+   sigla = Column('sigla',String(length=10),nullable=True)
+
 class Representante(AlchemyBase, Base):
    __tablename__ = 'representante'
    __table_args__ = {'schema': 'adm'}
@@ -19,13 +37,13 @@ class Representante(AlchemyBase, Base):
    telefone1 = Column('telefone1',String(length=25),nullable=True)
    telefone2 = Column('telefone2',String(length=25),nullable=True)
    celular_telefone3 = Column('celular_telefone3',String(length=25),nullable=True)
-   id_ator = Column('id_ator',Integer(),nullable=False)
    email2 = Column('email2',String(length=50),nullable=True)
    jacare_gestor = Column('gestor',String(length=20),nullable=True)
    capacitado = Column('capacitado',String(length=20),nullable=True)
-   id_capacitacao = Column('id_capacitacao',Integer(),nullable=True)
-   #ator = relationship('Ator')
-   #capacitacao = relationship('Capacitacao')
+   #id_ator = Column('id_ator', Integer(), nullable=False)
+   #ator = relationship('Ator',foreign_keys=[id_ator])
+   #id_capacitacao = Column('id_capacitacao', Integer(), nullable=True)
+   #capacitacao = relationship('Capacitacao',foreign_keys=[id_capacitacao])
    def nome_abreviado(self)->str:
       return self.nome[:-1]
 
@@ -68,17 +86,18 @@ class TestAlchemyBase(unittest.TestCase):
        p1 = 'nome'
        rep = Representante()
        assert rep.is_projection_from_path(p1) == True
-       p2 = 'nome,ator'
+       p2 = 'nome,area_setor'
        assert rep.is_projection_from_path(p2) == True
-       p3 = 'nome,ator,atributoinexistente'
+       p3 = 'nome,area_setor,atributoinexistente'
        assert rep.is_projection_from_path(p3) == False
        p4 = 'nome/upper'
        assert rep.is_projection_from_path(p4) == False
+
     def test_is_operation_from_path(self):
        p1 = 'nome'
        rep = Representante()
        assert rep.is_operation_from_path(p1) == False
-       p1 = 'nome,ator'
+       p1 = 'nome,area_setor'
        assert rep.is_operation_from_path(p1) == False
        p1 = 'nome,ator,atributoinexistente'
        assert rep.is_operation_from_path(p1) == False
@@ -94,3 +113,13 @@ class TestAlchemyBase(unittest.TestCase):
     def test_validate_path(self):
        path = 'projection/nome,sigla'
        assert type(UnidadeFederacao.validate_path(path), str)
+
+    def test_path_as_list(self):
+       path ='nome/data'
+       assert  UnidadeFederacao.path_as_list(path) == ['nome', 'data']
+       path = 'nome/data/'
+       assert UnidadeFederacao.path_as_list(path) == ['nome', 'data']
+       path = 'geom/contains'
+       assert UnidadeFederacao.path_as_list(path) == ['geom', 'contains']
+       path = 'geom/contains/(/http://unidade-federacao/rj/geom/)/'
+       self.assertEquals(UnidadeFederacao.path_as_list(path),['geom', 'contains', 'http://unidade-federacao/rj/geom'])

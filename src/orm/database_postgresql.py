@@ -86,6 +86,7 @@ class DialectDbPostgresql(DialectDatabase):
         sequence = schema_sequence if schema_sequence is not None else self.schema_sequence()
         row = await self.db.fetch_one(f"select nextval('{sequence}')")
         return row['nextval']
+
     def alias_column(self, inst_attr: InstrumentedAttribute, prefix_col: str = None):
         if self.entity_class.is_relationship_fk_attribute(inst_attr)  and prefix_col is not None:
             col_name = self.entity_class.column_name_or_None(inst_attr) #inst_attr.prop._user_defined_foreign_keys[0].name
@@ -109,7 +110,7 @@ class DialectDbPostgresql(DialectDatabase):
             if alias is not None:
                 list_alias.append(alias)
         return ','.join(list_alias)
-    async def fetch_one(self, dic: dict, all_column: str='*', prefix_col_val: str=None ):
+    async def fetch_one(self, dic: dict, all_column: str=None, prefix_col_val: str=None ):
         key_or_unique = next(key for key in dic.keys())
         query = self.basic_select(all_column, prefix_col_val)
         query = f"{query} where {key_or_unique} = :{key_or_unique}"
@@ -140,12 +141,25 @@ class DialectDbPostgresql(DialectDatabase):
         print(sql)
         rows = await self.db.fetch_one(sql)
         return rows if rows is None else rows[self.function_db()]
-    async def find_one_as_model(self, pk: int , all_column: str ='*' ) -> Optional[AlchemyBase]:
-        query = self.basic_select_by_id(pk)
-        sql = f"select (t.*) from ({query}) as t;"
+    async def fetch_all_model(self, tuple_attrib : Tuple[str] = None, prefix_col_val: str=None):
+        query = self.basic_select(tuple_attrib, prefix_col_val)
+        print(query)
+        start = time.time()
+        print(f"time: {start} start rows in python")
+        rows = await self.db.fetch_all(query)
+        res = [ self.entity_class(**row) for row in rows]
+        end = time.time()
+        print(f"time: {end - start} end rows in python")
+        return res
+
+    async def fetch_one_model(self, pk: int , tuple_attrib : Tuple[str] = None, prefix_col_val: str=None) -> Optional[AlchemyBase]:
+        sql = self.basic_select_by_id(pk, tuple_attrib, prefix_col_val)
         print(sql)
-        rows = await self.db.fetch_one(sql)
-        return self.entity_class(**rows)
+        row = await self.db.fetch_one(sql)
+        if row:
+            return self.entity_class(**row)
+        return None
+
     async def filter(self, a_filter):
         cols_as_enum = self.enum_column_names()
         query = f'select {cols_as_enum} from {self.schema_table_name()} where {a_filter}'

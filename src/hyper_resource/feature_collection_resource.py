@@ -47,19 +47,6 @@ class FeatureCollectionResource(SpatialCollectionResource):
         feature_collection["features"] = response_data
         return feature_collection
 
-    def set_html_variables(self, html_content:str)-> str:
-        return feature_utils.set_html_variables(
-            html_content, self.metadata_table().name,
-            json.dumps(
-                self.context_class(
-                    self.dialect_DB(),
-                    self.metadata_table(),
-                    self.entity_class()
-                ).get_basic_context(),
-                indent=2
-            )
-        )
-
     async def get_html_representation(self):
         html_filepath = os.path.join(SOURCE_DIR, "hyper_resource", "templates" ,"basic_geo.html")
         with open(html_filepath, "r") as body:
@@ -75,6 +62,8 @@ class FeatureCollectionResource(SpatialCollectionResource):
         end = time.time()
         print(f"time: {end - start} end rows in python")
         return res
+
+
     async def get_representation(self):
         accept = self.request.headers['accept']
         if 'text/html' in accept:
@@ -83,6 +72,19 @@ class FeatureCollectionResource(SpatialCollectionResource):
             return await self.get_geobuf_representation()
         else:
             return await self.get_json_representation()
+
+    async def get_mvt_representation_given_path(self, path):
+        #application/vnd.mapbox-vector-tile
+        params = path.split('&')
+        rows = await self.dialect_DB().fetch_as_mvt_tiles(params)
+        res = sanic.response.raw(rows or [], content_type='application/vnd.mapbox-vector-tile')
+        return res
+
+    async def get_representation_given_path(self, path):
+        accept = self.request.headers['accept']
+        if 'application/vnd.mapbox-vector-tile' in accept:
+            return await self.get_mvt_representation_given_path(path)
+        return super().get_representation_given_path(path)
 
     def dialect_DB(self):
           return DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())

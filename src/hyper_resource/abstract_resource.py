@@ -1,5 +1,10 @@
+import json
+
 from sanic import  response
 from typing import List, Dict
+
+from src.hyper_resource import feature_utils
+
 MIME_TYPE_JSONLD = "application/ld+json"
 from src.hyper_resource.basic_route import *
 class AbstractResource:
@@ -106,3 +111,15 @@ class AbstractResource:
     def validate_data(self, attribute_value: dict):
         attribute_names = attribute_value.keys()
         self.validate_attribute_names(attribute_names)
+    def set_html_variables(self, html_content:str)-> str:
+        return feature_utils.set_html_variables(
+            html_content, self.metadata_table().name,
+            json.dumps(
+                self.context_class(
+                    self.dialect_DB(),
+                    self.metadata_table(),
+                    self.entity_class()
+                ).get_basic_context(),
+                indent=2
+            )
+        )

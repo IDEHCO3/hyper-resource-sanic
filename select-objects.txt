@@ -11,3 +11,6 @@ from (
 	select p.*, (select json_agg(row_to_json(g.*)) from pessoal.gasto as g where g.id_pessoa = p.id_pessoa) gasto 
 	from pessoal.pessoa as p
 ) as t
+
+//pegar as geobuf
+SELECT  ST_AsGeobuf(q, 'geom') FROM (select geom from territorio.br_setores_2020) AS q

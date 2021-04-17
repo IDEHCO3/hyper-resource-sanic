@@ -13,18 +13,22 @@ from settings import MODELS_DIR
 
 def base_template(is_geo: bool= False):
     if is_geo:
-        alchemy_base = 'AlchemyGeoBase'
         import_geo = 'from geoalchemy2 import Geometry'
+        import_base_models = 'from src.orm.models import Base'
+        import_geo_models = 'from src.orm.geo_models import AlchemyGeoBase'
     else:
-        alchemy_base = 'AlchemyBase'
+
+        import_base_models = 'from src.orm.models import AlchemyBase, Base'
         import_geo =''
-    return f"""# -*- coding: utf-8 -*-
+        import_geo_models = ''
+    return f"""# -*- coding: latin-1 -*-
 {import_geo}
 from sqlalchemy import CHAR, Column, Float, Boolean, Integer, Numeric, SmallInteger, String, Text, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.ext.declarative import declarative_base
-from src.orm.models import {alchemy_base}, Base
+{import_base_models}
+{import_geo_models}
 """
 def generate_string_for_column_property(attribute_name, column_property):
     schema_column = column_property.columns[0]

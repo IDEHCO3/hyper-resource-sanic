@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Dict, Tuple, Sequence, List, Any
 
 from sqlalchemy import ForeignKey
@@ -7,11 +8,14 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 
 from src.hyper_resource.basic_route import BasicRoute
-
+from src.orm.dictionary_actions import *
+from src.orm.converter import ConverterType
 Base = declarative_base()
 
 class AlchemyBase:
     dialect_db = None
+    _dic = None
+
     @classmethod     
     def schema(cls) -> str:
         return cls.__table_args__ ['schema']
@@ -87,6 +91,21 @@ class AlchemyBase:
         items = cls.__dict__.items() if attrib is None else attrib.__dict__.items()
         return [(key, value) for key, value in items if
                          cls.is_not_foreign_key_attribute(value) or cls.is_relationship_attribute(value)]
+
+    @classmethod
+    def attribute_names_with_dereferenceable(cls, attrib: InstrumentedAttribute = None) -> List[str]:
+        """
+        in sqlalchemy relationship is created with Relationship class and frequently
+        with ForeignKey attribute too. But it is not necessary show both attributes.
+        attribute_names_with_dereferenceable get attributes (InstrumentedAttribute) of type:
+         ColumnProperty, PrimaryKey and Relationship
+        :param attrib:
+        :return:
+        """
+        items = cls.__dict__.items() if attrib is None else attrib.__dict__.items()
+        return [key for key, value in items if
+                cls.is_not_foreign_key_attribute(value) or cls.is_relationship_attribute(value)]
+
     @classmethod
     def model_class_given(cls, relationship_attribute : RelationshipProperty):
         return relationship_attribute.prop.mapper.class_
@@ -138,6 +157,7 @@ class AlchemyBase:
     def column_name(cls, attribute_name: str) -> str:
         attribute = cls.__dict__[attribute_name]
         return cls.column_name_or_None(attribute)
+
     @classmethod
     def column_names_given_attributes(cls, attributes_from_path) -> List[str]:
         return [ col for att, col in cls.list_attribute_column() if att in attributes_from_path]
@@ -149,18 +169,6 @@ class AlchemyBase:
     @classmethod
     def enum_column_names_as_given_attributes(cls, attributes_from_path) -> str:
         return ','.join(cls.column_names_given_attributes(attributes_from_path))
-    @classmethod
-    def dict_name_operation(cls) -> Dict:
-        return {
-            "attribute_starts_with" : AlchemyBase.attribute_starts_with
-        }
-    @classmethod
-    def reflection_operation(cls, operation_name) -> str:
-        if operation_name not in cls.dict_name_operation():
-            raise LookupError(f'This {operation_name} is not supported')
-        return cls.dict_name_operation()[operation_name].__annotations__
-    def attribute_starts_with(self, attribute: str) -> 'AlchemyBase':
-        return None
 
     @classmethod
     def router_id(cls):
@@ -178,7 +186,172 @@ class AlchemyBase:
     def router_list_path(cls):
         return BasicRoute.router_list_path(cls)
 
-class AlchemyGeoBase(AlchemyBase):
     @classmethod
-    def geo_column_name(cls) -> str:
-        return next((tuple_name_type[0] for tuple_name_type in cls.list_attribute_column_type() if tuple_name_type[2].startswith('geometry(')), None)
+    def action_dic(cls) -> Dict[type, Dict]:
+        """
+        :return: This method returns a dictionary to get function/attribute supported in a request.
+        The key is a type/class and value is a dictionary(key: operation/attribute name, value: Action instance
+        """
+        if cls._dic is None:
+            cls._dic = {}
+            cls._dic.update(dic_action)
+        return cls._dic
+
+    @classmethod
+    def validate_path(cls, a_path: str):
+        if cls.is_projection_from_path(a_path):
+            attrib_names = [att.strip() for att in a_path.split('/')[0].split(',')]
+            dif_set = (set(attrib_names) - set(cls.attribute_names_with_dereferenceable()))
+            if len(dif_set) > 0:
+                raise AttributeError(f"The list of attribute not exists: {dif_set.__str__()}")
+            return 'is_projection'
+
+    @classmethod
+    def is_attribute_from_path(cls, path: str) -> bool:
+        pass
+
+    @classmethod
+    def path_has_url(cls, path: str)-> bool:
+        return '/(/http:' in path or '/(/https:' in path
+
+    @classmethod
+    def path_with_url_splitted(cls, path : str)-> List[str]:
+        """
+        :param path must have an url> example: geom/contains/(/http://unidade-federacao/rj/geom/)/
+        :return: List[str]
+        """
+        idx_ini = path.find('/(/http')
+        if idx_ini == -1:
+            raise SyntaxError(f"Problem with {path}. Verify if path has balanced parentheses and http")
+        first_part_lst = (path[0:idx_ini]).split('/')
+        idx_midst = path.find('/)', idx_ini)
+        if idx_midst == -1:
+            raise SyntaxError(f"Problem with {path}. Verify if path has balanced parentheses ---'/(/'---'/)/'---  and http")
+        middle_part_lst = (path[idx_ini + 3:idx_midst])
+        return first_part_lst + [middle_part_lst]
+    @classmethod
+    def path_as_list(cls, path: str) -> List[str]:
+        if path[-1] == '/':  # Removes trail slash
+            path = path[:-1]
+        if cls.path_has_url(path):
+            return cls.path_with_url_splitted(path)
+        return path.split('/')
+    @classmethod
+    def is_only_attribute_list_from_path(cls, path: str) -> bool:
+        """
+            :param path is a string and should be this format  /attribute1,attribute12  ...
+
+            :return: True if path has only attributes otherwise False. Raise exception if any attribute does not exists
+        """
+        arr_str = cls.path_as_list(path)
+        if len(arr_str) > 1:
+            return False
+        attri_names = [att.strip() for att in arr_str[0].split(',')]
+        diff_set = set(attri_names) - set(cls.attribute_names_with_dereferenceable())
+        if len(diff_set) > 0:
+            return False
+            #raise AttributeError(f"The list of attribute {diff_set.__str__()} is not supported")
+        else:
+            return True
+    @classmethod
+    def starts_by_one_attribute_with_functions(cls, path: str) -> bool:
+        """
+        :param path must have only one attribute and functions after it.
+        :return:
+        """
+        arr_str = cls.path_as_list(path)
+        return len(arr_str) > 1 and len(arr_str[0].split(',')) == 1 and cls.has_attribute(arr_str[0])
+    @classmethod
+    def is_projection_from_path(cls, path: str) -> bool:
+        """
+        :param path is a string and should be this format  /attribute1,attribute12  ...
+        :return: True if path has only attributes otherwise False
+        """
+        arr_str = cls.path_as_list(path)
+        if len(arr_str) > 1:
+            return False
+        attri_names = [att.strip() for att in arr_str[0].split(',')]
+        return len(set(attri_names) - set(cls.attribute_names_with_dereferenceable()))== 0
+
+    def projection(self, string_enum: str) -> object:
+        pass
+
+    def object_has_action(self, a_type: type, action_name: str) -> object:
+
+        if a_type not in self.__class__.action_dic():
+            return False
+
+        return action_name in self.__class__.action_dic()[a_type]
+
+    def is_projection_with_operation_from_path(self, path: str) -> bool:
+        """
+        :param path is a string and should be this format  /attribute1,attribute12  ...
+        :return: True if path has only attributes otherwise False
+        """
+        pass
+
+    async def converter_parameters(self, params: List[str], param_type_arr: List[tuple]) -> List:
+        return await ConverterType().convert_parameters(params, param_type_arr)
+
+    def get_action(self, a_type: type, action_name: str) -> Action:
+        return self.__class__.action_dic()[a_type][action_name]
+
+    async def execute_action(self, obj, action_names: List[str]) -> object:
+        action_name = action_names.pop(0)
+        if not self.object_has_action(type(obj), action_name):
+            raise NotImplementedError(f"The function {action_name} is not implemented in {type(obj)}")
+        action = self.get_action(type(obj), action_name)
+        return await action.execute(obj, action_names)
+
+    async def execute_actionOLD(self, obj, arr_actions: List[str]) -> object:
+        action = arr_actions.pop(0)
+        if not self.object_has_action(type(obj), action):
+            raise NotImplementedError(f"The function {action} is not implemented in {type(obj)}")
+        tuple_dic_int = self.__class__.action_dic()[type(obj)][action]
+        if tuple_dic_int[1] == FUNCTION:
+            annotation_dic = tuple_dic_int[0]
+            param_type_arr = [ (key, value) for key, value in annotation_dic.items() if key != 'return']
+            if len(param_type_arr) == 0:
+                result = getattr(obj, action)()
+            else:
+                if len(arr_actions) == 0:
+                    para_text = f" these parameters: {param_type_arr}" if len(param_type_arr) > 1 else f" this parameter: {param_type_arr}"
+                    raise SyntaxError(f"The operation {action} must have at least {para_text}")
+                params = arr_actions.pop(0).split('&')
+                paramets = await self.converter_parameters(params, param_type_arr)
+                result = getattr(obj, action)(*paramets)
+        else:
+            result = getattr(obj, action)
+        return result
+
+    async def execute_attribute_given(self, path: str):
+        """
+        :param path is a string and have to start with one attribute
+        :return: dictionary with result
+        """
+        arr_actions = self.__class__.path_as_list(path)
+        obj = getattr(self, arr_actions[0])
+        arr_actions = arr_actions[1:]
+        while len(arr_actions) > 0:
+            obj = await self.execute_action(obj, arr_actions)
+        return obj
+    async def execute_function_given(self, path: str) -> object:
+        """
+        :param path is a string and have to start with one function
+        :return: object. It could be any thing. For instance: int, str, float, geometry etc
+        """
+        arr_actions = self.__class__.path_as_list(path)
+        obj = self
+        while len(arr_actions) > 0:
+            obj = await self.execute_action(obj, arr_actions)
+        return obj
+
+    def properties_dict(self, attrib_names: List[str] = None) -> Dict:
+        dic = {}
+        attrs = attrib_names if attrib_names is not None else self.__class__.attribute_names_with_dereferenceable()
+        for attr_name in attrs:
+            dic[attr_name] = getattr(self, attr_name)
+        return dic
+
+    def json_dict(self, attrib_names: List[str] = None) -> dict:
+        return self.properties_dict(attrib_names)

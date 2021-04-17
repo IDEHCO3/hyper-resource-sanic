@@ -1,5 +1,6 @@
 
 import asyncio
+import aiohttp
 from databases import Database
 from environs import Env
 from sanic import Sanic, response
@@ -46,9 +47,13 @@ async def connect_to_db(*args, **kwargs):
     await app.db.connect()
     print("Database connected")
     
-@app.listener("after_server_stop")
-async def disconnect_from_db(*args, **kwargs):
+#@app.listener("after_server_stop")
+#async def disconnect_from_db(*args, **kwargs):
+#    await app.db.disconnect()
+@app.listener('after_server_stop')
+async def finish(app, loop):
     await app.db.disconnect()
+    loop.close()
 
 def setup_database():
     app.db = Database(env.str("URLDB"), ssl=False, min_size=1, max_size=20)

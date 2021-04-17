@@ -34,26 +34,30 @@ class AbstractCollectionResource(AbstractResource):
     def __init__(self, request):
         super().__init__(request)
         self.context_class = AbstractCollectionContext
+
     def list_function_names(self) -> List[str]:
         return collection_function_names
+
     async def rows_as_dict(self, rows):
         return [dict(row) for row in rows]
+
     async def get_html_representation(self):
         # Temporario até gerar código em html para recurso não espacial
         #rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
         rows = await self.dialect_DB().fetch_all()
-        rows = self.rows_as_dict(rows)
+        rows = await self.rows_as_dict(rows)
         return sanic.response.text(rows or [], content_type='application/json')
+
     async def get_json_representation(self):
 
         start = time.time()
         print(f"time: {start} start rows in python")
 
-        #rows = await self.dialect_DB().fetch_all()
-        #rows_from_db = await self.rows_as_dict(rows)
-        #res = sanic.response.json(rows_from_db or [])
-        rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
-        res = sanic.response.text(rows or [], content_type='application/json')
+        rows = await self.dialect_DB().fetch_all()
+        rows_from_db = await self.rows_as_dict(rows)
+        res = sanic.response.json(rows_from_db or [])
+        #rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
+        #res = sanic.response.text(rows or [], content_type='application/json')
         end = time.time()
         print(f"time: {end - start} end rows in python")
         return res
@@ -87,6 +91,7 @@ class AbstractCollectionResource(AbstractResource):
         except (RuntimeError, TypeError, NameError):
             raise
             return sanic.response.json("error: Error no banco")
+
     async def pre_offsetlimit(self, path):
         arguments_from_url_by_slash = path.split('/')
         arguments_from_url = arguments_from_url_by_slash[1].split('&')
@@ -101,18 +106,23 @@ class AbstractCollectionResource(AbstractResource):
         if len(arguments_from_url) == 4:
             return await self.offsetlimit(int(arguments_from_url[0]), int(arguments_from_url[1]), arguments_from_url[2],arguments_from_url[3] )
         raise SyntaxError("The operation offsetlimit has two mandatory integer arguments.")
+
     async def offsetlimit(self, offset: int, limit: int, str_lst_attribute_comma: str=None, asc: str=None):
         if self.is_content_type_in_accept('text/html'):
             return await self.get_html_representation()
         rows = await self.dialect_DB().offset_limit(offset, limit, str_lst_attribute_comma, asc, 'JSON')
         return sanic.response.text(rows or [], content_type='application/json')
+
     async def pre_count(self, path):
         return await self.count()
+
     async def count(self):
         result = await self.dialect_DB().count()
         return sanic.response.json(result['count'])
+
     async def pre_orderby(self, path):
         return await self.orderby(path)
+
     async def orderby(self, path):
         str_attribute_as_comma_list = path.split('/')[1]
         att_names = str_attribute_as_comma_list.split(',')
@@ -122,40 +132,49 @@ class AbstractCollectionResource(AbstractResource):
         rows = await self.dialect_DB().order_by(str_attribute_as_comma_list)
         res = self.rows_as_dict(rows)
         return sanic.response.json(res)
+
     async def pre_projection(self, path):
         str_att_names_as_comma = path.split('/')[0]  # /projection/attri or /attri
         if str_att_names_as_comma == "projection":
             str_att_names_as_comma = path.split('/')[1]
         return await self.projection(str_att_names_as_comma)
+
     async def projection(self, enum_attribute_name: str):
         attr_names = tuple(a.strip() for a in enum_attribute_name.split(','))
         rows = await self.dialect_DB().fetch_all_as_json(attr_names, None, self.protocol_host())
         return sanic.response.text(rows, content_type='application/json')
+
     async def pre_groupbycount(self, path):
         str_atts = path.split('/')[1]  # groupbycount/departamento
         return await self.groupbycount(str_atts)
+
     async def groupbycount(self, str_att_names_as_comma):
         rows = await self.dialect_DB().group_by_count(str_att_names_as_comma, None, 'JSON')
         return sanic.response.text(rows or [], content_type='application/json')
+
     async def pre_groupbysum(self, path):
         str_atts = path.split('/')[1]  # empolyees/name&salary
         fields_from_path = str_atts[1].split('&')
         if self.fields_from_path_not_in_attribute_names(fields_from_path):
             return sanic.response.json(f"The attribute {str_atts} does not exists", status=400)
         return await self.groupbysum(self, path, 'JSON')
+
     async def groupbysum(self, str_att_names_as_comma, att_to_sum):
         rows = await self.dialect_DB().group_by_sum(str_att_names_as_comma, att_to_sum, 'JSON')
         return sanic.response.json(rows)
+
     async def pre_filter(self, path):
         return await self.filter(path[6:])  # len('filter') = 6
+
     def dict_name_operation(self) -> Dict[str, 'function']:
         return {'filter': self.filter}
+
     async def filter(self, path: str):  # -> "AbstractCollectionResource":
         """
-        :param path: expression
-        :return: self
-        :description: Filter a collection given an expression
-        :example: http://server/api/drivers/filter/license/eq/valid
+        params: path
+        return: self
+        description: Filter a collection given an expression
+        example: http://server/api/drivers/filter/license/eq/valid
         """
         if self.is_content_type_in_accept('text/html'):
             return await self.get_html_representation()
@@ -169,8 +188,10 @@ class AbstractCollectionResource(AbstractResource):
         rows = await self.dialect_DB().filter_as_json(whereclause, None ,self.protocol_host())
         return sanic.response.text(rows or [], content_type='application/json')
         #return sanic.response.json([json.dumps(dict(row)) for row in rows])  # response.json(self.rows_as_dict(rows))
+
     async def head(self):
         return sanic.response.json({"context": 1})
+
     async def post(self):
         data = self.request.json
         print(f"Dados enviados: {data}")
