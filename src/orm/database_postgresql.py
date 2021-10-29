@@ -1,5 +1,5 @@
 from datetime import date
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional, Any, Dict
 import copy
 import time
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -122,6 +122,13 @@ class DialectDbPostgresql(DialectDatabase):
         enum_col_names = self.enum_column_names_alias_attribute_given(attributes, prefix_col_val)
         query = f'select {enum_col_names} from {self.schema_table_name()}'
         return query
+    def basic_select_one_by_key_value(self, key_value: Tuple, tuple_attrib: Tuple[str] = None, prefix_col_val: str=None):
+        tp_attribute = self.db_type_name_given_attribute(key_value[0])
+        value_converted = self.convert_to_db(tp_attribute, key_value[1], True)
+        query = self.basic_select(tuple_attrib, prefix_col_val)
+        query = f'{query} where {key_value[0]} = {value_converted}'
+        return query
+
     def basic_select_by_id(self, pk, tuple_attrib: Tuple[str] = None, prefix_col_val: str=None):
         query = self.basic_select(tuple_attrib, prefix_col_val)
         pk_value = pk
@@ -152,8 +159,12 @@ class DialectDbPostgresql(DialectDatabase):
         print(f"time: {end - start} end rows in python")
         return res
 
-    async def fetch_one_model(self, pk: int , tuple_attrib : Tuple[str] = None, prefix_col_val: str=None) -> Optional[AlchemyBase]:
-        sql = self.basic_select_by_id(pk, tuple_attrib, prefix_col_val)
+    async def fetch_one_model(self, pk_or_key_value_tuple, key_value: Dict= None, tuple_attrib : Tuple[str] = None, prefix_col_val: str=None) -> Optional[AlchemyBase]:
+
+        if type(pk_or_key_value_tuple) == int :
+            sql = self.basic_select_by_id(pk_or_key_value_tuple, tuple_attrib, prefix_col_val)
+        else:
+            sql = self.basic_select_one_by_key_value(pk_or_key_value_tuple, tuple_attrib, prefix_col_val)
         print(sql)
         row = await self.db.fetch_one(sql)
         if row:
@@ -233,11 +244,26 @@ class DialectDbPostgresql(DialectDatabase):
         query = f"INSERT INTO {self.schema_table_name()}({self.enum_column_names(column_names)}) VALUES ({self.enum_colon_column_names(column_names)})"
         await self.db.execute(query=query, values=dict_column_value)
         return pk_value
+    def db_type_name_given_attribute(self, attribute_name: str)->str:
+        tp_name = self.entity_class().attribute_column_type(attribute_name)[2]
+        if ('VARCHAR' in tp_name) or ('CHAR' in tp_name):
+            return 'VARCHAR'
+        if tp_name in ('INTEGER', 'INT', 'Integer'):
+            return 'INTEGER'
+        if tp_name in ('FLOAT'):
+            return 'FLOAT'
+        if tp_name in ('DOUBLE'):
+            return 'DOUBLE'
+        if tp_name in ('DATE'):
+           return 'DATE'
+
     def convert_to_db(self, a_type: str, val, is_update: bool= False) -> Any:
         if a_type in ('VARCHAR', 'CHAR'):
             return f"'{val}'" if is_update else val
         if a_type in ('INTEGER', 'INT', 'Integer'):
             return int(val)
+        if a_type in ('FLOAT', 'DOUBLE'):
+            return float(val)
         if a_type in ('DATE'):
             return date.fromisoformat(val) #iso => yyyy-mm-dd
         return val

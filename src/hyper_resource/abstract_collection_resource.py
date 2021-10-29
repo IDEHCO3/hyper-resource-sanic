@@ -43,9 +43,9 @@ class AbstractCollectionResource(AbstractResource):
 
     async def get_html_representation(self):
         # Temporario até gerar código em html para recurso não espacial
-        #rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
-        rows = await self.dialect_DB().fetch_all()
-        rows = await self.rows_as_dict(rows)
+        rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
+        #rows = await self.dialect_DB().fetch_all()
+        #rows = await self.rows_as_dict(rows)
         return sanic.response.text(rows or [], content_type='application/json')
 
     async def get_json_representation(self):
@@ -53,11 +53,11 @@ class AbstractCollectionResource(AbstractResource):
         start = time.time()
         print(f"time: {start} start rows in python")
 
-        rows = await self.dialect_DB().fetch_all()
-        rows_from_db = await self.rows_as_dict(rows)
-        res = sanic.response.json(rows_from_db or [])
-        #rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
-        #res = sanic.response.text(rows or [], content_type='application/json')
+        #rows = await self.dialect_DB().fetch_all()
+        #rows_from_db = await self.rows_as_dict(rows)
+        #res = sanic.response.json(rows_from_db or [])
+        rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
+        res = sanic.response.text(rows or [], content_type='application/json')
         end = time.time()
         print(f"time: {end - start} end rows in python")
         return res
@@ -176,8 +176,6 @@ class AbstractCollectionResource(AbstractResource):
         description: Filter a collection given an expression
         example: http://server/api/drivers/filter/license/eq/valid
         """
-        if self.is_content_type_in_accept('text/html'):
-            return await self.get_html_representation()
         interp = Interpreter(path, self.entity_class(), self.dialect_DB())
         try:
             whereclause = await interp.translate()

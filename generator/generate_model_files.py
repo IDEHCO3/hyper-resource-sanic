@@ -23,7 +23,7 @@ def base_template(is_geo: bool= False):
         import_geo_models = ''
     return f"""# -*- coding: latin-1 -*-
 {import_geo}
-from sqlalchemy import CHAR, Column, Float, Boolean, Integer, Numeric, SmallInteger, String, Text, Date, ForeignKey
+from sqlalchemy import CHAR, Column, Float, Boolean, Integer, Numeric, SmallInteger, String, Text, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.ext.declarative import declarative_base

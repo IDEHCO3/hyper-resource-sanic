@@ -69,15 +69,17 @@ class FeatureResource(SpatialResource):
         j_d = model.json_dict(model.__class__.attribute_names())
         return sanic.response.json(j_d)
 
-    async def get_representation(self, id):
+    async def get_representation(self, id_or_key_value):
+        if type(id_or_key_value) == tuple:
+            self.entity_class()
         try:
             accept = self.request.headers['accept']
             if 'text/html' in accept:
-                return await self.get_html_representation(id)
+                return await self.get_html_representation(id_or_key_value)
             elif 'application/vnd.ogc.wkb' in accept:
-                return await self.get_wkb_representation(id)
+                return await self.get_wkb_representation(id_or_key_value)
             else:
-                return await self.get_json_representation(id)
+                return await self.get_json_representation(id_or_key_value)
         except (Exception, SyntaxError, NameError) as err:
             print(err)
             return sanic.response.json({"Error": f"{err}"})
@@ -126,11 +128,14 @@ class FeatureResource(SpatialResource):
             else:
                 model = await self.dialect_DB().fetch_one_model(id_or_key_value)
                 res = await model.execute_function_given(a_path)
-                return sanic.response.json(res)
+                if isinstance(res, dict):
+                    res = model.json_dict(list(res.keys()))
+                    return sanic.response.json(res)
+                return sanic.response.json(convert_to_json(res))
 
-        except (Exception, SyntaxError, NameError) as err:
+        except (Exception, AttributeError, SyntaxError, NameError) as err:
             print(err)
-            return sanic.response.json({"Error": f"{err}"})
+            return sanic.response.json({"Error": f"{err}"}, status=400)
 
     async def get_wkb_representation(self, id_or_key_value):
 

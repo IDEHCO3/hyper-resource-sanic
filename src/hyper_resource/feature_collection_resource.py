@@ -8,6 +8,9 @@ from src.hyper_resource import feature_utils
 from src.hyper_resource.spatial_collection_resource import SpatialCollectionResource
 from src.orm.database_postgis import DialectDbPostgis
 import json, os
+
+from src.url_interpreter.interpreter import Interpreter
+
 MIME_TYPE_JSONLD = "application/ld+json"
 from geoalchemy2.shape import to_shape
 class FeatureCollectionResource(SpatialCollectionResource):
@@ -47,6 +50,20 @@ class FeatureCollectionResource(SpatialCollectionResource):
         feature_collection["features"] = response_data
         return feature_collection
 
+    async def get_json_representation(self):
+
+        start = time.time()
+        print(f"time: {start} start rows in python")
+
+        rows = await self.dialect_DB().fetch_all()
+        rows_from_db = await self.rows_as_dict(rows)
+        res = sanic.response.json(rows_from_db or [])
+        #rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
+        #res = sanic.response.text(rows or [], content_type='application/json')
+        end = time.time()
+        print(f"time: {end - start} end rows in python")
+        return res
+
     async def get_html_representation(self):
         html_filepath = os.path.join(SOURCE_DIR, "hyper_resource", "templates" ,"basic_geo.html")
         with open(html_filepath, "r") as body:
@@ -84,7 +101,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
         accept = self.request.headers['accept']
         if 'application/vnd.mapbox-vector-tile' in accept:
             return await self.get_mvt_representation_given_path(path)
-        return super().get_representation_given_path(path)
+        return await super().get_representation_given_path(path)
 
     def dialect_DB(self):
           return DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())
@@ -99,3 +116,15 @@ class FeatureCollectionResource(SpatialCollectionResource):
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
         return sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
+
+    async def filter(self, path: str):  # -> "AbstractCollectionResource":
+        """
+        params: path
+        return: self
+        description: Filter a collection given an expression
+        example: http://server/api/drivers/filter/license/eq/valid
+        """
+        if self.is_content_type_in_accept('text/html'):
+            return await self.get_html_representation()
+
+        return await super(FeatureCollectionResource, self).filter(path)

@@ -192,10 +192,9 @@ class AlchemyBase:
         :return: This method returns a dictionary to get function/attribute supported in a request.
         The key is a type/class and value is a dictionary(key: operation/attribute name, value: Action instance
         """
-        if cls._dic is None:
-            cls._dic = {}
-            cls._dic.update(dic_action)
-        return cls._dic
+
+        _dic = {'projection': ActionFunction('projection', cls, [ ParamAction('string_enum', str)]),}
+        return {cls: _dic}
 
     @classmethod
     def validate_path(cls, a_path: str):
@@ -274,14 +273,19 @@ class AlchemyBase:
         return len(set(attri_names) - set(cls.attribute_names_with_dereferenceable()))== 0
 
     def projection(self, string_enum: str) -> object:
-        pass
-
+        enum = string_enum.split(',')
+        dic_attr = {}
+        if len(enum) == 1:
+            return getattr(self, enum[0])
+        for att_name in enum:
+            dic_attr[att_name] = getattr(self, att_name)
+        return dic_attr
     def object_has_action(self, a_type: type, action_name: str) -> object:
 
-        if a_type not in self.__class__.action_dic():
+        if a_type not in dic_action:
             return False
 
-        return action_name in self.__class__.action_dic()[a_type]
+        return action_name in dic_action[a_type]
 
     def is_projection_with_operation_from_path(self, path: str) -> bool:
         """

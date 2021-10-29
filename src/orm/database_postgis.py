@@ -20,6 +20,8 @@ class DialectDbPostgis(DialectDbPostgresql):
         if (tuple_attrib is not None) and (self.has_not_geom_column(tuple_attrib) ):
             return await super().fetch_all_as_json(tuple_attrib)
         query = self.basic_select(tuple_attrib) if a_query is None else a_query
+        geom = self.entity_class.geo_column_name()
+        query = query.replace(f'ST_AsEWKB({geom})', geom)
         sql = f"select json_build_object('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON(t.*)::json)) from ( {query} ) as t;"
         print(sql)
         rows = await self.db.fetch_all(sql)
@@ -28,7 +30,7 @@ class DialectDbPostgis(DialectDbPostgresql):
     async def fetch_one_as_json(self, pk, tuple_attrib : Tuple[str] = None,prefix_col_val: str=None):
         query = self.basic_select_by_id(pk, tuple_attrib, prefix_col_val)
         func_name = f'ST_AsEWKB({self.get_geom_column()})'
-        query.replace(func_name, self.get_geom_column())
+        query = query.replace(func_name, self.get_geom_column())
         sql = f"select {self.function_db()}(t.*) from ({query}) as t;"
         print(sql)
         rows = await self.db.fetch_one(sql)
@@ -37,6 +39,8 @@ class DialectDbPostgis(DialectDbPostgresql):
     async def fetch_all_as_geobuf(self, tuple_attrib : Tuple[str] = None,  a_query: str = None, prefix_col_val: str=None ):
         sub_query = self.basic_select(tuple_attrib, prefix_col_val) if a_query is None else a_query
         geom = self.entity_class.geo_column_name()
+
+        sub_query = sub_query.replace(f'ST_AsEWKB({geom})', geom)
         query = f"SELECT  ST_AsGeobuf(q, '{geom}') FROM ({sub_query}) AS q"
         rows = await self.db.fetch_all(query)
         return rows[0]['st_asgeobuf']

@@ -6,7 +6,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping
 from shapely.ops import transform
 from sqlalchemy.orm import InstrumentedAttribute, ColumnProperty
-from src.orm.dictionary_actions import FUNCTION, ATTRIBUTE, ActionFunction, ParamAction, Action
+from src.orm.dictionary_actions import FUNCTION, ATTRIBUTE, ActionFunction, ActionAttribute ,ParamAction, Action, dic_action
 from src.orm.models import AlchemyBase
 
 class AlchemyGeoBase(AlchemyBase):
@@ -69,11 +69,31 @@ class AlchemyGeoBase(AlchemyBase):
         project = pyproj.Transformer.from_crs(crs_orig, crs_dest, always_xy=True).transform
         return transform(project, self.get_base_geom())
 
-    def area(self, epsg: int = None):
+    def area(self, epsg: int = None) -> float:
+        """
+        Returns the area (float) of the object.
+        :param epsg:
+        :return: float
+        """
         if epsg is None:
             return self.get_base_geom().area
         temp_geom = self.transform(3005)
         return temp_geom.area
+    def bound(self) -> tuple[float,float,float,float]:
+        """
+        Returns a (minx, miny, maxx, maxy) tuple (float values) that bounds the object.
+        :return: tuple[float,float,float,float]
+        """
+    def projection(self, string_enum: str) -> object:
+        enum = string_enum.split(',')
+        dic_attr = {}
+        if len(enum) == 1:
+            att_name = enum[0]
+            return self.get_base_geom() if (self.geo_attribute_name() == att_name) else getattr(self, att_name)
+        for att_name in enum:
+            dic_attr[att_name] = self.get_base_geom() if (self.geo_attribute_name() == att_name) else getattr(self, att_name)
+            #dic_attr[att_name] =  getattr(self, att_name)
+        return dic_attr
 
     async def execute_attribute_given(self, path: str) -> object:
         """
@@ -96,7 +116,9 @@ class AlchemyGeoBase(AlchemyBase):
         """
         dic = {
             'transform': ActionFunction('transform', BaseGeometry, [ ParamAction('srid_dest', int)]),
-            'srid': ActionFunction('srid', int)
+            'srid': ActionFunction('srid', int),
+            'area': ActionAttribute('area',float),
+            'buffer': ActionFunction('buffer', BaseGeometry, [ParamAction('buf_dest', float)]),
         }
         return dic
     @classmethod
@@ -105,6 +127,6 @@ class AlchemyGeoBase(AlchemyBase):
         :return: This method returns a dictionary to get function/attribute supported in a request.
         The key is a type/class and value is a dictionary(key: operation/attribute name, value: Action instance
         """
-        dic = {cls: cls.actions_to_dissemination()}
+        dic = dic_action #{cls: cls.actions_to_dissemination()}
         dic.update(super().action_dic())
         return dic

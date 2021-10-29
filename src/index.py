@@ -4,6 +4,7 @@ import aiohttp
 from databases import Database
 from environs import Env
 from sanic import Sanic, response
+from sanic.request import Request
 from sanic.response import text
 from sanic_openapi import swagger_blueprint
 
@@ -17,7 +18,7 @@ from sanic_cors import CORS, cross_origin
 
 #Create Sanic app
 app = Sanic(__name__)
-# CORS(app)
+CORS(app)
 app.blueprint(swagger_blueprint)
 
 #Setup env
@@ -34,11 +35,17 @@ async def print_on_request(request):
     pass
    
 @app.route("/")
-def handle_request(request):
-    return response.json(api_entry_point())
+def handle_request(request: Request):
+    base_iri = request.scheme +'://' +request.host
+
+    _headers = {'Access-Control-Expose-Headers': 'Link', 'Link': f'<{base_iri}>;rel=https://schema.org/EntryPoint'}
+    print(_headers)
+    #return response.json(api_entry_point())
+    return response.json(api_entry_point(), headers=_headers, status=200)
+
 
 @app.route("/core")
-def handle_request(request):
+def handle_request(request: Request):
     return response.file(VOCAB_DIR, mime_type=MIME_TYPE_JSONLD)
 
 @app.listener("after_server_start")

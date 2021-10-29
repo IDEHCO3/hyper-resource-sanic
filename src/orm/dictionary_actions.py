@@ -81,7 +81,7 @@ class ActionFunction(Action):
 dic_geo_action = {
         'area': ActionAttribute('area', float),
         'boundary': ActionAttribute('boundary', BaseGeometry),
-        'bounds': ActionAttribute('boundary', tuple),
+        'bounds': ActionAttribute('bounds', tuple),
         'buffer': ActionFunction('buffer', BaseGeometry, [ParamAction('distance', float), ParamAction('resolution', int, False, 16),ParamAction('cap_style', int, False, 1), ParamAction('join_style', int, False, 1), ParamAction('mitre_limit', float, False, 5.0),ParamAction('single_sided', bool, False, False)]),
         'centroid': ActionAttribute('centroid', Point),
         'contains': ActionFunction('contains', bool, [ParamAction('other', BaseGeometry )]),
