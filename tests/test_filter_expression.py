@@ -4,7 +4,7 @@ import unittest
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-
+from databases import Database
 from src.orm.database_postgis import DialectDbPostgis
 from src.url_interpreter.interpreter import *
 from src.models.lim_unidade_federacao_a import LimUnidadeFederacaoA
@@ -89,18 +89,34 @@ class TestFilterExpression():
 
     @pytest.mark.asyncio
     async def test_translate(self):
-       interp = Interpreter("/id_objeto/gt/5/and/id_objeto/lte/101", LimUnidadeFederacaoA, DialectDbPostgis)
-       assert await interp.translate() == "id_objeto>5 and id_objeto<=101"
-       interp = Interpreter("/id_objeto/gt/5/and/id_objeto/lte/101/or/(/id_objeto/eq/200/and/sigla/eq/RJ/)", LimUnidadeFederacaoA, DialectDbPostgis)
-       assert await interp.translate() == "id_objeto>5 and id_objeto<=101 or  ( id_objeto=200 and sigla='RJ' ) "
-       interp = Interpreter("/(/id_objeto/gt/5/and/id_objeto/lte/56407/)/or/(/id_objeto/eq/56406/and/sigla/eq/RJ/)", LimUnidadeFederacaoA, DialectDbPostgis)
-       assert await interp.translate() == " ( id_objeto>5 and id_objeto<=56407 )  or  ( id_objeto=56406 and sigla='RJ' ) "
+       interp = Interpreter("/id_objeto/gt/5/and/id_objeto/lte/55620", LimUnidadeFederacaoA, DialectDbPostgis)
+       assert await interp.translate() == "id_objeto>5 and id_objeto<=55620"
+
+       interp = Interpreter("/id_objeto/gt/5/and/id_objeto/lte/55620/or/(/id_objeto/eq/55621/and/sigla/eq/RJ/)", LimUnidadeFederacaoA, DialectDbPostgis)
+       assert await interp.translate() == "id_objeto>5 and id_objeto<=55620 or  ( id_objeto=55621 and sigla='RJ' ) "
+
+       interp = Interpreter("/(/id_objeto/gt/5/and/id_objeto/lte/56405/)/or/(/id_objeto/eq/56406/and/sigla/eq/RJ/)", LimUnidadeFederacaoA, DialectDbPostgis)
+       assert await interp.translate() == " ( id_objeto>5 and id_objeto<=56405 )  or  ( id_objeto=56406 and sigla='RJ' ) "
+
        interp = Interpreter("/sigla/in/RJ,SP,MG,ES/", LimUnidadeFederacaoA, DialectDbPostgis)
        assert await interp.translate() == "sigla in ('RJ','SP','MG','ES')"
-       interp = Interpreter("/(/id_objeto/gt/5/and/id_objeto/lte/101/)/or/(/id_objeto/eq/200/and/sigla/eq/RJ/)/and/sigla/in/RJ,SP,MG,ES/", LimUnidadeFederacaoA, DialectDbPostgis)
-       assert await interp.translate() == " ( id_objeto>5 and id_objeto<=101 )  or  ( id_objeto=200 and sigla='RJ' )  and sigla in ('RJ','SP','MG','ES')"
+
+       interp = Interpreter("/(/id_objeto/gt/5/and/id_objeto/lte/56405/)/or/(/id_objeto/eq/56406/and/sigla/eq/RJ/)/and/sigla/in/RJ,SP,MG,ES/", LimUnidadeFederacaoA, DialectDbPostgis)
+       assert await interp.translate() == " ( id_objeto>5 and id_objeto<=56405 )  or  ( id_objeto=56406 and sigla='RJ' )  and sigla in ('RJ','SP','MG','ES')"
        # interp = Interpreter(f"sigla/eq/(/http://{SERVIDOR}:{PORTA}/lim-unidade-federacao-a-list/56406/sigla/)/or/(/geocodigo/eq/31/)/", LimUnidadeFederacaoA, DialectDbPostgis)
        # assert await interp.translate() == "sigla= ( 'RJ' )  or  ( geocodigo='31' ) "
+
+       interp = Interpreter("/sigla/lower/eq/rj/", LimUnidadeFederacaoA, DialectDbPostgis(
+           Database('postgresql://postgres:docker@192.168.0.10:54321/postgres', ssl=False, min_size=1, max_size=20),
+           LimUnidadeFederacaoA.__table__, LimUnidadeFederacaoA
+       ))
+       assert await interp.translate() == ' ( lower(bcim.lim_unidade_federacao_a.sigla) ) =\'rj\''
+
+    # @pytest.mark.asyncio
+    # async def test_tranlate_string_operation(self):
+    #     interp = Interpreter("sigla/lower/eq/rj", LimUnidadeFederacaoA, DialectDbPostgis)
+    #     print(await interp.translate())
+    #     # assert await interp.translate() == ' ( lower(bcim.lim_unidade_federacao_a.sigla) ) =\'rj\''
 
     # @pytest.mark.asyncio
     # async def test_translate_with_operation(self):
