@@ -3,16 +3,20 @@ from datetime import datetime, date
 from decimal import Decimal
 from time import time
 
+import aiohttp
 import shapely
 from aiohttp.web_exceptions import HTTPNotAcceptable
 from shapely import wkb
+
+from src.aiohttp_client import ClientIOHTTP
 from src.hyper_resource.common_resource import *
 from src.hyper_resource import util
-from src.hyper_resource.util import get_session_request
+from src.hyper_resource.util import a_request
 from shapely.geometry import GeometryCollection, shape, Polygon, LineString, Point, MultiPolygon, MultiLineString, \
     MultiPoint
 from shapely.geometry.base import BaseGeometry
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, String, Integer, SmallInteger, Float
+from geoalchemy2 import Geometry
 
 class ConverterType():
 
@@ -22,6 +26,17 @@ class ConverterType():
         if not cls._instance:
             cls._instance = super(ConverterType, cls).__new__(cls, *args, **kwargs)
         return cls._instance
+
+    async def request_content(self, url: str, accept: str = CONTENT_TYPE_JSON):
+        # aiohttp_session = aiohttp.ClientSession(loop=asyncio.get_event_loop())
+        headers = {'accept': accept}
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if 400 <= resp.status <= 599:
+                    raise HTTPNotAcceptable()
+                content_type = resp.content_type
+                if content_type in [CONTENT_TYPE_JSON, CONTENT_TYPE_GEOJSON]:
+                    return await resp.json()
 
     def value_has_url(self, value_str):
         return (value_str.find('http:') > -1) or (value_str.find('https:') > -1) or (value_str.find('www.') > -1)
@@ -96,34 +111,34 @@ class ConverterType():
             geos_geom = (GEOSGeometry(geom_coordinates))
             gc.append(geos_geom)
         return gc
+        
     """
-    async def get_geos_geometry_from_request(self, url_as_str):
+
+    async def get_geos_geometry_from_request(self, url: str, accept: str = CONTENT_TYPE_JSON):
         try:
-            resp = await get_session_request(url_as_str)
+            headers = {'accept': accept}
+            async with ClientIOHTTP().session.get(url, headers=headers) as resp:
+                if resp.content_type == CONTENT_TYPE_OCTET_STREAM:
+                    return shape(await resp.read())
+                elif resp.content_type == CONTENT_TYPE_WKB:
+                    return wkb.loads(await resp.read())
+                elif resp.content_type in [CONTENT_TYPE_JSON, CONTENT_TYPE_GEOJSON]:  # ['application/json', 'application/geojson', 'application/vnd.geo+json']:
+                    js = await resp.json()
+                    if (js.get("type") and js["type"].lower() == 'feature'):
+                        return shape(js["geometry"])
+                    elif (js.get("type") and js["type"].lower() == 'featurecollection'):
+                        return self.make_geometrycollection_from_featurecollection(js)
+                    else:
+                        # _json = json.dumps(js)
+                        return shape(js)
+                return shape(await resp.text())
+
         except (Exception, RuntimeError, TypeError, NameError) as error:
             print(error)
-            raise ConnectionRefusedError(error)
-        if 400 <= resp.status <= 599:
-            raise HTTPNotAcceptable({resp.status: resp.reason})
-        if resp.headers['content-type'] == CONTENT_TYPE_OCTET_STREAM:
-            return shape(await resp.read())
+            raise error
 
-        elif resp.headers['content-type'] == 'application/vnd.ogc.wkb':
-            return wkb.loads(await resp.read())
-        elif resp.headers['content-type'] in [CONTENT_TYPE_JSON, CONTENT_TYPE_GEOJSON]:#['application/json', 'application/geojson', 'application/vnd.geo+json']:
-            js = await resp.json()
-            if (js.get("type") and js["type"].lower()=='feature'):
-                return shape(js["geometry"])
 
-            elif  (js.get("type") and js["type"].lower()=='featurecollection'):
-                return self.make_geometrycollection_from_featurecollection(js)
 
-            else:
-                #_json = json.dumps(js)
-                return shape(js)
-
-        return shape(await resp.text)
-    
     async def convert_to_string(self, value_as_str):
         return str(value_as_str)
 
@@ -153,23 +168,33 @@ class ConverterType():
             elif self.value_seems_wkt(value_as_str):
                 return shapely.wkt.loads(value_as_str)
             elif self.value_has_url(value_as_str):
-               return await self.get_geos_geometry_from_request(value_as_str)
+                return await self.get_geos_geometry_from_request(value_as_str)
             else:
                 return shapely.wkb.loads(bytes.fromhex(value_as_str))
-            return shape(value_as_str)
+
         except (ValueError, ConnectionError) as err:
             print('Error: '.format(err))
 
-
+    async def convert_in_args(self, in_arg: str, a_type: type) -> str:
+        if a_type in (str, String):
+            args = in_arg.split(',')
+            args_str = [ f"'{arg}'" for arg in args]
+            return ','.join(args_str)
+        else:
+            return in_arg
     async def operation_to_convert_value(self, a_type):
         d = {}
         d[str] = self.convert_to_string
+        d[String] = self.convert_to_string
         d[int] = self.convert_to_int
+        d[Integer] = self.convert_to_int
+        d[SmallInteger] = self.convert_to_int
         d[float] = self.convert_to_float
+        d[Float] = self.convert_to_float
         d[date] = self.convert_to_date
         d[datetime] = self.convert_to_datetime
         d[time] = self.convert_to_time
-
+        d[Geometry] = self.convert_to_geometry
         d[BaseGeometry] = self.convert_to_geometry
         d[Polygon] = self.convert_to_geometry
         d[LineString] = self.convert_to_geometry
@@ -181,7 +206,7 @@ class ConverterType():
 
         return d[a_type]
 
-    async def value_converted(self, param_value, a_type: type ) -> object:
+    async def value_converted(self, param_value, a_type: type) -> object:
         object_method = await self.operation_to_convert_value(a_type)
         return await object_method(param_value)
 

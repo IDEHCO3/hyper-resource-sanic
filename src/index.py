@@ -1,6 +1,7 @@
 
 import asyncio
 import aiohttp
+from aiohttp import ClientSession
 from databases import Database
 from environs import Env
 from sanic import Sanic, response
@@ -9,6 +10,7 @@ from sanic.response import text
 from sanic_openapi import swagger_blueprint
 
 from settings import VOCAB_DIR
+from src.aiohttp_client import ClientIOHTTP
 from src.orm.database_postgis import DialectDbPostgis
 from src.resources.setup_resources import setup_all_resources
 from src.routes.setup_routes import setup_all_routes
@@ -48,11 +50,21 @@ def handle_request(request: Request):
 def handle_request(request: Request):
     return response.file(VOCAB_DIR, mime_type=MIME_TYPE_JSONLD)
 
+async def initIOHTTPSession(loop):
+    ClientIOHTTP().session = aiohttp.ClientSession(loop=loop)  # app.aiohttp_session
+
+@app.listener('before_server_start')
+async def init_session(app, loop):
+    app.aiohttp_session = aiohttp.ClientSession(loop=loop)
+    await initIOHTTPSession(loop)
+    print(ClientIOHTTP().session)
+
 @app.listener("after_server_start")
 async def connect_to_db(*args, **kwargs):
     print("Connection to database ...")
     await app.db.connect()
     print("Database connected")
+
     
 #@app.listener("after_server_stop")
 #async def disconnect_from_db(*args, **kwargs):

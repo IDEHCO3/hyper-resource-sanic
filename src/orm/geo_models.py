@@ -6,11 +6,13 @@ from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping
 from shapely.ops import transform
 from sqlalchemy.orm import InstrumentedAttribute, ColumnProperty
-from src.orm.dictionary_actions import FUNCTION, ATTRIBUTE, ActionFunction, ActionAttribute ,ParamAction, Action, dic_action
+from src.orm.dictionary_actions import  ActionFunction, ActionAttribute ,ParamAction,  dic_action
+from src.orm.action_type import FUNCTION, ATTRIBUTE, Action
 from src.orm.models import AlchemyBase
 
 class AlchemyGeoBase(AlchemyBase):
     base_geom = None
+    __abstract__ = True
 
     @classmethod
     def get_geo_attribute_or_column(cls, ttype: int = 0) -> str:
@@ -79,8 +81,7 @@ class AlchemyGeoBase(AlchemyBase):
             return self.get_base_geom().area
         temp_geom = self.transform(3005)
         return temp_geom.area
-    # def bound(self) -> tuple[float,float,float,float]:
-    def bound(self):
+    def bound(self) -> tuple[float,float,float,float]:
         """
         Returns a (minx, miny, maxx, maxy) tuple (float values) that bounds the object.
         :return: tuple[float,float,float,float]
@@ -120,6 +121,7 @@ class AlchemyGeoBase(AlchemyBase):
             'srid': ActionFunction('srid', int),
             'area': ActionAttribute('area',float),
             'buffer': ActionFunction('buffer', BaseGeometry, [ParamAction('buf_dest', float)]),
+            'wkt': ActionAttribute('wkt', BaseGeometry),
         }
         return dic
     @classmethod
@@ -131,3 +133,7 @@ class AlchemyGeoBase(AlchemyBase):
         dic = dic_action #{cls: cls.actions_to_dissemination()}
         dic.update(super().action_dic())
         return dic
+
+    @classmethod
+    def instances_operation(cls) -> Dict:
+        return dic_action

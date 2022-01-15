@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session, aliased
 # How to get column type
 # self.dialect_DB().entity_class.ano_referencia.property.columns[0].type
 from src.orm.database import DialectDatabase
-from src.url_interpreter.interpreter_types import type_has_operation, get_operation, python_to_sqlalchemy_type
+from src.orm.dictionary_actions import ActionFunction, dic_geo_action, dic_action
+from src.url_interpreter.interpreter_types import type_has_operation, get_operation, python_to_sqlalchemy_type, is_geom_type
 
 
 async def get_request(url):
@@ -75,6 +76,35 @@ def convert_data_in_enum(data: Any, data_type: str) -> str:
     else:
         return data
 
+def as_enum(list: List):
+    return ','.join(list)
+def path_has_url(path: str) -> bool:
+    return '/(/http:' in path or '/(/https:' in path
+
+def path_with_url_splitted(path: str) -> List[str]:
+    """
+    :param path must have an url> example: geom/contains/(/http://unidade-federacao/rj/geom/)/
+    :return: List[str]
+    """
+    idx_ini = path.find('/(/http')
+    if idx_ini == -1:
+        raise SyntaxError(f"Problem with {path}. Verify if path has balanced parentheses and http")
+    first_part_lst = (path[0:idx_ini]).split('/')
+    idx_midst = path.find('/)', idx_ini)
+    if idx_midst == -1:
+        raise SyntaxError(
+            f"Problem with {path}. Verify if path has balanced parentheses ---'/(/'---'/)/'---  and http")
+    middle_part_lst = (path[idx_ini + 3:idx_midst])
+    return first_part_lst + [middle_part_lst]
+
+def path_as_list(path: str) -> List[str]:
+    if path[-1] == '/':  # Removes trail slash
+        path = path[:-1]
+    if path_has_url(path):
+        return path_with_url_splitted(path)
+    return path.split('/')
+
+
 ATTRIBUTE_CATEGORY = "attribute"
 RELATIONAL_OPERATOR_CATEGORY = "relational_operator"
 IN_OPERATOR = "in"
@@ -83,8 +113,10 @@ AND_CATEGORY = "and"
 OR_CATEGORY = "or"
 BETWEEN_CATEGORY = "between"
 OPERATION_CATEGORY = "operation"
+OPERATION_ARG_CATEGORY = "operation_arg"
 PAREN_OPEN = "("
 PAREN_CLOSE = ")"
+
 
 class StateMachine:
     def __init__(self):
@@ -115,12 +147,12 @@ class Interpreter:
         self.sub_expression = self.expression
         self.word = None
         self.prev_word = None
-        self.last_attribute = None
         self.modelClass = modelClass
         self.index = 0
         self.balanced_parenthese = 0
         self.state_machine = StateMachine()
         self.dialect_db_class = dialect_db_class
+        self.words = []
     
     def after_word(self, path: str) -> str:
         a_word = ''
@@ -145,8 +177,11 @@ class Interpreter:
         else:
             self.prev_word = self.word
             self.word = None
+
         return self.word
 
+    def prev_word_and_category(self):
+        return self.words[self.index-1]
     def word_is_url(self, a_word: str) -> bool:
         return a_word.lower() == 'http:' or a_word.lower() == 'https:' or a_word.lower() == 'www.'
 
@@ -163,7 +198,7 @@ class Interpreter:
         return tk in dict_null_operator
 
     def get_operated_attr_python_type(self):
-        return type(getattr(self.modelClass, self.last_attribute).property.columns[0].type)
+        return type(getattr(self.modelClass, self.prev_word).property.columns[0].type)
 
     def word_is_operation(self, tk: str) -> bool:
         if tk is None or tk.strip() == "":
@@ -172,15 +207,21 @@ class Interpreter:
             return type_has_operation(self.get_operated_attr_python_type(), tk)
         except AttributeError:
             return False
-
+    def word_is_operation123(self,tk: str, prev_category: str)-> bool:
+        if prev_category == ATTRIBUTE_CATEGORY:
+            a_type = self.modelClass.attribute_type_given(self.prev_word)
+            return a_type in dic_action and (tk in dic_action[a_type])
+        return False
+    def word_is_operation_arg(self,tk:str)-> bool:
+        return False
     def operation_params_count(self, tk: str):
-        type = self.get_operated_attr_python_type()
-        operation = get_operation(type, tk)
+        _type = self.get_operated_attr_python_type()
+        operation = get_operation(_type, tk)
         return len(list(operation.__annotations__.keys())) -1
 
     def operation_params_types(self, tk: str):
-        type = self.get_operated_attr_python_type()
-        operation = get_operation(type, tk)
+        _type = self.get_operated_attr_python_type()
+        operation = get_operation(_type, tk)
         return [param[1] for param in operation.__annotations__.items()][:-1]
         # return [param[1] for param in getattr(self.modelClass, tk).__annotations__.items()][:-1]
 
@@ -206,8 +247,11 @@ class Interpreter:
             operation_snippet += "/"
         return operation_snippet
 
-    def get_operation_query(self, tk: str, prev_translated=None):
+    def get_operation_query(self, tk: str) -> str:
         converted_vals = []
+        a_type = self.modelClass.attribute_type_given(self.prev_word)
+        if is_geom_type(False):
+            return self.get_spatial_operation_query(tk)
         oper_params_vals_and_types = self.get_operation_params_vals_and_types(tk)
         for _val, _type in oper_params_vals_and_types:
             converted_vals.append(convert_data(_val, _type))
@@ -218,16 +262,9 @@ class Interpreter:
         # query += " WHERE "
         type = self.get_operated_attr_python_type()
         sql_function = self.dialect_db_class.get_sql_function(type, tk)
-
-        if prev_translated is not None and self.word_is_attribute(prev_translated):
-            attr_full_ref = getattr(self.modelClass, self.last_attribute).property.expression.table.__str__() + "." + self.last_attribute#list(self.modelClass.metadata.tables.items())[0][0] + "." + self.prev_word
-            whereclause = sql_function + "(" + attr_full_ref
-        else:
-            whereclause = sql_function + "(" + prev_translated.strip()
-
-        for _conv_val in converted_vals:
-            whereclause = whereclause + ", " + _conv_val
-        whereclause = whereclause + ")"
+        # whereclause = str(query).split("WHERE")[1]
+        attr_full_ref = getattr(self.modelClass, self.prev_word).property.expression.table.__str__() + "." + self.prev_word#list(self.modelClass.metadata.tables.items())[0][0] + "." + self.prev_word
+        whereclause = sql_function + "(" + attr_full_ref + ")"
 
         # whereclause = whereclause.replace(attr_full_ref, self.prev_word)
         # for conv_val in converted_vals:
@@ -237,8 +274,14 @@ class Interpreter:
         operation_snippet = self.get_operation_snippet(tk, oper_params_vals_and_types)
         self.index_last_oper_exec = self.index
         self.index = self.sub_expression.index(operation_snippet) + len(operation_snippet)
-        # return " ( " + whereclause.strip() + " ) "
-        return whereclause.strip()
+        return " ( " + whereclause.strip() + " ) "
+
+    def get_spatial_operation_query(self, tk: str) -> str:
+        action_function = self.dialect_db_class.dic_action()[tk]
+        len_params = action_function.count_params()+1
+        sub_expres_list = path_as_list(self.sub_expression)[1:len_params]
+        #self.sub_expression.split("/")[1:oper_params_count + 1]
+        return action_function.name + f'({self.modelClass.geo_column_name()},{as_enum(sub_expres_list)})'
 
     def word_is_logical_operator(self, tk: str) -> bool:
         return tk in dict_logical_operator
@@ -271,6 +314,30 @@ class Interpreter:
         else:
             return VALUE_CATEGORY
 
+    def get_token_category123(self, token, prev_category):
+        if self.word_is_attribute(token):
+            return ATTRIBUTE_CATEGORY
+        elif self.word_is_relational_operator(token):
+            return RELATIONAL_OPERATOR_CATEGORY
+        elif self.word_is_in_operator(token):
+            return IN_OPERATOR
+        elif token == AND_CATEGORY:
+            return AND_CATEGORY
+        elif token == OR_CATEGORY:
+            return OR_CATEGORY
+        elif token == BETWEEN_CATEGORY:
+            return BETWEEN_CATEGORY
+        elif token == PAREN_OPEN:
+            return PAREN_OPEN
+        elif token == PAREN_CLOSE:
+            return PAREN_CLOSE
+        elif self.word_is_operation123(token, prev_category):
+            return OPERATION_CATEGORY
+        elif  self.word_is_operation_arg(token):
+            return OPERATION_ARG_CATEGORY
+        else:
+            return VALUE_CATEGORY
+
     def get_value_related_attribute_with_operation(self, value_token):
         return self.expression[:self.index_last_oper_exec - 1].split("/")[-1]
 
@@ -286,9 +353,8 @@ class Interpreter:
 
     async def convert_value(self, token):
 
-        # attribute = self.get_value_related_attribute(token)
-        # tuple_attrib_column_type = self.modelClass.attribute_column_type(attribute)
-        tuple_attrib_column_type = self.modelClass.attribute_column_type(self.last_attribute)
+        attribute = self.get_value_related_attribute(token)
+        tuple_attrib_column_type = self.modelClass.attribute_column_type(attribute)
 
         if self.word_is_url(token):
             token = self.url_word()
@@ -395,10 +461,9 @@ class Interpreter:
         # getattr(self.modelClass, "somar_ano").__annotations__
         translated = ''
         tk = '' #first state
+        token_category = None
         while(tk is not None):
             tk = self.nextWord()
-            if tk == "replace":
-                print(tk)
             token_category = self.get_token_category(tk)
 
             try:
@@ -411,7 +476,6 @@ class Interpreter:
 
             if token_category == ATTRIBUTE_CATEGORY:
                 translated = await self.translate_for_attribute(translated)
-                self.last_attribute = tk
             elif token_category in [OR_CATEGORY, AND_CATEGORY]: # todo: not supporting NAND nor NOR
                 translated = self.translate_for_logical_operator(translated)
             elif token_category in [PAREN_OPEN, PAREN_CLOSE]:
@@ -421,7 +485,7 @@ class Interpreter:
             elif token_category in [IN_OPERATOR]:
                 translated = await self.translate_for_in_operator(translated)
             elif self.word_is_operation(tk):
-                translated = self.get_operation_query(tk, prev_translated=translated)
+                translated = self.get_operation_query(tk)
             elif token_category == VALUE_CATEGORY:
                 translated += await self.convert_value(tk)
 

@@ -10,12 +10,21 @@ HTTP_IF_MODIFIED_SINCE = 'HTTP_IF_MODIFIED_SINCE'
 HTTP_ACCEPT = 'HTTP_ACCEPT'
 CONTENT_TYPE = 'CONTENT_TYPE'
 ETAG = 'Etag'
+CONTENT_TYPE_HTML = 'text/html'
 CONTENT_TYPE_GEOJSON = "application/geo+json"
 CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_LD_JSON = "application/ld+json"
 CONTENT_TYPE_OCTET_STREAM = "application/octet-stream"
 CONTENT_TYPE_IMAGE_PNG = "image/png"
 CONTENT_TYPE_IMAGE_TIFF = "image/tiff"
+CONTENT_TYPE_WKT = 'application/x-wkt'
+CONTENT_TYPE_GEOBUF = 'application/x-geobuf'
+CONTENT_TYPE_WKB = 'application/x-wkb'
+CONTENT_TYPE_EWKB ='application/x-ewkb'
+CONTENT_TYPE_VECTOR_TILE = 'application/vnd.mapbox-vector-tile'
+CONTENT_TYPE_XML = 'application/xml'
+CONTENT_TYPE_FLATBUFFERS = 'application/x-flatbuffers' #application/x-flatbuffers;schema = x.y.z
+CONTENT_TYPE_FLATGEOBUFFERS = 'application/x-flatgeobuffers' #application/x-flatbuffers;schema = x.y.z
 
 HYPER_RESOURCE_CONTEXT = 'http://www.w3.org/ns/json-hr#context'
 HYPER_RESOURCE_CONTENT_TYPE = 'application/hr+json'
@@ -36,3 +45,6 @@ def convert_to_json(obj : object):
     if isinstance(obj,BaseGeometry):
         return mapping(obj)
     return obj
+
+def list_type_name_wkt()->List[str]:
+    return ['geometry', 'point', 'linestring', 'polygon', 'multipoint', 'multilinestring', 'multipolygon', 'geometrycollection', 'circularstring', 'compoundcurve', 'curvepolygon', 'multicurve', 'multisurface', 'curve', 'surface', 'polyhedralsurface', 'tin', 'triangle', 'circle']

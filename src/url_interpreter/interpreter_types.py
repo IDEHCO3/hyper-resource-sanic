@@ -8,31 +8,36 @@ from sqlalchemy import ARRAY, BIGINT, BigInteger, BINARY,  BLOB, BOOLEAN, CHAR, 
     Numeric, NVARCHAR, PickleType, REAL, SMALLINT, SmallInteger, String, TEXT, Text, TIME, Time, TIMESTAMP, TypeDecorator, \
     Unicode, UnicodeText, VARBINARY, VARCHAR
 
+from src.orm.database_postgis import dic_action
 
-def is_geom_type(type) -> bool:
-    return type in [Geometry, Geography, Raster, WKTElement, WKBElement, RasterElement]
 
-def type_has_operation(type, statement:str) -> bool:
+def is_geom_type(_type) -> bool:
+    return _type in [Geometry, Geography, Raster, WKTElement, WKBElement, RasterElement]
+
+def type_has_operation(_type, statement:str) -> bool:
     # return callable(getattr(type.python_type, statement))
     # [ele for ele in dir(type.python_type) if not ele.startswith("__") and not ele.endswith("__") and callable(type.python_type, statement)]
     # return hasattr(type, statement)
     operations_dict = SQLALCHEMY_TYPES_OPERATIONS
 
-    if is_geom_type(type):
-        operations_dict = GEOALCHEMY_TYPES_OPERATIONS
+    if is_geom_type(_type):
+        #operations_dict = GEOALCHEMY_TYPES_OPERATIONS
+        return statement in dic_action.keys()
 
-    operations = [operation for operation in operations_dict[type]]
+    operations = [operation for operation in operations_dict[_type]]
     operation_names = [operation.__name__ for operation in operations]
     return statement in operation_names
 
-def get_operation(type, operation_name:str) -> str:
+def get_operation(_type, operation_name:str) -> str:
     operations_dict = SQLALCHEMY_TYPES_OPERATIONS
 
-    if is_geom_type(type):
-        operations_dict = GEOALCHEMY_TYPES_OPERATIONS
+    if is_geom_type(_type):
+        #operations_dict = GEOALCHEMY_TYPES_OPERATIONS
+        return operation_name in dic_action.keys()
 
-    operation = [oper for oper in operations_dict[type] if oper.__name__ == operation_name][0]
+    operation = [oper for oper in operations_dict[_type] if oper.__name__ == operation_name][0]
     return operation
+
 
 
 # --- operations executable throught client URL ---

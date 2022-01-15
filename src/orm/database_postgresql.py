@@ -1,7 +1,10 @@
+import datetime
 from datetime import date
 from typing import List, Tuple, Optional, Any, Dict
 import copy
 import time
+
+from databases.backends.postgres import Record
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from .database import DialectDatabase
@@ -12,6 +15,7 @@ from sqlalchemy import ARRAY, BIGINT, CHAR, BigInteger, BINARY, BLOB, BOOLEAN, B
     Unicode, UnicodeText, VARBINARY, VARCHAR
 
 # reference: https://www.postgresql.org/docs/9.1/functions-string.html
+from .dictionary_actions import ActionFunction
 from .models import AlchemyBase
 from src.hyper_resource.basic_route import BasicRoute
 STRING_SQL_OPERATIONS = ["lower", "replace", "upper"]
@@ -103,6 +107,17 @@ class DialectDbPostgresql(DialectDatabase):
             col_name = self.entity_class.column_name_or_None(inst_attr)
             attr_name = self.entity_class.attribute_name_given(inst_attr)
             return f'{col_name} as {attr_name}'
+
+    def column_names_alias(self, attrib_names: Optional[List[str]], prefix_col_val: str = None):
+        attr_names = attrib_names if attrib_names is not None else self.attribute_names()
+        attributes = [self.entity_class.__dict__[name] for name in attr_names]
+        list_alias = []
+        for att in attributes:
+            alias = self.alias_column(att, prefix_col_val)
+            if alias is not None:
+                list_alias.append(alias)
+        return ','.join(list_alias)
+
     def enum_column_names_alias_attribute_given(self, attributes: List[InstrumentedAttribute], prefix_col_val: str = None):
         list_alias = []
         for att in attributes:
@@ -116,12 +131,13 @@ class DialectDbPostgresql(DialectDatabase):
         query = f"{query} where {key_or_unique} = :{key_or_unique}"
         row = await self.db.fetch_one(query=query, values=dic)
         return row
+
     def basic_select(self, tuple_attrib: Tuple[str] = None, prefix_col_val: str = None ) -> str:
-        attrib_names = tuple_attrib if tuple_attrib is not None else self.attribute_names()
-        attributes = [self.entity_class.__dict__[name] for name in attrib_names ]
-        enum_col_names = self.enum_column_names_alias_attribute_given(attributes, prefix_col_val)
+
+        enum_col_names = self.column_names_alias(tuple_attrib, prefix_col_val)
         query = f'select {enum_col_names} from {self.schema_table_name()}'
         return query
+
     def basic_select_one_by_key_value(self, key_value: Tuple, tuple_attrib: Tuple[str] = None, prefix_col_val: str=None):
         tp_attribute = self.db_type_name_given_attribute(key_value[0])
         value_converted = self.convert_to_db(tp_attribute, key_value[1], True)
@@ -171,9 +187,9 @@ class DialectDbPostgresql(DialectDatabase):
             return self.entity_class(**row)
         return None
 
-    async def filter(self, a_filter):
-        cols_as_enum = self.enum_column_names()
-        query = f'select {cols_as_enum} from {self.schema_table_name()} where {a_filter}'
+    async def filter(self, a_filter, e_column_names : str = None, prefix_col_val: str=None):
+        query = self.basic_select(e_column_names, prefix_col_val)
+        query = f'{query} where {a_filter}'
         print(query)
         rows = await self.db.fetch_all(query)
         return rows
@@ -214,10 +230,8 @@ class DialectDbPostgresql(DialectDatabase):
         else:
             rows = await self.fetch_all_as_json(None, query)
         return rows
-
     def get_sql_function(self, sql_type, function_name):
         return [operation for operation in SQLALCHEMY_TYPES_SQL_OPERATIONS[sql_type] if operation == function_name][0]
-
     async def delete(self, id_or_dict : dict):
         id_dict = id_or_dict if type(id_or_dict) == dict else {self.entity_class.primary_key() : id_or_dict}
         tuple_key_value = id_dict.popitem()
@@ -274,3 +288,14 @@ class DialectDbPostgresql(DialectDatabase):
         for attr, col,typ  in attribute_column_type:
             column_value[col] = self.convert_to_db(typ, attribute_value[attr], is_update)
         return column_value
+
+    async def convert_row_to_dict(self, row: Record) -> Dict:
+        dic = {}
+        for key, value in row.items():
+            a_type = type(value)
+            if a_type == datetime.date or a_type == datetime.datetime:
+                val = value.isoformat()
+            else:
+                val = value
+            dic[key] = val
+        return dic

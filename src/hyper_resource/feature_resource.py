@@ -1,10 +1,13 @@
 import json
 import os
+from typing import Optional, Any
 
 from sanic import response
 
 from settings import SOURCE_DIR
 from src.hyper_resource import feature_utils
+from ..hyper_resource.common_resource import *
+
 from src.hyper_resource.common_resource import *
 from src.hyper_resource.context.geocontext import GeoDetailContext
 from src.hyper_resource.spatial_resource import SpatialResource
@@ -17,7 +20,7 @@ class FeatureResource(SpatialResource):
     def __init__(self, request):
         super().__init__(request)
 
-    def dialect_DB(self):
+    def dialect_DB(self) -> DialectDbPostgis:
           return DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())
 
     def serialize_as_geojson(self, raw_data) -> dict:
@@ -69,14 +72,14 @@ class FeatureResource(SpatialResource):
         j_d = model.json_dict(model.__class__.attribute_names())
         return sanic.response.json(j_d)
 
-    async def get_representation(self, id_or_key_value):
+    async def get_representation(self, id_or_key_value: Optional[Any] = None):
         if type(id_or_key_value) == tuple:
             self.entity_class()
         try:
             accept = self.request.headers['accept']
-            if 'text/html' in accept:
+            if CONTENT_TYPE_HTML in accept:
                 return await self.get_html_representation(id_or_key_value)
-            elif 'application/vnd.ogc.wkb' in accept:
+            elif CONTENT_TYPE_WKB in accept:
                 return await self.get_wkb_representation(id_or_key_value)
             else:
                 return await self.get_json_representation(id_or_key_value)
@@ -87,13 +90,13 @@ class FeatureResource(SpatialResource):
     async def get_representation_given_path(self, id_or_key_value, a_path:str):
         try:
             accept = self.request.headers['accept']
-            if 'text/html' in accept:
+            if CONTENT_TYPE_HTML in accept:
                 return await self.get_html_representation_given_path(id_or_key_value, a_path)
-            elif 'application/octet-stream' in accept:
+            elif CONTENT_TYPE_GEOBUF in accept:
                 return await self.get_geobuf_representation_given_path(id_or_key_value, a_path)
-            elif 'application/json' in accept:
+            elif CONTENT_TYPE_JSON in accept:
                 return await self.get_json_representation_given_path(id_or_key_value, a_path)
-            elif 'application/vnd.ogc.wkb' in accept:
+            elif CONTENT_TYPE_WKB in accept:
                 return await self.get_wkb_representation(id_or_key_value)
 
             return await self.get_json_representation_given_path(id_or_key_value, a_path)
@@ -111,7 +114,7 @@ class FeatureResource(SpatialResource):
     async def get_json_representation_given_path(self, id_or_key_value, a_path):
 
         try:
-            action = self.entity_class().validate_path(a_path)
+            self.entity_class().validate_path(a_path)
             if self.entity_class().is_only_attribute_list_from_path(a_path):
                 model = await self.dialect_DB().fetch_one_model(id_or_key_value)
                 attributes_from_path = [ att.strip() for att in a_path.split('/')[0].split(',')]
@@ -122,7 +125,7 @@ class FeatureResource(SpatialResource):
                 model = await self.dialect_DB().fetch_one_model(id_or_key_value)
                 result = await model.execute_attribute_given(a_path)
                 if isinstance(result, bytes):
-                    return sanic.response.raw(result, content_type='application/vnd.ogc.wkb')
+                    return sanic.response.raw(result, content_type=CONTENT_TYPE_WKB)
                 res = convert_to_json(result)
                 return sanic.response.json(res)
             else:
@@ -142,14 +145,14 @@ class FeatureResource(SpatialResource):
         try:
             model = await self.dialect_DB().fetch_one_model(id_or_key_value)
             result = model.get_geom()
-            return sanic.response.raw(result, content_type='application/vnd.ogc.wkb')
+            return sanic.response.raw(result, content_type=CONTENT_TYPE_WKB)
         except (Exception, SyntaxError, NameError) as err:
             print(err)
             return sanic.response.json({"Error": f"{err}"}, status=400)
 
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
-        return response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
+        return response.json(context.get_basic_context(), content_type=CONTENT_TYPE_LD_JSON)
 
     async def options_given_path(self, id, path):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
@@ -166,4 +169,4 @@ class FeatureResource(SpatialResource):
         elif len(diff_atts) > 1:
             return sanic.response.json(f"The operations or attributes {list(diff_atts)} do not exists", status=400)
 
-        return response.json(context.get_projection_context(list(att_names)), content_type=MIME_TYPE_JSONLD)
+        return response.json(context.get_projection_context(list(att_names)), content_type=CONTENT_TYPE_LD_JSON)

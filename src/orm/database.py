@@ -1,10 +1,21 @@
-from typing import List, Tuple, Optional, Any
+import datetime
+import json
+from datetime import datetime, date
+from numbers import Number
+from typing import List, Tuple, Optional, Any, Dict
 
-from sqlalchemy import Column
+from src.hyper_resource.util import value_has_url, a_request
+from src.orm.converter import ConverterType
+from geoalchemy2 import Geometry
+from shapely.geometry import Polygon, LineString, MultiPolygon, MultiLineString, MultiPoint
+from shapely.geometry.base import BaseGeometry
+from sqlalchemy import Column, ForeignKey, Integer, SmallInteger, String, Float, Numeric
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm import sessionmaker
-from src.orm.models import AlchemyBase, Base
+
+from src.orm.dictionary_actions import ActionFunction
+from src.orm.models import AlchemyBase, Base, Point
 
 from src.orm.models import AlchemyBase
 
@@ -95,8 +106,16 @@ class DialectDatabase(AbstractDialectDatabase):
     def alias_column(self, inst_attr: InstrumentedAttribute, prefix_col: str = None):
         raise NotImplementedError("'alias_column' must be implemented in subclasses")
 
+    @classmethod
+    def dict_action(cls) -> dict[str, ActionFunction]:
+        """
+        this dict has a function's name as key and value as ActionFunction
+        :return: dict[str, ActionFunction]
+        """
+        return {}
+
     async def next_val(sequence_name: str):
-        raise NotImplementedError("'offset_limit' must be implemented in subclasses")
+        raise NotImplementedError("'next_val' must be implemented in subclasses")
     async def offset_limit(self, offset, limit, orderby= None, asc=None, format_row = None):
         raise NotImplementedError("'offset_limit' must be implemented in subclasses")
     async def fetch_all(self):
@@ -109,6 +128,10 @@ class DialectDatabase(AbstractDialectDatabase):
         raise NotImplementedError("'fetch_all_as_json' must be implemented in subclasses")
     async def count(self) -> int:
         raise NotImplementedError("'count' must be implemented in subclasses")
+    async def min(self, column_name : str) -> Number:
+        raise NotImplementedError("'min' must be implemented in subclasses")
+    async def max(self, column_name : str) -> Number:
+        raise NotImplementedError("'max' must be implemented in subclasses")
     async def order_by(self, enum):
         raise NotImplementedError("'order_by' must be implemented in subclasses")
     async def projection(self, str_attribute_as_comma_list, orderby=None):
@@ -127,3 +150,88 @@ class DialectDatabase(AbstractDialectDatabase):
         raise NotImplementedError("'update' must be implemented in subclasses")
     async def insert(self, field_value: dict) -> Any:
         raise NotImplementedError("'insert' must be implemented in subclasses")
+
+    async def fetch_one_model(self, pk_or_key_value_tuple, key_value: Dict = None, tuple_attrib: Tuple[str] = None,
+                              prefix_col_val: str = None) -> Optional[AlchemyBase]:
+        raise NotImplementedError("'fetch_one_model' must be implemented in subclasses")
+    async def convert_row_to_dict(self, row) -> Dict:
+        raise NotImplementedError("'convert_row_to_dict' must be implemented in subclasses")
+
+    async def convert_to_db_string(self, string: str) -> str:
+        if string[0] == "'" and string[-1] == "'":
+            return f'{string}'
+
+        return f"'{string}'"
+
+    async def convert_to_db_int(self, string: str) -> int:
+        return int(string)
+
+    async def convert_to_db_float(self, string: str) -> float:
+        return float(string)
+
+    async def convert_to_db_date(self, string: str) -> str:
+        dt: datetime.date =  await ConverterType().convert_to_date(string)
+        return dt.isoformat()
+
+    async def convert_to_db_datetime(self, string: str) -> str:
+        dt: datetime.datetime = await ConverterType().convert_to_datetime(string)
+        return dt.isoformat()
+
+    async def convert_to_db_time(self, string: str) -> str:
+        t: datetime.time = await ConverterType().convert_to_time(string)
+        return t.isoformat()
+
+    def value_has_url(self, value_str: str) -> bool:
+        return (value_str.find('http:') > -1) or (value_str.find('https:') > -1) or (value_str.find('www.') > -1)
+
+    def value_seems_json(self, value_str : str) -> bool:
+        return value_str.startswith('{') and value_str.endswith('}')
+
+    async def convert_to_db_geometry(self, value_as_str: str) -> str:
+        raise NotImplementedError("'convert_to_db_geometry' must be implemented in subclasses")
+
+    async def operation_to_convert_db_value(self, a_type) ->  object:
+        d = dict()
+        d[str] = self.convert_to_db_string
+        d[String] = self.convert_to_db_string
+        d[int] = self.convert_to_db_int
+        d[Integer] = self.convert_to_db_int
+        d[SmallInteger] = self.convert_to_db_int
+        d[float] = self.convert_to_db_float
+        d[Float] = self.convert_to_db_float
+        d[Numeric] = self.convert_to_db_float
+        d[date] = self.convert_to_db_date
+        d[datetime] = self.convert_to_db_datetime
+        d[datetime.time] = self.convert_to_db_time
+        d[Geometry] = self.convert_to_db_geometry
+        d[BaseGeometry] = self.convert_to_db_geometry
+        d[Polygon] = self.convert_to_db_geometry
+        d[LineString] = self.convert_to_db_geometry
+        d[Point] = self.convert_to_db_geometry
+        d[MultiPolygon] = self.convert_to_db_geometry
+        d[MultiLineString] = self.convert_to_db_geometry
+        d[MultiPoint] = self.convert_to_db_geometry
+        d[ForeignKey] = self.convert_to_db_int
+
+        return d[a_type]
+
+    async def value_db_converted(self, param_value: str, a_type: type) -> object:
+        object_method = await self.operation_to_convert_db_value(a_type)
+        return await object_method(param_value)
+
+    async def convert_in_db_args(self, in_arg: str, a_type: type) -> str:
+        if a_type in (str, String):
+            args = in_arg.split(',')
+            args_str = [f"'{arg}'" for arg in args]
+            return ','.join(args_str)
+        else:
+            return f'{in_arg}'
+
+    async def convert_db_args(self, args: List[str], types: List[type]) -> str:
+        converted_params: List[str] = []
+        for idx, arg in enumerate(args):
+            a_type = types[idx]
+            obj = await self.value_db_converted(arg, a_type)
+            converted_params.append(f'{obj}')
+
+        return ','.join(converted_params)

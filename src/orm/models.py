@@ -1,22 +1,24 @@
-# from __future__ import annotations
-from typing import Dict, Tuple, Sequence, List, Any
+from __future__ import annotations
+from typing import Dict, Tuple, Sequence, List, Any, Optional
 
 from sqlalchemy import ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import ColumnProperty, RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-# from sqlalchemy.orm.decl_api import DeclarativeMeta
 
 from src.hyper_resource.basic_route import BasicRoute
+from src.orm.action_type import FUNCTION, Action
 from src.orm.dictionary_actions import *
 from src.orm.converter import ConverterType
+from sqlalchemy.orm import declarative_base
+
 Base = declarative_base()
 
-class AlchemyBase:
+class AlchemyBase(Base):
     dialect_db = None
     _dic = None
+    __abstract__ = True
 
-    @classmethod     
+    @classmethod
     def schema(cls) -> str:
         return cls.__table_args__ ['schema']
     @classmethod
@@ -64,16 +66,25 @@ class AlchemyBase:
     def all_attribute_names(cls) -> List[str]:
         return [key for key, value in cls.__dict__.items() if isinstance(value, InstrumentedAttribute)]
     @classmethod
-    def has_attribute(cls, attribute_name) -> bool:
-        return attribute_name in cls.attribute_names()
+    def has_attribute(cls, attribute_name: str) -> bool:
+        return attribute_name in cls.all_attribute_names()
     @classmethod
     def attribute_name_given(cls, attribute: InstrumentedAttribute)-> str:
         return attribute.prop.key
     @classmethod
-    def attribute_column_type(cls, attribute_name) -> tuple:
+    def attribute_column_type(cls, attribute_name) -> tuple[str,str,str]:
         lst_a_c_t = cls.list_attribute_column_type()
         return next(a_c_t for a_c_t in lst_a_c_t if a_c_t[0] == attribute_name)
         #next((x for x in lst if ...), [default value])
+
+    @classmethod
+    def attribute_type_given(cls, attribute_name: str) -> Optional[type]:
+        cols = cls.__table__.c
+        if attribute_name not in cols:
+            return None
+        col = cols[attribute_name]
+        return type(col.type)
+
     @classmethod
     def attributes_from_path_not_exist(cls, enum_attr_from_path) -> List[str]:
         set_atts_from_path = set(enum_attr_from_path.split(','))
@@ -144,7 +155,7 @@ class AlchemyBase:
             return cls.list_attribute_column_type()
         return [(attrib_name, column_name) for (attrib_name, column_name) in cls.list_attribute_column() if attrib_name in attributes_from_path]
     @classmethod
-    def list_attribute_column_type(cls) -> List[Tuple]:
+    def list_attribute_column_type(cls) -> List[Tuple[str, str, str]]:
         return [(key, value.prop.columns[0].name, value.prop.columns[0].type.__str__()) for key, value in cls.__dict__.items() if cls.is_attribute_without_relationship(value)]
     @classmethod
     def list_attribute_column_type_given(cls, attributes : List[str]) -> List[Tuple]:
@@ -159,7 +170,7 @@ class AlchemyBase:
         return cls.column_name_or_None(attribute)
 
     @classmethod
-    def column_names_given_attributes(cls, attributes_from_path) -> List[str]:
+    def column_names_given_attributes(cls, attributes_from_path: List[str]) -> List[str]:
         return [ col for att, col in cls.list_attribute_column() if att in attributes_from_path]
 
     @classmethod
