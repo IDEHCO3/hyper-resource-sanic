@@ -115,6 +115,7 @@ class Interpreter:
         self.sub_expression = self.expression
         self.word = None
         self.prev_word = None
+        self.last_attribute = None
         self.modelClass = modelClass
         self.index = 0
         self.balanced_parenthese = 0
@@ -162,7 +163,7 @@ class Interpreter:
         return tk in dict_null_operator
 
     def get_operated_attr_python_type(self):
-        return type(getattr(self.modelClass, self.prev_word).property.columns[0].type)
+        return type(getattr(self.modelClass, self.last_attribute).property.columns[0].type)
 
     def word_is_operation(self, tk: str) -> bool:
         if tk is None or tk.strip() == "":
@@ -205,7 +206,7 @@ class Interpreter:
             operation_snippet += "/"
         return operation_snippet
 
-    def get_operation_query(self, tk: str):
+    def get_operation_query(self, tk: str, prev_translated=None):
         converted_vals = []
         oper_params_vals_and_types = self.get_operation_params_vals_and_types(tk)
         for _val, _type in oper_params_vals_and_types:
@@ -217,9 +218,16 @@ class Interpreter:
         # query += " WHERE "
         type = self.get_operated_attr_python_type()
         sql_function = self.dialect_db_class.get_sql_function(type, tk)
-        # whereclause = str(query).split("WHERE")[1]
-        attr_full_ref = getattr(self.modelClass, self.prev_word).property.expression.table.__str__() + "." + self.prev_word#list(self.modelClass.metadata.tables.items())[0][0] + "." + self.prev_word
-        whereclause = sql_function + "(" + attr_full_ref + ")"
+
+        if prev_translated is not None and self.word_is_attribute(prev_translated):
+            attr_full_ref = getattr(self.modelClass, self.last_attribute).property.expression.table.__str__() + "." + self.last_attribute#list(self.modelClass.metadata.tables.items())[0][0] + "." + self.prev_word
+            whereclause = sql_function + "(" + attr_full_ref
+        else:
+            whereclause = sql_function + "(" + prev_translated.strip()
+
+        for _conv_val in converted_vals:
+            whereclause = whereclause + ", " + _conv_val
+        whereclause = whereclause + ")"
 
         # whereclause = whereclause.replace(attr_full_ref, self.prev_word)
         # for conv_val in converted_vals:
@@ -229,7 +237,8 @@ class Interpreter:
         operation_snippet = self.get_operation_snippet(tk, oper_params_vals_and_types)
         self.index_last_oper_exec = self.index
         self.index = self.sub_expression.index(operation_snippet) + len(operation_snippet)
-        return " ( " + whereclause.strip() + " ) "
+        # return " ( " + whereclause.strip() + " ) "
+        return whereclause.strip()
 
     def word_is_logical_operator(self, tk: str) -> bool:
         return tk in dict_logical_operator
@@ -277,8 +286,9 @@ class Interpreter:
 
     async def convert_value(self, token):
 
-        attribute = self.get_value_related_attribute(token)
-        tuple_attrib_column_type = self.modelClass.attribute_column_type(attribute)
+        # attribute = self.get_value_related_attribute(token)
+        # tuple_attrib_column_type = self.modelClass.attribute_column_type(attribute)
+        tuple_attrib_column_type = self.modelClass.attribute_column_type(self.last_attribute)
 
         if self.word_is_url(token):
             token = self.url_word()
@@ -387,6 +397,8 @@ class Interpreter:
         tk = '' #first state
         while(tk is not None):
             tk = self.nextWord()
+            if tk == "replace":
+                print(tk)
             token_category = self.get_token_category(tk)
 
             try:
@@ -399,6 +411,7 @@ class Interpreter:
 
             if token_category == ATTRIBUTE_CATEGORY:
                 translated = await self.translate_for_attribute(translated)
+                self.last_attribute = tk
             elif token_category in [OR_CATEGORY, AND_CATEGORY]: # todo: not supporting NAND nor NOR
                 translated = self.translate_for_logical_operator(translated)
             elif token_category in [PAREN_OPEN, PAREN_CLOSE]:
@@ -408,7 +421,7 @@ class Interpreter:
             elif token_category in [IN_OPERATOR]:
                 translated = await self.translate_for_in_operator(translated)
             elif self.word_is_operation(tk):
-                translated = self.get_operation_query(tk)
+                translated = self.get_operation_query(tk, prev_translated=translated)
             elif token_category == VALUE_CATEGORY:
                 translated += await self.convert_value(tk)
 

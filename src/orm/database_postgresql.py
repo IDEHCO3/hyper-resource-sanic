@@ -214,8 +214,10 @@ class DialectDbPostgresql(DialectDatabase):
         else:
             rows = await self.fetch_all_as_json(None, query)
         return rows
+
     def get_sql_function(self, sql_type, function_name):
         return [operation for operation in SQLALCHEMY_TYPES_SQL_OPERATIONS[sql_type] if operation == function_name][0]
+
     async def delete(self, id_or_dict : dict):
         id_dict = id_or_dict if type(id_or_dict) == dict else {self.entity_class.primary_key() : id_or_dict}
         tuple_key_value = id_dict.popitem()
