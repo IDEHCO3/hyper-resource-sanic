@@ -7,6 +7,7 @@ from src.orm.models import AlchemyBase, Base
 from src.orm.geo_models import AlchemyGeoBase
 import unittest
 import pytest
+#URLDB=sqlite:///hyper-db.sqlite
 class Ator(AlchemyBase, Base):
    __tablename__ = 'ator'
    __table_args__ = {'schema': 'adm'}
@@ -47,27 +48,71 @@ class Representante(AlchemyBase, Base):
    def nome_abreviado(self)->str:
       return self.nome[:-1]
 
-class UnidadeFederacao(AlchemyGeoBase, Base):
-   __tablename__ = 'lim_unidade_federacao_a'
-   __table_args__ = {'schema': 'bcim'}
 
-   id_objeto = Column('id_objeto',Integer(),primary_key=True,nullable=False)
-   nome = Column('nome',String(length=100),nullable=True)
-   nomeabrev = Column('nomeabrev',String(length=50),nullable=True)
-   geometriaaproximada = Column('geometriaaproximada',String(length=3),nullable=True)
-   sigla = Column('sigla',String(length=3),nullable=True)
-   geocodigo = Column('geocodigo',String(length=15),nullable=True)
-   geom = Column('geom',Geometry(geometry_type='MULTIPOLYGON', srid=4674, from_text='ST_GeomFromEWKT', name='geometry'),nullable=True)
-   id_produtor = Column('id_produtor',Integer(),nullable=True)
-   id_elementoprodutor = Column('id_elementoprodutor',Integer(),nullable=True)
-   cd_insumo_orgao = Column('cd_insumo_orgao',Integer(),nullable=True)
-   nr_insumo_mes = Column('nr_insumo_mes',SmallInteger(),nullable=True)
-   nr_insumo_ano = Column('nr_insumo_ano',SmallInteger(),nullable=True)
-   tx_insumo_documento = Column('tx_insumo_documento',String(length=60),nullable=True)
+class Hidreletrica(Base):
+    __tablename__ = 'hidreletrica'
+    __table_args__ = {'schema': ''}
 
-   @classmethod
-   def geo_column_name(cls) -> str:
-       return 'geom'
+    id_objeto = Column(Integer, primary_key=True)
+    nome = Column(String(100))
+    geometriaaproximada = Column(String(3))
+    potenciaoutorgada = Column(Integer)
+    potenciafiscalizada = Column(Integer)
+    codigohidreletrica = Column(String(30))
+    operacional = Column(String(12))
+    situacaofisica = Column(Text)
+    geom = Column(Geometry('POINT', 4674, from_text='ST_GeomFromEWKT', name='geometry'), index=True)
+
+class TerraIndigena(Base):
+    __tablename__ = 'terra_indigena'
+
+    id_objeto = Column(Integer, primary_key=True)
+    nome = Column(String(100))
+    nomeabrev = Column(String(50))
+    geometriaaproximada = Column(String(3))
+    perimetrooficial = Column(Float(53))
+    areaoficialha = Column(Float(53))
+    grupoetnico = Column(String(100))
+    datasituacaojuridica = Column(String(20))
+    situacaojuridica = Column(String(23))
+    nometi = Column(String(100))
+    geom = Column(Geometry('MULTIPOLYGON', 4674, from_text='ST_GeomFromEWKT', name='geometry'), index=True)
+    codigofunai = Column(Integer)
+
+class UnidadeFederacao(Base):
+    __tablename__ = 'unidade_federacao'
+    __table_args__ = {'schema': ''}
+
+    id_objeto = Column(Integer, primary_key=True)
+    nome = Column(String(100))
+    nomeabrev = Column(String(50))
+    geometriaaproximada = Column(String(3))
+    sigla = Column(String(3))
+    geocodigo = Column(String(15))
+    geom = Column(Geometry('MULTIPOLYGON', 4674, from_text='ST_GeomFromEWKT', name='geometry'), index=True)
+
+class Ferrovia(Base):
+    __tablename__ = 'ferroviaria'
+    __table_args__ = {'schema': ''}
+
+    id_objeto = Column(Integer, primary_key=True)
+    nome = Column(String(100))
+    nomeabrev = Column(String(50))
+    geometriaaproximada = Column(String(3))
+    codtrechoferrov = Column(String(25))
+    posicaorelativa = Column(String(15))
+    tipotrechoferrov = Column(String(12))
+    bitola = Column(String(27))
+    eletrificada = Column(String(12))
+    nrlinhas = Column(String(12))
+    emarruamento = Column(String(12))
+    jurisdicao = Column(Text)
+    administracao = Column(Text)
+    concessionaria = Column(String(100))
+    operacional = Column(String(12))
+    cargasuportmaxima = Column(Float(53))
+    situacaofisica = Column(Text)
+    geom = Column(Geometry('LINESTRING', 4674, from_text='ST_GeomFromEWKT', name='geometry'), index=True)
 
 class TestAlchemyBase(unittest.TestCase):
     def test_column_names_with_alias_as_enum(self):

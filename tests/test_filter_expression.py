@@ -87,6 +87,7 @@ class TestFilterExpression():
         assert interp.nextWord() == "Point(1,2)"
         assert interp.nextWord() is None
 
+
     @pytest.mark.asyncio
     async def test_translate(self):
        interp = Interpreter("/id_objeto/gt/5/and/id_objeto/lte/101", LimUnidadeFederacaoA, DialectDbPostgis)
@@ -101,7 +102,7 @@ class TestFilterExpression():
        assert await interp.translate() == " ( id_objeto>5 and id_objeto<=101 )  or  ( id_objeto=200 and sigla='RJ' )  and sigla in ('RJ','SP','MG','ES')"
        # interp = Interpreter(f"sigla/eq/(/http://{SERVIDOR}:{PORTA}/lim-unidade-federacao-a-list/56406/sigla/)/or/(/geocodigo/eq/31/)/", LimUnidadeFederacaoA, DialectDbPostgis)
        # assert await interp.translate() == "sigla= ( 'RJ' )  or  ( geocodigo='31' ) "
-
+       #EXEMPLO: http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/geom/buffer/1.2/contains/Point(1,2)/and/sigla/in/RJ,ES,MG,SP
     # @pytest.mark.asyncio
     # async def test_translate_with_operation(self):
     #     interp = Interpreter("/geom/area/lt/10", LimUnidadeFederacaoA, DialectDbPostgis)
