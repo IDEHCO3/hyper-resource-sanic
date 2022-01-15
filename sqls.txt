@@ -1,0 +1,25 @@
+select count(*) from bc250_2019.lml_municipio_a
+select seq ,sigla from bc250_2019.lml_unidade_federacao_a order by 1
+update bc250_2019.lml_unidade_federacao_a set seq=nextval('bc250_2019.s_seq')
+
+#Remove duppliclated rows
+delete from bc250_2019.lml_terra_indigena_a  a using bc250_2019.lml_terra_indigena_a b where a=b and a.ctid < b.ctid;
+
+select count(*) from 	bc250_2019.lml_terra_indigena_a
+delete from bc250_2019.lml_terra_indigena_a  a using bc250_2019.lml_terra_indigena_a b where a.nome=b.nome and a.ctid < b.ctid;
+CREATE INDEX i_lml_terra_indigena_a ON bc250_2019.lml_terra_indigena_a USING GIST ( geom ); 
+
+SELECT 'delete from bc250_2019.' ||  table_name || '  a using ' || bc250_2019.' ||  table_name || ' b ' || ' where a.id = b.id and a.ctid < b.ctid;'
+  FROM information_schema.tables
+ WHERE table_schema='bc250_2019'
+   AND table_type='BASE TABLE';
+
+SELECT 'delete from bc250_2019.' ||  table_name || '  a using ' || ' bc250_2019.' ||  table_name || ' b ' || ' where a.id = b.id and a.ctid < b.ctid;'
+  FROM information_schema.tables
+ WHERE table_schema='bc250_2019'
+   AND table_type='BASE TABLE';
+
+SELECT 'ALTER TABLE ' || ' bc250_2019.' ||  table_name || ' ADD PRIMARY KEY (id);'
+FROM information_schema.tables
+WHERE table_schema='bc250_2019'
+AND table_type='BASE TABLE';

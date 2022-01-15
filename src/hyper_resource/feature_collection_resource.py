@@ -126,5 +126,4 @@ class FeatureCollectionResource(SpatialCollectionResource):
         """
         if self.is_content_type_in_accept('text/html'):
             return await self.get_html_representation()
-
         return await super(FeatureCollectionResource, self).filter(path)
