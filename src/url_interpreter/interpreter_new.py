@@ -463,3 +463,10 @@ class InterpreterNew:
         print(translated_to_where_db)
         return translated_to_where_db
 
+    async def translate_in_query(self, path: str) -> str:
+
+        paths: List[str] = path.split('.')
+        expressions: List[Expression] = [Expression(a_path) for a_path in paths]
+
+
+

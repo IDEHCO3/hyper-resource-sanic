@@ -178,7 +178,7 @@ class AlchemyBase(Base):
         res = ','.join(( col + ' as ' + att) for att, col in list_attrib_column)
         return res
     @classmethod
-    def enum_column_names_as_given_attributes(cls, attributes_from_path) -> str:
+    def enum_column_names_as_given_attributes(cls, attributes_from_path: List[str]) -> str:
         return ','.join(cls.column_names_given_attributes(attributes_from_path))
 
     @classmethod

@@ -8,3 +8,9 @@ con = loop.run_until_complete(db.connect())
 query_uf_one = "select * from adm.ator where id_ator = :id_ator"
 query_uf_one_values = {"id_ator": 1}
 result = loop.run_until_complete(db.fetch_one(query=query_uf_one, values=query_uf_one_values))
+SERVER = 'http://127.0.0.1:8000'
+urls = [
+f"{SERVER}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/orderby/valor",
+f"{SERVER}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/orderby/valor&desc",
+f"{SERVER}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/orderby/valor,data_do_gasto&desc",
+]

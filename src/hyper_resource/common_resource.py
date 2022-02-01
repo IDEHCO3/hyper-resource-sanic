@@ -1,7 +1,9 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from shapely.geometry import mapping
 from shapely.geometry.base import BaseGeometry
+from xml.dom.minidom import parseString
+from dicttoxml import dicttoxml
 
 HTTP_IF_NONE_MATCH = 'HTTP_IF_NONE_MATCH'
 HTTP_IF_MATCH = 'HTTP_IF_MATCH'
@@ -23,6 +25,8 @@ CONTENT_TYPE_WKB = 'application/x-wkb'
 CONTENT_TYPE_EWKB ='application/x-ewkb'
 CONTENT_TYPE_VECTOR_TILE = 'application/vnd.mapbox-vector-tile'
 CONTENT_TYPE_XML = 'application/xml'
+#Default mimetype for WFS 2.0 responses should be "application/gml+xml; version=3.2"
+CONTENT_TYPE_GML = 'application/gml+xml; version=3.2'
 CONTENT_TYPE_FLATBUFFERS = 'application/x-flatbuffers' #application/x-flatbuffers;schema = x.y.z
 CONTENT_TYPE_FLATGEOBUFFERS = 'application/x-flatgeobuffers' #application/x-flatbuffers;schema = x.y.z
 
@@ -39,6 +43,7 @@ class CommomResource:
     def list_attribute_column_type(cls) -> List[Tuple]:
         pass
 
+
 def convert_to_json(obj : object):
     if type(obj) in (int, float, str):
         return obj
@@ -46,5 +51,11 @@ def convert_to_json(obj : object):
         return mapping(obj)
     return obj
 
+
 def list_type_name_wkt()->List[str]:
     return ['geometry', 'point', 'linestring', 'polygon', 'multipoint', 'multilinestring', 'multipolygon', 'geometrycollection', 'circularstring', 'compoundcurve', 'curvepolygon', 'multicurve', 'multisurface', 'curve', 'surface', 'polyhedralsurface', 'tin', 'triangle', 'circle']
+
+
+def dict_to_xml(dict_or_list_dict) -> str:
+    xml = dicttoxml(dict_or_list_dict, attr_type=False)
+    return parseString(xml).toprettyxml()

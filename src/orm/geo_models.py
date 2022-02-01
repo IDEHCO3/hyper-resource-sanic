@@ -24,6 +24,7 @@ class AlchemyGeoBase(AlchemyBase):
     def geo_attribute_name(cls) -> str:
         return cls.get_geo_attribute_or_column()
 
+
     @classmethod
     def geo_column_name(cls) -> str:
         return cls.get_geo_attribute_or_column(1)

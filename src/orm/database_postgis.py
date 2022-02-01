@@ -50,10 +50,11 @@ class DialectDbPostgis(DialectDbPostgresql):
         rows = await self.db.fetch_one(sql)
         return rows if rows is None else rows[self.function_db()]
 
-    async def fetch_all_as_geobuf(self, tuple_attrib : Tuple[str] = None,  a_query: str = None, prefix_col_val: str=None ):
-        sub_query = self.basic_select(tuple_attrib, prefix_col_val) if a_query is None else a_query
+    async def fetch_all_as_geobuf(self, list_attribute : List[str] = None,  where: Optional[str] = None, order_by: Optional[str] = None, prefix_col_val: str = None ):
+        sub_query = self.basic_select(list_attrib=list_attribute, prefix_col_val=prefix_col_val)  # self.metadata_table.select()
+        sub_query += where or ''
+        sub_query += order_by or ''
         geom = self.entity_class.geo_column_name()
-
         sub_query = sub_query.replace(f'ST_AsEWKB({geom})', geom)
         query = f"SELECT  ST_AsGeobuf(q, '{geom}') FROM ({sub_query}) AS q"
         rows = await self.db.fetch_all(query)

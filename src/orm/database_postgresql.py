@@ -72,20 +72,24 @@ class DialectDbPostgresql(DialectDatabase):
         colums_as_comma_name = self.columns_as_comma_list_str(self.metadata_table.columns)
         asc = 'desc' if asc == 'desc' else 'asc'
         orderbyasc = '' if orderby is None else f' order by {orderby} {asc} '
-        query = f'select {colums_as_comma_name} from {self.schema_table_name()} {orderbyasc}limit {limit} offset {offset}'
+        query = f'select {colums_as_comma_name} from {self.schema_table_name()} {orderbyasc} limit {limit} offset {offset}'
         if format_row is None:
             rows = await self.db.fetch_all(query)
         else:
             rows = await self.fetch_all_as_json(None, query)
         return rows
-    async def fetch_all(self):
-        query = self.metadata_table.select()
+
+    async def fetch_all(self, list_attribute: Optional[List] = None, where: Optional[str] = None, order_by: Optional[str] = None, prefix: Optional[str] = None):
+        query = self.basic_select(list_attrib=list_attribute, prefix_col_val=prefix) #self.metadata_table.select()
+        query += where or ''
+        query += order_by or ''
         start = time.time()
         print(f"time: {start} start query: {query}")
         rows = await self.db.fetch_all(query)
         end = time.time()
         print(f"time: {end - start} end query: {query}")
         return rows
+
     async def next_val(self, schema_sequence: str = None) -> int:
         sequence = schema_sequence if schema_sequence is not None else self.schema_sequence()
         row = await self.db.fetch_one(f"select nextval('{sequence}')")
@@ -132,9 +136,9 @@ class DialectDbPostgresql(DialectDatabase):
         row = await self.db.fetch_one(query=query, values=dic)
         return row
 
-    def basic_select(self, tuple_attrib: Tuple[str] = None, prefix_col_val: str = None ) -> str:
+    def basic_select(self, list_attrib: List[str] = None, prefix_col_val: str = None ) -> str:
 
-        enum_col_names = self.column_names_alias(tuple_attrib, prefix_col_val)
+        enum_col_names = self.column_names_alias(list_attrib, prefix_col_val)
         query = f'select {enum_col_names} from {self.schema_table_name()}'
         return query
 
@@ -203,6 +207,7 @@ class DialectDbPostgresql(DialectDatabase):
         query = f'select count(*) from {self.schema_table_name()}'
         row = await self.db.fetch_one(query)
         return row
+
     async def order_by(self, str_attr_as_comma_list):
         cacls = self.columns_as_comma_list_str(self.metadata_table.columns)
         query = f'select {cacls} from {self.schema_table_name()} order by {str_attr_as_comma_list}'

@@ -4,12 +4,14 @@ from asyncpg import UniqueViolationError, DataError
 
 from settings import BASE_DIR, SOURCE_DIR
 import sanic
-from typing import Dict, List
+from typing import Dict, List, Optional
 import json, os
 
 from src.hyper_resource.abstract_resource import AbstractResource, MIME_TYPE_JSONLD
 from src.hyper_resource.context.abstract_context import AbstractCollectionContext
+from src.hyper_resource.common_resource import CONTENT_TYPE_HTML, CONTENT_TYPE_JSON, CONTENT_TYPE_XML, dict_to_xml
 from ..url_interpreter.interpreter import Interpreter
+from ..url_interpreter.interpreter_error import PathError
 from ..url_interpreter.interpreter_new import InterpreterNew
 from ..orm.dictionary_actions_abstract_collection import dic_abstract_collection_lookup_action
 collection_function_names = [
@@ -42,7 +44,7 @@ class AbstractCollectionResource(AbstractResource):
             self.function_names = list(dic_abstract_collection_lookup_action.keys())
         return self.function_names
 
-    async def rows_as_dict(self, rows):
+    async def rows_as_dict(self, rows) -> List:
         return [await self.dialect_DB().convert_row_to_dict(row) for row in rows]
 
     async def get_html_representation(self):
@@ -50,7 +52,7 @@ class AbstractCollectionResource(AbstractResource):
         rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
         #rows = await self.dialect_DB().fetch_all()
         #rows = await self.rows_as_dict(rows)
-        return sanic.response.text(rows or [], content_type='application/json')
+        return sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON)
 
     async def get_json_representation(self):
 
@@ -61,23 +63,23 @@ class AbstractCollectionResource(AbstractResource):
         #rows_from_db = await self.rows_as_dict(rows)
         #res = sanic.response.json(rows_from_db or [])
         rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
-        res = sanic.response.text(rows or [], content_type='application/json')
+        res = sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON)
         end = time.time()
         print(f"time: {end - start} end rows in python")
         return res
 
     async def get_representation(self):
-        accept = self.request.headers['accept']
-        if 'text/html' in accept:
+        accept = self.accept_type()
+        if CONTENT_TYPE_HTML in accept:
             return await self.get_html_representation()
         else:
             return await self.get_json_representation()
     def first_word(self, path: str)->str:
         """
-        :param path: is a substr from iri.  Ex.: /filter/first_name/eq/John
+        :param path: is a substr from iri.  Ex.: filter/first_name/eq/John
         :return: the first word in path
         """
-        return  path.split('/')[0].strip().lower()
+        return path.split('/')[0].strip().lower()
 
     def normalize_path(self, path: str)->str:
         """
@@ -123,7 +125,7 @@ class AbstractCollectionResource(AbstractResource):
             return await self._offsetlimit(int(arguments_from_url[0]), int(arguments_from_url[1]), arguments_from_url[2],arguments_from_url[3] )
         raise SyntaxError("The operation offsetlimit has two mandatory integer arguments.")
 
-    async def _offsetlimit(self, offset: int, limit: int, str_lst_attribute_comma: str=None, asc: str=None):
+    async def _offsetlimit(self, offset: int, limit: int, str_lst_attribute_comma: str = None, asc: str = None):
         #if self.is_content_type_in_accept('text/html'):
         #    return await self.get_html_representation()
         rows = await self.dialect_DB().offset_limit(offset, limit, str_lst_attribute_comma, asc, None)
@@ -144,18 +146,87 @@ class AbstractCollectionResource(AbstractResource):
         res = await self.rows_as_dict(rows)
         return sanic.response.json(res)
 
-    async def projection(self, path: str):
+    def enum_attribute_from_projection(self, path: str) -> str:
         enum_attribute_name = self.first_word(path)
         if enum_attribute_name == 'projection':
-           enum_attribute_name = path.split('/')[1] #srv/projection/name,gender,age or srv/name,gender,age
-        attr_names = tuple(a.strip() for a in enum_attribute_name.split(','))
-        rows = await self.dialect_DB().fetch_all_as_json(attr_names, None, self.protocol_host())
-        return sanic.response.text(rows, content_type='application/json')
+            return path.split('/')[1]  # srv/projection/name,gender,age or srv/name,gender,age
+
+    async def response_given(self, rows: List):
+        rows_dict = await self.rows_as_dict(rows)
+        if CONTENT_TYPE_JSON in self.accept_type():
+            return sanic.response.json(rows_dict or [])
+        if CONTENT_TYPE_XML in self.accept_type():
+            dict_xml = dict_to_xml(rows_dict)
+            return sanic.response.text(dict_xml, content_type=CONTENT_TYPE_XML)
+        return sanic.response.json(rows_dict or [])
+
+    async def projection(self, path: str):
+        """
+        :param path:
+        :return:
+        path should be:
+        name,gender
+        name,gender/filter/age/gte/100
+        name,gender/orderby/name,age
+        name,gender/filter/age/gte/100/*/orderby/name,age
+        projection/name,gender
+        projection/name,gender/filter/age/gte/100
+        projection/name,gender/orderby/name,age&asc
+        projection/name,gender/filter/age/gte/100/*/orderby/name,age&asc
+        """
+        paths: List[str] = path.split('/')
+        if paths[0].lower().strip() != 'projection': #path ->name,gender
+            paths.insert(0,'projection')
+        if len(paths) == 2:
+            return await self.projection_only(path)
+        if paths[2] == 'filter' and '*' not in paths:
+            filter_path: str = '/'.join(paths[3:])
+            attribute_names: List[str] = paths[1].split(',')
+            return await self.projection_filter(attribute_names, filter_path)
+        if paths[2] == 'orderby' and '*' not in paths:
+            if '&' in paths[3]:
+                enum_attribute_sort, order = paths[3].split('&')
+            else:
+                enum_attribute_sort = paths[3]
+                order = 'asc'
+            attribute_names: List[str] = paths[1].split(',')
+            return await self.projection_sort(attribute_names, enum_attribute_sort.split(','), order)
+        if paths[2] == 'filter' and '*' in paths and paths[-2].lower().strip()=='orderby':
+            return await self.projection_filter_sort(path)
+        return PathError(f'Error in {path}', 400)
+
+    async def projection_only(self, path: str):
+        enum_attribute_name = path.split('/')[1]  # srv/projection/name,gender,age or srv/name,gender,age
+        attr_names: List[str] = [a.strip() for a in enum_attribute_name.split(',')]
+        rows = await self.dialect_DB().fetch_all(list_attribute=attr_names , prefix=self.protocol_host())
+        return await self.response_given(rows)
+
+    async def projection_filter(self, attribute_names: List[str], selection_path: str):
+        interp = InterpreterNew(selection_path, self.entity_class(), self.dialect_DB())
+        try:
+            whereclause = await interp.translate_lookup()
+        except (Exception, SyntaxError):
+            print(f"Error in Path: {selection_path}")
+            raise
+        print(f'whereclause: {whereclause}')
+        where: str = f' where {whereclause}'
+        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names,where=where, prefix=self.protocol_host())
+        return await self.response_given(rows)
+
+    async def projection_sort(self, attribute_names: List[str], attributes_sort: List[str], order: str = 'asc'):
+        enum_column_name: str = self.entity_class().enum_column_names_as_given_attributes(attributes_sort)
+        order_by: str = f' order by {enum_column_name} {order}'
+        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=None, order_by=order_by,
+                                                 prefix=self.protocol_host())
+        return await self.response_given(rows)
+
+    async def projection_filter_sort(self, path: str):
+        pass
 
     async def groupbycount(self, path):
         str_atts = path.split('/')[1]  # groupbycount/departamento
         rows = await self.dialect_DB().group_by_count(str_atts, None, 'JSON')
-        return sanic.response.text(rows or [], content_type='application/json')
+        return sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON)
 
     async def groupbysum(self, path):
         str_atts = path.split('/')[1]  # empolyees/name&salary
@@ -168,14 +239,12 @@ class AbstractCollectionResource(AbstractResource):
         rows = await self.dialect_DB().group_by_sum(str_att_names_as_comma, att_to_sum, 'JSON')
         return sanic.response.json(rows)
 
-    async def pre_filter(self, path):
-        return await self.filter(path[6:])  # len('filter') = 6
 
     def dict_name_operation(self) -> Dict[str, 'function']:
         return {'filter': self.filter}
 
     def filter_base_response(self, rows):
-        return sanic.response.text(rows or [], content_type='application/json')
+        return sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON)
 
     async def predicate_query_from(self, path: str)-> str:
 
@@ -206,6 +275,7 @@ class AbstractCollectionResource(AbstractResource):
         description: Filter a collection given an expression
         example: http://server/api/drivers/filter/license/eq/valid
         """
+        #self.call_filter(path)
         interp = InterpreterNew(path[6:], self.entity_class(), self.dialect_DB())
         try:
             whereclause = await interp.translate_lookup()
@@ -214,9 +284,18 @@ class AbstractCollectionResource(AbstractResource):
             raise
         print(f'whereclause: {whereclause}')
         rows = await self.dialect_DB().filter_as_json(whereclause, None ,self.protocol_host())
-        return self.filter_base_response(rows)
+        return sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON) #self.filter_base_response(rows)
 
         #return sanic.response.json([json.dumps(dict(row)) for row in rows])  # response.json(self.rows_as_dict(rows))
+
+    async def filter_orderby(self, path: str):
+        pass
+
+    async def filter_count(self, path: str):
+        pass
+
+    async def filter_collect(self, path: str):
+        pass
 
     async def head(self):
         return sanic.response.json({"context": 1})
@@ -246,3 +325,33 @@ class AbstractCollectionResource(AbstractResource):
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
         return sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
+
+    """
+        
+     projection
+     projection selection
+     projection sort
+     projection selection sort
+     selection
+     selection, aggregate
+     selection, aggregate, sort
+     selection, aggregate, aggregate
+     selection, aggregate, aggregate, sort
+     selection, sort
+     aggregate
+     aggregate, sort
+     aggregate, aggregate
+     aggregate, aggregate, sort
+     sort
+     
+    project
+    project_sort
+    project_filter
+    project_filter_sort
+    filter
+    filter-sort
+    filer-collect
+    filter-collect-collect
+    filter-collect-sort
+    filter-collect-collect-sort
+    """

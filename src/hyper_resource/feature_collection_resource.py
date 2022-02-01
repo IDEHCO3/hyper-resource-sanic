@@ -1,5 +1,5 @@
 import time
-from typing import List
+from typing import List, Tuple
 
 from shapely import wkb
 
@@ -7,7 +7,7 @@ from settings import BASE_DIR, SOURCE_DIR
 import sanic
 
 from src.hyper_resource.common_resource import CONTENT_TYPE_HTML, CONTENT_TYPE_OCTET_STREAM, CONTENT_TYPE_GEOBUF, \
-    CONTENT_TYPE_WKB, CONTENT_TYPE_VECTOR_TILE, CONTENT_TYPE_JSON, CONTENT_TYPE_GEOJSON
+    CONTENT_TYPE_WKB, CONTENT_TYPE_VECTOR_TILE, CONTENT_TYPE_JSON, CONTENT_TYPE_GEOJSON, CONTENT_TYPE_GML
 from src.hyper_resource.spatial_collection_resource import SpatialCollectionResource
 from src.orm.database_postgis import DialectDbPostgis
 import json, os
@@ -22,14 +22,11 @@ class FeatureCollectionResource(SpatialCollectionResource):
     def __init__(self, request):
         super().__init__(request)
 
-    def get_geom_attribute(self):
-        for column in self.entity_class().column_names():
-            column_type = getattr(self.entity_class(), column).property.columns[0].type
-            if hasattr(column_type, "geometry_type"):
-                return column
+    def get_geom_attribute(self) -> str:
+        return  self.entity_class().geo_attribute_name()
 
-    def get_spatial_function_names(self) ->List[str]:
-        return self.dialect_db.get_spatial_function_names()
+    def get_spatial_function_names(self) -> List[str]:
+        return self.dialect_DB().get_spatial_function_names()
 
     def lookup_function_names(self) -> List[str]:
         return self.dialect_DB().get_spatial_lookup_function_names()
@@ -46,6 +43,12 @@ class FeatureCollectionResource(SpatialCollectionResource):
                 geometry = wkb.loads(row_dict[geom_attrubute]).__geo_interface__ #json.loads(row_dict[geom_attrubute])
                 row_dict.pop(geom_attrubute, None)
                 #geometry.pop("crs", None)
+                #"crs": {
+                #    "type": "name",
+                #    "properties": {
+                #        "name": "EPSG:4326"
+                #    }
+                #}
                 feature["geometry"] = geometry
                 feature["properties"] = row_dict
                 response_data.append(feature)
@@ -127,7 +130,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
 
     async def get_representation_given_path(self, path: str):
         try:
-            if CONTENT_TYPE_HTML in self.accept_type():
+            if CONTENT_TYPE_HTML in self.accept_type() and self.get_geom_attribute() in self.attribute_names_from(path):
                 return await self.get_html_representation()
             operation_name_or_attribute_comma = self.first_word(path)
             if operation_name_or_attribute_comma in self.get_function_names():
@@ -150,9 +153,14 @@ class FeatureCollectionResource(SpatialCollectionResource):
         if self.dialect_db is None:
           self.dialect_db = DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())
         return self.dialect_db
+    def attribute_names_from(self, path: str) -> Tuple[str]:
+        """
+        :param path is expect as string enum of attribute Names. Ex.: ../.../name,age
+        """
+        return tuple(a.strip() for a in path.split(','))
 
     async def projection(self, enum_attribute_name: str):
-        attr_names = tuple(a.strip() for a in enum_attribute_name.split(','))
+        attr_names = self.attribute_names_from(enum_attribute_name)
         if self.get_geom_attribute() in attr_names and (CONTENT_TYPE_HTML in self.accept_type()):
             return await self.get_representation()
         rows = await self.dialect_DB().fetch_all_as_json(attr_names)
@@ -162,6 +170,33 @@ class FeatureCollectionResource(SpatialCollectionResource):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
         return sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
 
+    async def projection_filter(self, attribute_names: List[str], selection_path: str):
+        if self.get_geom_attribute() not in attribute_names:
+            return super(FeatureCollectionResource, self).projection_filter(attribute_names, selection_path)
+
+        interp = InterpreterNew(selection_path, self.entity_class(), self.dialect_DB())
+        try:
+            whereclause = await interp.translate_lookup()
+        except (Exception, SyntaxError):
+            print(f"Error in Path: {selection_path}")
+            raise
+        print(f'whereclause: {whereclause}')
+        where: str = f' where {whereclause}'
+        if (CONTENT_TYPE_JSON in self.accept_type()) or (CONTENT_TYPE_GEOJSON in self.accept_type()):
+            rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where,
+                                                     prefix=self.protocol_host())
+            rows_dict = await self.rows_as_dict(rows)
+            return sanic.response.json(rows_dict or [])
+        if CONTENT_TYPE_GEOBUF in self.accept_type():
+            rows = await self.dialect_DB().fetch_all_as_geobuf(list_attribute=attribute_names, where=where,prefix_col_val=self.protocol_host())
+            return sanic.response.raw(rows or [], content_type=CONTENT_TYPE_GEOBUF)
+        if CONTENT_TYPE_HTML in self.accept_type():
+            return self.get_html_representation()
+
+        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where,
+                                                 prefix=self.protocol_host())
+        rows_dict = await self.rows_as_dict(rows)
+        return sanic.response.json(rows_dict or [])
     def filter_base_response(self, rows):
         return sanic.response.text(rows or [], content_type=CONTENT_TYPE_GEOJSON)
 
@@ -172,6 +207,9 @@ class FeatureCollectionResource(SpatialCollectionResource):
         description: Filter a collection given an expression
         example: http://server/api/drivers/filter/license/eq/valid
         """
+        if CONTENT_TYPE_HTML in self.accept_type():
+            return await self.get_html_representation()
+
         interp = InterpreterNew(path[6:], self.entity_class(), self.dialect_DB())
         try:
             whereclause = await interp.translate_lookup()
@@ -181,6 +219,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
         print(f'whereclause: {whereclause}')
         rows = await self.dialect_DB().filter(whereclause, None ,self.protocol_host())
         feature_collection = await self.rows_as_dict(rows)
+
         return sanic.response.json(feature_collection or [])
 
     async def _offsetlimit(self, offset: int, limit: int, str_lst_attribute_comma: str=None, asc: str=None):
@@ -234,6 +273,10 @@ class FeatureCollectionResource(SpatialCollectionResource):
 
     """
     chamadas:
+     project
+     project lookup
+     project sort
+     project lookup sort
      lookup
      lookup, aggregate
      lookup, aggregate, sort
@@ -241,9 +284,15 @@ class FeatureCollectionResource(SpatialCollectionResource):
      lookup, aggregate, aggregate, sort
      lookup, sort
      aggregate
-     aggregate,sort
+     aggregate, sort
      aggregate, aggregate
      aggregate, aggregate, sort
      sort
-    http://127.0.0.1:8000/lim-unidade-federacao-a-list/nome,sigla,geom/filter/regiao/eq/Sul/./orderby/regiao
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/projection/nome,sigla,geom/
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/nome,sigla,geom/-/filter/regiao/eq/Sul/
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/projection/nome,sigla,geom/-/orderby/regiao
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/nome,sigla,geom/filter/regiao/eq/Sul/-/orderby/regiao
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/regiao/eq/Sul/./collect/nome,sigla&geom/buffer/1.2/./orderby/regiao
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/offset-limit/5&2/./collect/nome,sigla&geom/buffer/0.8"
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/regiao/eq/Sul/./count
     """

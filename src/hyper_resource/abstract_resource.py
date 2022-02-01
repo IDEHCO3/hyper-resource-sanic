@@ -5,6 +5,8 @@ from typing import List, Dict, Optional, Any
 
 from src.hyper_resource import feature_utils
 from src.orm.database import AbstractDialectDatabase, DialectDatabase
+from src.orm.models import AlchemyBase
+
 MIME_TYPE_JSONLD = "application/ld+json"
 from src.hyper_resource.basic_route import *
 class AbstractResource:
@@ -43,7 +45,7 @@ class AbstractResource:
     def protocol_host(self):
         return self.request.scheme + '://' + self.request.host
 
-    def entity_class(self):
+    def entity_class(self) -> AlchemyBase:
         raise NotImplementedError("'entity_class' must be implemented in subclasses")
 
     def metadata_table(self):

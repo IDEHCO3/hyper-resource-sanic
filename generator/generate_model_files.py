@@ -48,13 +48,22 @@ def generate_string_for_foreign_key_property(attribute_name, column_property) ->
     str_for_attr += ')'
     return attribute_name + ' = ' + str_for_attr
 
-def geo_field_name_template(a_class):
+def geo_column_name_template(a_class):
     tuple_k_name_col_type = [(key, value.prop.columns[0].name, value.prop.columns[0].type.__str__()) for key, value in
      a_class.__dict__.items() if isinstance(value, InstrumentedAttribute) and isinstance(value.prop,ColumnProperty )]
     geo_feld_name = next((tuple_name_type for tuple_name_type in tuple_k_name_col_type if tuple_name_type[2].startswith('geometry(')), None)
     return f"""
    @classmethod
    def geo_column_name(cls) -> str:
+       return '{geo_feld_name[1]}'"""
+
+def geo_attribute_name_template(a_class):
+    tuple_k_name_col_type = [(key, value.prop.columns[0].name, value.prop.columns[0].type.__str__()) for key, value in
+     a_class.__dict__.items() if isinstance(value, InstrumentedAttribute) and isinstance(value.prop,ColumnProperty )]
+    geo_feld_name = next((tuple_name_type for tuple_name_type in tuple_k_name_col_type if tuple_name_type[2].startswith('geometry(')), None)
+    return f"""
+   @classmethod
+   def geo_attribute_name(cls) -> str:
        return '{geo_feld_name[0]}'"""
 
 def is_foreign_key(a_class, attribute:InstrumentedAttribute)-> bool:
@@ -88,7 +97,7 @@ def generate_model_file(path, file_name, class_name, a_class, is_geo: bool = Fal
                 str_attrib = f"{key} = relationship('{value.prop.entity.class_.__name__}',foreign_keys=[id_{key}])"
                 file.write(f'   {str_attrib}\n')
         if is_geo:
-            file.write(geo_field_name_template(a_class))
+            file.write(geo_column_name_template(a_class))
 
 def generate_all_model_files(clsmembers):#, is_geo: bool = False):
     # passpath = r'' + os.getcwd() + '/src/models/'

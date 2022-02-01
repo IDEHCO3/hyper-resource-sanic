@@ -97,7 +97,7 @@ class FeatureResource(SpatialResource):
             elif CONTENT_TYPE_JSON in accept:
                 return await self.get_json_representation_given_path(id_or_key_value, a_path)
             elif CONTENT_TYPE_WKB in accept:
-                return await self.get_wkb_representation(id_or_key_value)
+                return await self.get_wkb_representation_given_path(id_or_key_value, a_path)
 
             return await self.get_json_representation_given_path(id_or_key_value, a_path)
         except (Exception, SyntaxError, NameError) as err:
@@ -141,10 +141,22 @@ class FeatureResource(SpatialResource):
             return sanic.response.json({"Error": f"{err}"}, status=400)
 
     async def get_wkb_representation(self, id_or_key_value):
-
         try:
             model = await self.dialect_DB().fetch_one_model(id_or_key_value)
             result = model.get_geom()
+            return sanic.response.raw(result, content_type=CONTENT_TYPE_WKB)
+        except (Exception, SyntaxError, NameError) as err:
+            print(err)
+            return sanic.response.json({"Error": f"{err}"}, status=400)
+
+    async def get_wkb_representation_given_path(self, id_or_key_value, a_path: str):
+        try:
+            model = await self.dialect_DB().fetch_one_model(id_or_key_value)
+            if self.entity_class().starts_by_one_attribute_with_functions(a_path):
+                res = await model.execute_attribute_given(a_path)
+                result = res.wkb
+            else:
+                result = model.get_geom()
             return sanic.response.raw(result, content_type=CONTENT_TYPE_WKB)
         except (Exception, SyntaxError, NameError) as err:
             print(err)
