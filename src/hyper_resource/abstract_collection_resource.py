@@ -49,21 +49,22 @@ class AbstractCollectionResource(AbstractResource):
 
     async def get_html_representation(self):
         # Temporario até gerar código em html para recurso não espacial
-        rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
-        #rows = await self.dialect_DB().fetch_all()
-        #rows = await self.rows_as_dict(rows)
-        return sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON)
+        #rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
+        rows = await self.dialect_DB().fetch_all(prefix=self.protocol_host())
+        rows_db = await self.rows_as_dict(rows)
+        return sanic.response.json(rows_db)
+        #return sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON)
 
     async def get_json_representation(self):
 
         start = time.time()
         print(f"time: {start} start rows in python")
 
-        #rows = await self.dialect_DB().fetch_all()
-        #rows_from_db = await self.rows_as_dict(rows)
-        #res = sanic.response.json(rows_from_db or [])
-        rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
-        res = sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON)
+        rows = await self.dialect_DB().fetch_all()
+        rows_from_db = await self.rows_as_dict(rows)
+        res = sanic.response.json(rows_from_db or [])
+        #rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
+        #res = sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON)
         end = time.time()
         print(f"time: {end - start} end rows in python")
         return res
@@ -136,24 +137,39 @@ class AbstractCollectionResource(AbstractResource):
         result = await self.dialect_DB().count()
         return sanic.response.json(result['count'])
 
-    async def orderby(self, path):
-        str_attribute_as_comma_list = path.split('/')[1]
-        att_names = str_attribute_as_comma_list.split(',')
-        for att_name in att_names:
-            if att_name not in self.attribute_names():
-                return sanic.response.json(f"The attribute {att_name} does not exists", status=400)
-        rows = await self.dialect_DB().order_by(str_attribute_as_comma_list)
-        res = await self.rows_as_dict(rows)
-        return sanic.response.json(res)
+    def orderby(self, order_by: str) -> str:
+        # order_by => name,gender&asc
+        order: List[str] = order_by.split('&')
+        if len(order) == 2:
+            _orderby: str = order[0]
+            asc_or_desc: str = order[1]
+        else:
+            _orderby: str = order[0]
+            asc_or_desc: str = 'asc'
+        enum_column_name: str = self.entity_class().enum_column_names_as_given_attributes(_orderby.split(','))
+        return f' order by {enum_column_name} {asc_or_desc}'
+
 
     def enum_attribute_from_projection(self, path: str) -> str:
         enum_attribute_name = self.first_word(path)
         if enum_attribute_name == 'projection':
             return path.split('/')[1]  # srv/projection/name,gender,age or srv/name,gender,age
 
+    async def where_interpreted(self, selection_path: str) -> str:
+        interp = InterpreterNew(selection_path, self.entity_class(), self.dialect_DB())
+        try:
+            where_clause: str = await interp.translate_lookup()
+        except (Exception, SyntaxError):
+            print(f"Error in Path: {selection_path}")
+            raise
+        print(f'whereclause: {where_clause}')
+        return f' where {where_clause}'
+
     async def response_given(self, rows: List):
         rows_dict = await self.rows_as_dict(rows)
         if CONTENT_TYPE_JSON in self.accept_type():
+            return sanic.response.json(rows_dict or [])
+        if CONTENT_TYPE_HTML in self.accept_type():
             return sanic.response.json(rows_dict or [])
         if CONTENT_TYPE_XML in self.accept_type():
             dict_xml = dict_to_xml(rows_dict)
@@ -174,14 +190,16 @@ class AbstractCollectionResource(AbstractResource):
         projection/name,gender/orderby/name,age&asc
         projection/name,gender/filter/age/gte/100/*/orderby/name,age&asc
         """
+
         paths: List[str] = path.split('/')
+        paths = paths[0:-1] if paths[-1] == '' else paths
         if paths[0].lower().strip() != 'projection': #path ->name,gender
             paths.insert(0,'projection')
+        attribute_names: List[str] = [a.strip() for a in paths[1].split(',')]
         if len(paths) == 2:
-            return await self.projection_only(path)
+            return await self.projection_only(attribute_names)
         if paths[2] == 'filter' and '*' not in paths:
             filter_path: str = '/'.join(paths[3:])
-            attribute_names: List[str] = paths[1].split(',')
             return await self.projection_filter(attribute_names, filter_path)
         if paths[2] == 'orderby' and '*' not in paths:
             if '&' in paths[3]:
@@ -189,16 +207,16 @@ class AbstractCollectionResource(AbstractResource):
             else:
                 enum_attribute_sort = paths[3]
                 order = 'asc'
-            attribute_names: List[str] = paths[1].split(',')
             return await self.projection_sort(attribute_names, enum_attribute_sort.split(','), order)
         if paths[2] == 'filter' and '*' in paths and paths[-2].lower().strip()=='orderby':
-            return await self.projection_filter_sort(path)
+            idx_ast: int = paths.index('*')
+            filter_path: str = '/'.join(paths[3: idx_ast])
+            _order_by: str = paths[-1]
+            return await self.projection_filter_sort(attribute_names, filter_path, _order_by)
         return PathError(f'Error in {path}', 400)
 
-    async def projection_only(self, path: str):
-        enum_attribute_name = path.split('/')[1]  # srv/projection/name,gender,age or srv/name,gender,age
-        attr_names: List[str] = [a.strip() for a in enum_attribute_name.split(',')]
-        rows = await self.dialect_DB().fetch_all(list_attribute=attr_names , prefix=self.protocol_host())
+    async def projection_only(self, attribute_names: List[str]):
+        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, prefix=self.protocol_host())
         return await self.response_given(rows)
 
     async def projection_filter(self, attribute_names: List[str], selection_path: str):
@@ -220,8 +238,19 @@ class AbstractCollectionResource(AbstractResource):
                                                  prefix=self.protocol_host())
         return await self.response_given(rows)
 
-    async def projection_filter_sort(self, path: str):
-        pass
+    async def projection_filter_sort(self, attribute_names: List[str], filter_path: str, _order_by: str= 'asc'):
+        interp = InterpreterNew(filter_path, self.entity_class(), self.dialect_DB())
+        try:
+            whereclause = await interp.translate_lookup()
+        except (Exception, SyntaxError):
+            print(f"Error in Path: {filter_path}")
+            raise
+        print(f'whereclause: {whereclause}')
+        where: str = f' where {whereclause}'
+        order_string: str = self.orderby(_order_by)
+        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=order_string,
+                                                 prefix=self.protocol_host())
+        return await self.response_given(rows)
 
     async def groupbycount(self, path):
         str_atts = path.split('/')[1]  # groupbycount/departamento
@@ -276,13 +305,7 @@ class AbstractCollectionResource(AbstractResource):
         example: http://server/api/drivers/filter/license/eq/valid
         """
         #self.call_filter(path)
-        interp = InterpreterNew(path[6:], self.entity_class(), self.dialect_DB())
-        try:
-            whereclause = await interp.translate_lookup()
-        except (Exception, SyntaxError):
-            print(f"Error in Path: {path}")
-            raise
-        print(f'whereclause: {whereclause}')
+        whereclause = await self.where_interpreted(path[6:]) #path => filter/license/eq/valid
         rows = await self.dialect_DB().filter_as_json(whereclause, None ,self.protocol_host())
         return sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON) #self.filter_base_response(rows)
 

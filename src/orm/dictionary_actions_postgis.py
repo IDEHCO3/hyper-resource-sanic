@@ -2,8 +2,6 @@ from geoalchemy2 import Geometry
 from src.hyper_resource.common_resource import CONTENT_TYPE_GEOJSON, CONTENT_TYPE_WKT, CONTENT_TYPE_GEOBUF, CONTENT_TYPE_WKB, CONTENT_TYPE_EWKB
 from src.orm.action_type import ActionFunction, ParamAction, ActionAttribute
 
-representations = [CONTENT_TYPE_GEOJSON,CONTENT_TYPE_WKT, CONTENT_TYPE_GEOBUF, CONTENT_TYPE_WKB, CONTENT_TYPE_EWKB]
-
 dic_geometry_action = {
         'area': ActionFunction('ST_Area', float, [], 'Returns the area using the current coordinate system', 'http://a-server/apis/states/RJ/geom/area/'),
         'azimuth': ActionFunction('ST_Azimuth', float,  [ParamAction('other', Geometry)], 'Returns the azimuth in radians of the line segment defined by the given point geometries, or NULL if the two points are coincident.', 'http://a-server/apis/states/RJ/geom/azimuth/Point(23,-23)'),
@@ -24,6 +22,7 @@ dic_geometry_action = {
         'wkb': ActionFunction('to_wkb', str),
         'wkt': ActionAttribute('wkt', str)
 }
+representations = [CONTENT_TYPE_GEOJSON, CONTENT_TYPE_GEOBUF]
 dic_spatial_lookup_action: dict[str, ActionFunction] = {
     'bbcontains': ActionFunction('~',
                                bool,

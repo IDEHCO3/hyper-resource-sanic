@@ -50,7 +50,7 @@ class AlchemyBase(Base):
     def column_name_or_None(cls, inst_attr: InstrumentedAttribute):
         if isinstance(inst_attr.prop, ColumnProperty):
             return inst_attr.prop.columns[0].name
-        elif isinstance(inst_attr.prop, RelationshipProperty) and inst_attr.prop._user_defined_foreign_keys[0] is not None:
+        elif isinstance(inst_attr.prop, RelationshipProperty) and list(inst_attr.prop._user_defined_foreign_keys)[0] is not None:
             return inst_attr.prop._user_defined_foreign_keys[0].name
         return None
     @classmethod

@@ -1,5 +1,5 @@
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from shapely import wkb
 
@@ -32,8 +32,12 @@ class FeatureCollectionResource(SpatialCollectionResource):
         return self.dialect_DB().get_spatial_lookup_function_names()
 
     async def rows_as_dict(self, rows):
+        if CONTENT_TYPE_HTML in self.accept_type():
+            return await super(FeatureCollectionResource, self).rows_as_dict(rows)
         response_data = []
         geom_attrubute = self.get_geom_attribute()
+        if geom_attrubute not in list(rows[0].keys()):
+            return await super(FeatureCollectionResource, self).rows_as_dict(rows)
         feature_collection = { "type": "FeatureCollection",}
         try:
 
@@ -97,27 +101,22 @@ class FeatureCollectionResource(SpatialCollectionResource):
             content = self.set_html_variables(html_content)
             return sanic.response.html(content, 200)
 
-    async def get_geobuf_representation(self):
-        start = time.time()
-        print(f"time: {start} start rows in python")
-        rows = await self.dialect_DB().fetch_all_as_geobuf(prefix_col_val=self.protocol_host())
-        res = sanic.response.raw(rows or [], content_type=CONTENT_TYPE_OCTET_STREAM)
-        end = time.time()
-        print(f"time: {end - start} end rows in python")
-        return res
-
-    async def get_wkb_representation(self):
-        rows = await self.dialect_DB().fetch_all()
-        return sanic.response.raw(rows or [], content_type=CONTENT_TYPE_WKB)
+    async def get_geobuf_representation(self, list_attribute: List[str] = None, where: Optional[str] = None, order_by: Optional[str] = None, prefix: str = None):
+        #start = time.time()
+        #print(f"time: {start} start rows in python")
+        rows = await self.dialect_DB().fetch_all_as_geobuf(list_attribute=list_attribute,where=where, order_by=order_by, prefix_col_val=prefix)
+        return sanic.response.raw(rows or [], content_type=CONTENT_TYPE_GEOBUF)
+        #res = sanic.response.raw(rows or [], content_type=CONTENT_TYPE_GEOBUF)
+        #end = time.time()
+        #print(f"time: {end - start} end rows in python")
+        #return res
 
     async def get_representation(self):
         accept = self.accept_type()
         if CONTENT_TYPE_HTML in accept:
             return await self.get_html_representation()
         elif (CONTENT_TYPE_GEOBUF in accept) or (CONTENT_TYPE_OCTET_STREAM in accept):
-            return await self.get_geobuf_representation()
-        elif CONTENT_TYPE_WKB in accept:
-            return await self.get_wkb_representation()
+            return await self.get_geobuf_representation(prefix=self.protocol_host())
         else:
             return await self.get_json_representation()
 
@@ -149,6 +148,10 @@ class FeatureCollectionResource(SpatialCollectionResource):
         except (RuntimeError, TypeError, NameError) as err:
             print(err)
             raise
+    async def options(self, *args, **kwargs):
+        context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
+        return sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
+
     def dialect_DB(self)-> DialectDbPostgis:
         if self.dialect_db is None:
           self.dialect_db = DialectDbPostgis(self.request.app.db, self.metadata_table(), self.entity_class())
@@ -159,21 +162,27 @@ class FeatureCollectionResource(SpatialCollectionResource):
         """
         return tuple(a.strip() for a in path.split(','))
 
-    async def projection(self, enum_attribute_name: str):
-        attr_names = self.attribute_names_from(enum_attribute_name)
-        if self.get_geom_attribute() in attr_names and (CONTENT_TYPE_HTML in self.accept_type()):
-            return await self.get_representation()
-        rows = await self.dialect_DB().fetch_all_as_json(attr_names)
-        return sanic.response.text(rows, content_type=CONTENT_TYPE_JSON)
+    async def response_projection(self, attribute_names: List[str] = None, where: str= None, _order_by: str= None):
+        if CONTENT_TYPE_HTML in self.accept_type():
+            return await self.get_html_representation()
+        if (CONTENT_TYPE_JSON in self.accept_type()) or (CONTENT_TYPE_GEOJSON in self.accept_type()):
+            rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where,prefix=self.protocol_host())
+            rows_dict = await self.rows_as_dict(rows)
+            return sanic.response.json(rows_dict or [])
+        if CONTENT_TYPE_GEOBUF in self.accept_type():
+            return await self.get_geobuf_representation(list_attribute=attribute_names, where=where, prefix=self.protocol_host())
+        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, prefix=self.protocol_host())
+        rows_dict = await self.rows_as_dict(rows)
+        return sanic.response.json(rows_dict or [])
 
-    async def options(self, *args, **kwargs):
-        context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
-        return sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
+    async def projection_only(self, attribute_names: List[str]):
+        if self.get_geom_attribute() not in attribute_names:
+            return await super(FeatureCollectionResource, self).projection_only(attribute_names)
+        return await self.response_projection(attribute_names)
 
     async def projection_filter(self, attribute_names: List[str], selection_path: str):
         if self.get_geom_attribute() not in attribute_names:
             return super(FeatureCollectionResource, self).projection_filter(attribute_names, selection_path)
-
         interp = InterpreterNew(selection_path, self.entity_class(), self.dialect_DB())
         try:
             whereclause = await interp.translate_lookup()
@@ -182,21 +191,24 @@ class FeatureCollectionResource(SpatialCollectionResource):
             raise
         print(f'whereclause: {whereclause}')
         where: str = f' where {whereclause}'
-        if (CONTENT_TYPE_JSON in self.accept_type()) or (CONTENT_TYPE_GEOJSON in self.accept_type()):
-            rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where,
-                                                     prefix=self.protocol_host())
-            rows_dict = await self.rows_as_dict(rows)
-            return sanic.response.json(rows_dict or [])
-        if CONTENT_TYPE_GEOBUF in self.accept_type():
-            rows = await self.dialect_DB().fetch_all_as_geobuf(list_attribute=attribute_names, where=where,prefix_col_val=self.protocol_host())
-            return sanic.response.raw(rows or [], content_type=CONTENT_TYPE_GEOBUF)
-        if CONTENT_TYPE_HTML in self.accept_type():
-            return self.get_html_representation()
+        return await self.response_projection(attribute_names, where)
 
-        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where,
-                                                 prefix=self.protocol_host())
-        rows_dict = await self.rows_as_dict(rows)
-        return sanic.response.json(rows_dict or [])
+    async def projection_sort(self, attribute_names: List[str], attributes_sort: List[str], order: str = 'asc'):
+        if self.get_geom_attribute() not in attribute_names:
+            return await super(FeatureCollectionResource, self).projection_sort(attribute_names, attributes_sort, order)
+        if CONTENT_TYPE_HTML in self.accept_type():
+            return await self.get_html_representation()
+        enum_column_name: str = self.entity_class().enum_column_names_as_given_attributes(attributes_sort)
+        order_by: str = f' order by {enum_column_name} {order}'
+        return await self.response_projection(attribute_names,None, order_by)
+
+    async def projection_filter_sort(self, attribute_names: List[str], filter_path: str, _order_by: str = 'asc'):
+        if self.get_geom_attribute() not in attribute_names:
+            return await super(FeatureCollectionResource, self).projection_filter_sort(attribute_names, filter_path, _order_by)
+        where: str = await self.where_interpreted(filter_path)
+        order_by: str = self.orderby(_order_by)
+        return await self.response_projection(attribute_names, where, order_by)
+
     def filter_base_response(self, rows):
         return sanic.response.text(rows or [], content_type=CONTENT_TYPE_GEOJSON)
 
