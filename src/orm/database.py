@@ -120,7 +120,7 @@ class DialectDatabase(AbstractDialectDatabase):
         raise NotImplementedError("'alias_column' must be implemented in subclasses")
 
     @classmethod
-    def dict_action(cls) -> dict[str, ActionFunction]:
+    def dict_action(cls) -> Dict[str, ActionFunction]:
         """
         this dict has a function's name as key and value as ActionFunction
         :return: dict[str, ActionFunction]

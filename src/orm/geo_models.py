@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import pyproj
 from shapely import wkb
@@ -82,7 +82,7 @@ class AlchemyGeoBase(AlchemyBase):
             return self.get_base_geom().area
         temp_geom = self.transform(3005)
         return temp_geom.area
-    def bound(self) -> tuple[float,float,float,float]:
+    def bound(self) -> Tuple[float, float, float, float]:
         """
         Returns a (minx, miny, maxx, maxy) tuple (float values) that bounds the object.
         :return: tuple[float,float,float,float]

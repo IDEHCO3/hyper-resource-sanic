@@ -150,7 +150,7 @@ class DialectDbPostgis(DialectDbPostgresql):
             self.function_names = list(dic_spatial_lookup_action.keys())
         return self.function_names
 
-    def dict_action(self) -> dict[str, ActionFunction]:
+    def dict_action(self) -> Dict[str, ActionFunction]:
         d = {Geometry: dic_action}
         return d
 

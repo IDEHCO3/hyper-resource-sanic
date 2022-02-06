@@ -1,10 +1,12 @@
+from typing import Dict
+
 from src.hyper_resource.common_resource import CONTENT_TYPE_JSON, CONTENT_TYPE_XML, CONTENT_TYPE_FLATBUFFERS
 from src.orm.action_type import ActionFunction, ParamAction
 from .dictionary_actions_abstract_resource import dic_abstract_resource_action
 
 representations = [CONTENT_TYPE_JSON, CONTENT_TYPE_XML]  # , CONTENT_TYPE_FLATBUFFERS
 
-dic_abstract_collection_lookup_action: dict[str, ActionFunction] = {
+dic_abstract_collection_lookup_action: Dict[str, ActionFunction] = {
 
     'filter': ActionFunction('filter',
                              'AbstractCollection',

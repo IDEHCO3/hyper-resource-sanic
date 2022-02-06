@@ -1,4 +1,6 @@
 from geoalchemy2 import Geometry
+from typing import Dict
+
 from src.hyper_resource.common_resource import CONTENT_TYPE_GEOJSON, CONTENT_TYPE_WKT, CONTENT_TYPE_GEOBUF, CONTENT_TYPE_WKB, CONTENT_TYPE_EWKB
 from src.orm.action_type import ActionFunction, ParamAction, ActionAttribute
 
@@ -23,7 +25,7 @@ dic_geometry_action = {
         'wkt': ActionAttribute('wkt', str)
 }
 representations = [CONTENT_TYPE_GEOJSON, CONTENT_TYPE_GEOBUF]
-dic_spatial_lookup_action: dict[str, ActionFunction] = {
+dic_spatial_lookup_action: Dict[str, ActionFunction] = {
     'bbcontains': ActionFunction('~',
                                bool,
                                [ParamAction('other', Geometry)],
@@ -188,7 +190,7 @@ dic_spatial_lookup_action: dict[str, ActionFunction] = {
                                representations),
 
 }
-dic_spatial_collection_action: dict[str, ActionFunction] = {
+dic_spatial_collection_action: Dict[str, ActionFunction] = {
 
     'union': ActionFunction('ST_Union',
                                Geometry,
