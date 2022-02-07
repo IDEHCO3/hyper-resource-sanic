@@ -20,8 +20,8 @@ from sanic_cors import CORS, cross_origin
 
 #Create Sanic app
 app = Sanic(__name__)
-CORS(app)
-app.blueprint(swagger_blueprint)
+# CORS(app)
+# app.blueprint(swagger_blueprint)
 
 #Setup env
 env = Env()
