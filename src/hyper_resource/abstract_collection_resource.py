@@ -13,7 +13,8 @@ from src.hyper_resource.common_resource import CONTENT_TYPE_HTML, CONTENT_TYPE_J
 from ..url_interpreter.interpreter import Interpreter
 from ..url_interpreter.interpreter_error import PathError
 from ..url_interpreter.interpreter_new import InterpreterNew
-from ..orm.dictionary_actions_abstract_collection import dic_abstract_collection_lookup_action
+from ..orm.dictionary_actions_abstract_collection import dic_abstract_collection_lookup_action, action_name
+
 collection_function_names = [
     "filter",
     "projection",
@@ -82,7 +83,7 @@ class AbstractCollectionResource(AbstractResource):
         """
         return path.split('/')[0].strip().lower()
 
-    def normalize_path(self, path: str)->str:
+    def normalize_path(self, path: str) -> str:
         """
         :param path: is a substr from iri.  Ex.: /filter/first_name/eq/John
         :return: Removes trail slash and returns str
@@ -95,7 +96,7 @@ class AbstractCollectionResource(AbstractResource):
         try:
             operation_name_or_attribute_comma = self.first_word(path)
             if operation_name_or_attribute_comma in self.get_function_names():
-                return await getattr(self, operation_name_or_attribute_comma)(*[path])
+                return await getattr(self, action_name(operation_name_or_attribute_comma))(*[path])
             else:
                 att_names = set(operation_name_or_attribute_comma.split(','))
                 atts = att_names.difference(set(self.attribute_names()))
@@ -110,8 +111,17 @@ class AbstractCollectionResource(AbstractResource):
             print(err)
             raise
 
-
     async def offsetlimit(self, path):
+        """
+        offsetlimit
+        offsetlimit orderby
+        offsetlimit agregate
+        offsetlimit agregate agregate
+        offsetlimit agregate orderby
+        offsetlimit agregate agragate orderby
+        :param path:
+        :return:
+        """
         arguments_from_url_by_slash = path.split('/')
         arguments_from_url = arguments_from_url_by_slash[1].split('&')
         # offsetlimit with 2 arguments. Ex.: offsetlimit/1&10
@@ -137,23 +147,29 @@ class AbstractCollectionResource(AbstractResource):
         result = await self.dialect_DB().count()
         return sanic.response.json(result['count'])
 
-    def orderby(self, order_by: str) -> str:
-        # order_by => name,gender&asc
-        order: List[str] = order_by.split('&')
-        if len(order) == 2:
-            _orderby: str = order[0]
-            asc_or_desc: str = order[1]
+    async def response_fetch_all(self, list_attribute: Optional[List] = None, where: Optional[str] = None, order_by: Optional[str] = None, prefix: Optional[str] = None):
+        rows = await self.dialect_DB().fetch_all(list_attribute=list_attribute, where=where, order_by=order_by, prefix=self.protocol_host())
+        return await self.response_given(rows)
+
+    def order_by_predicate(self, path: str) -> str:
+        order_by_asc_dsc: str = path
+        order_by_asc_dsc = self.normalize_path(order_by_asc_dsc)
+        orders_by_asc_dsc: List[str] = []
+        if '&' in order_by_asc_dsc:
+            enum_attribute_sort, enum_order = order_by_asc_dsc.split('&')
+            attribute_name_sort: List[str] = enum_attribute_sort.split(',')
+            orders_by_asc_dsc = enum_order.split(',')
         else:
-            _orderby: str = order[0]
-            asc_or_desc: str = 'asc'
-        enum_column_name: str = self.entity_class().enum_column_names_as_given_attributes(_orderby.split(','))
-        return f' order by {enum_column_name} {asc_or_desc}'
+            attribute_name_sort: List[str] = order_by_asc_dsc.split(',')
+        column_names: List[str] = self.entity_class().column_names_given_attributes(attribute_name_sort)
+        return self.dialect_DB().order_by_predicate(column_names, orders_by_asc_dsc)
 
-
-    def enum_attribute_from_projection(self, path: str) -> str:
-        enum_attribute_name = self.first_word(path)
-        if enum_attribute_name == 'projection':
-            return path.split('/')[1]  # srv/projection/name,gender,age or srv/name,gender,age
+    async def order_by(self, path: str) -> str:
+        # order_by => orderby/name,gender&asc,desc
+        paths: List[str] = self.normalize_path(path).split('/')
+        ordr: str = self.order_by_predicate(paths[-1])
+        rows = await self.dialect_DB().fetch_all(order_by=ordr, prefix=self.protocol_host())
+        return await self.response_given(rows)
 
     async def where_interpreted(self, selection_path: str) -> str:
         interp = InterpreterNew(selection_path, self.entity_class(), self.dialect_DB())
@@ -238,7 +254,7 @@ class AbstractCollectionResource(AbstractResource):
                                                  prefix=self.protocol_host())
         return await self.response_given(rows)
 
-    async def projection_filter_sort(self, attribute_names: List[str], filter_path: str, _order_by: str= 'asc'):
+    async def projection_filter_sort(self, attribute_names: List[str], filter_path: str, _order_by: str):
         interp = InterpreterNew(filter_path, self.entity_class(), self.dialect_DB())
         try:
             whereclause = await interp.translate_lookup()
@@ -247,9 +263,8 @@ class AbstractCollectionResource(AbstractResource):
             raise
         print(f'whereclause: {whereclause}')
         where: str = f' where {whereclause}'
-        order_string: str = self.orderby(_order_by)
-        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=order_string,
-                                                 prefix=self.protocol_host())
+        an_order: str = self.order_by_predicate(_order_by)
+        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=an_order, prefix=self.protocol_host())
         return await self.response_given(rows)
 
     async def groupbycount(self, path):
@@ -297,25 +312,52 @@ class AbstractCollectionResource(AbstractResource):
                 ls.append('/' + s + '/')
             ls.append('/' + ls_path[0])
             return ls
+
     async def filter(self, path: str):  # -> "AbstractCollectionResource":
+        """
+        filter
+        filter orderby
+        filter count
+        filter collect
+        filter collect orderby
+        filter collect collect orderby
+        """
+        #self.call_filter(path)
+        #return sanic.response.json([json.dumps(dict(row)) for row in rows])  # response.json(self.rows_as_dict(rows))
+        paths: List[str] = self.normalize_path_splitted(path, '/*/')
+        if len(paths) == 1:
+            return await self.filter_only(path)
+        if len(paths) == 2:
+            sub_paths: List[str] = self.normalize_path_splitted(paths[-1], '/')
+            operation_1: str = self.normalize_path(sub_paths[0].strip('/').strip().lower())
+            if operation_1 == 'count':
+                return await self.filter_count(paths[0])
+            if operation_1 == 'orderby':
+                return await self.filter_order_by(paths[0][6:], sub_paths[1])
+
+    async def filter_only(self, path: str):  # -> "AbstractCollectionResource":
         """
         params: path
         return: self
         description: Filter a collection given an expression
         example: http://server/api/drivers/filter/license/eq/valid
+        :param path:
+        :return:
         """
-        #self.call_filter(path)
-        whereclause = await self.where_interpreted(path[6:]) #path => filter/license/eq/valid
-        rows = await self.dialect_DB().filter_as_json(whereclause, None ,self.protocol_host())
-        return sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON) #self.filter_base_response(rows)
+        whereclause = await self.where_interpreted(path[6:])  # path => filter/license/eq/valid
+        rows = await self.dialect_DB().fetch_all(where=whereclause, prefix=self.protocol_host())
+        return await self.response_given(rows)  # self.filter_base_response(rows)
 
-        #return sanic.response.json([json.dumps(dict(row)) for row in rows])  # response.json(self.rows_as_dict(rows))
-
-    async def filter_orderby(self, path: str):
-        pass
+    async def filter_order_by(self, filter_expression: str, orderby_expression: str):
+        order_by_: str = self.order_by_predicate(orderby_expression)
+        where: str = await self.where_interpreted(filter_expression)
+        rows = await self.dialect_DB().fetch_all( where=where, order_by= order_by_,prefix=self.protocol_host())
+        return await self.response_given(rows)
 
     async def filter_count(self, path: str):
-        pass
+        where = await self.where_interpreted(path[6:])  # path => filter/license/eq/valid
+        row = await self.dialect_DB().count(where=where)
+        return sanic.response.json(row)
 
     async def filter_collect(self, path: str):
         pass

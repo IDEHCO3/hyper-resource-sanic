@@ -9,7 +9,7 @@ query_uf_one = "select * from adm.ator where id_ator = :id_ator"
 query_uf_one_values = {"id_ator": 1}
 result = loop.run_until_complete(db.fetch_one(query=query_uf_one, values=query_uf_one_values))
 SERVER = 'http://127.0.0.1:8000'
-projection_urls = [
+projection_collection_urls = [
 f"{SERVER}/gasto-list/valor,data_do_gasto,tipo_gasto",
 f"{SERVER}/gasto-list/valor,data_do_gasto,tipo_gasto/orderby/valor/",
 f"{SERVER}/gasto-list/valor,data_do_gasto,tipo_gasto/orderby/valor&desc/",
@@ -21,5 +21,24 @@ f"{SERVER}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/orderby/valor",
 f"{SERVER}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/orderby/valor&desc",
 f"{SERVER}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/orderby/valor,data_do_gasto&desc",
 f"{SERVER}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/filter/valor/gt/100/*/orderby/valor",
+]
+projection_feature_collection_urls = [
+]
+orderby_collection_urls =
+[
+f"{SERVER}/lim-unidade-federacao-a-list/orderby/nome",
+]
 
+orderby_feature_collection_urls =
+[
+f"{SERVER}/lim-unidade-federacao-a-list/orderby/nome",
+]
+filter_only_collection_urls = [
+f"{SERVER}/gasto-list/filter/valor/gt/100",
+]
+filter_only_feature_collection_urls = [
+f"{SERVER}/lim-unidade-federacao-a-list/filter/geom/transform/3005/area/gt/100000/",
+]
+filter_count_feature_collection_urls = [
+f"{SERVER}/lim-unidade-federacao-a-list/filter/sigla/in/ES,RJ/*/count"
 ]

@@ -69,7 +69,7 @@ class DialectDbPostgresql(DialectDatabase):
         super().__init__(db, metadata_table, entity_class)
 
     async def offset_limit(self, offset, limit, orderby= None, asc=None, format_row = None ):
-        colums_as_comma_name = self.columns_as_comma_list_str(self.metadata_table.columns)
+        colums_as_comma_name = self.columns_as_enum_column_names(self.metadata_table.columns)
         asc = 'desc' if asc == 'desc' else 'asc'
         orderbyasc = '' if orderby is None else f' order by {orderby} {asc} '
         query = f'select {colums_as_comma_name} from {self.schema_table_name()} {orderbyasc} limit {limit} offset {offset}'
@@ -197,22 +197,37 @@ class DialectDbPostgresql(DialectDatabase):
         print(query)
         rows = await self.db.fetch_all(query)
         return rows
+
     async def filter_as_json(self, a_filter, e_column_names : str = None, prefix_col_val: str=None):
         query = self.basic_select(e_column_names, prefix_col_val)
         query = f'{query} where {a_filter}'
         print(query)
         rows = await self.fetch_all_as_json(None, query)
         return rows
-    async def count(self) -> int:
-        query = f'select count(*) from {self.schema_table_name()}'
-        row = await self.db.fetch_one(query)
-        return row
 
-    async def order_by(self, str_attr_as_comma_list):
-        cacls = self.columns_as_comma_list_str(self.metadata_table.columns)
-        query = f'select {cacls} from {self.schema_table_name()} order by {str_attr_as_comma_list}'
+    async def count(self, where: str = None) -> int:
+        where_clause = where or ''
+        query = f'select count(*) from {self.schema_table_name()} {where_clause}'
+        row = await self.db.fetch_one(query)
+        return row['count']
+
+    def order_by_predicate(self, column_names: List[str], orders: List[str] = []) -> str:
+        if len(column_names) == len(orders):
+            predicate: str = ','.join([f' {col} {orders[idx]}' for idx, col in enumerate(column_names)])
+            return f' order by {predicate}'
+        elif len(orders) >= 1:
+            predicate: str = ','.join([f' {col} {orders[0]}' for col in column_names])
+            return f' order by {predicate}'
+        enum_column_name: str = ','.join(column_names)
+        return f' order by {enum_column_name}'
+
+    async def order_by(self, column_names: List[str], orders: List[str] = []):
+        cacls = self.columns_as_enum_column_names(self.metadata_table.columns)
+        predicate: str = self.order_by_predicate(column_names, orders)
+        query = f'select {cacls} from {self.schema_table_name()} {predicate}'
         rows = await self.db.fetch_all(query)
         return rows
+
     async def projection(self, str_attribute_as_comma_list, orderby=None):
         order_by = '' if orderby is None else f' order by {orderby} '
         query = f'select {str_attribute_as_comma_list} from {self.schema_table_name()} {order_by}'

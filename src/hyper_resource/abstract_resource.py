@@ -36,6 +36,10 @@ class AbstractResource:
 
         return self.dialect_db
 
+    def normalize_path_splitted(self, path: str, splitter: str) -> List[str]:
+        paths: List[str] = path.split(splitter)
+        return paths if paths[-1] != '' else paths[:-1]
+
     def accept_type(self) -> str:
         return self.request.headers['accept']
 

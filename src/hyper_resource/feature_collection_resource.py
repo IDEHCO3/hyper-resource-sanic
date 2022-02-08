@@ -12,6 +12,7 @@ from src.hyper_resource.spatial_collection_resource import SpatialCollectionReso
 from src.orm.database_postgis import DialectDbPostgis
 import json, os
 
+from src.orm.dictionary_actions_abstract_collection import action_name
 from src.url_interpreter.interpreter import Interpreter
 from src.url_interpreter.interpreter_new import InterpreterNew
 
@@ -133,7 +134,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
                 return await self.get_html_representation()
             operation_name_or_attribute_comma = self.first_word(path)
             if operation_name_or_attribute_comma in self.get_function_names():
-                return await getattr(self, operation_name_or_attribute_comma)(*[path])
+                return await getattr(self, action_name(operation_name_or_attribute_comma))(*[path])
             else:
                 att_names = set(operation_name_or_attribute_comma.split(','))
                 atts = att_names.difference(set(self.attribute_names()))
@@ -162,23 +163,29 @@ class FeatureCollectionResource(SpatialCollectionResource):
         """
         return tuple(a.strip() for a in path.split(','))
 
-    async def response_projection(self, attribute_names: List[str] = None, where: str= None, _order_by: str= None):
+    async def response_request(self, attribute_names: List[str] = None, where: str= None, order_by: str= None, prefix: str =None):
         if CONTENT_TYPE_HTML in self.accept_type():
             return await self.get_html_representation()
         if (CONTENT_TYPE_JSON in self.accept_type()) or (CONTENT_TYPE_GEOJSON in self.accept_type()):
-            rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where,prefix=self.protocol_host())
+            rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=order_by, prefix=prefix)
             rows_dict = await self.rows_as_dict(rows)
             return sanic.response.json(rows_dict or [])
         if CONTENT_TYPE_GEOBUF in self.accept_type():
-            return await self.get_geobuf_representation(list_attribute=attribute_names, where=where, prefix=self.protocol_host())
-        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, prefix=self.protocol_host())
+            return await self.get_geobuf_representation(list_attribute=attribute_names, where=where, order_by=order_by, prefix=prefix)
+        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=order_by, prefix=prefix)
         rows_dict = await self.rows_as_dict(rows)
         return sanic.response.json(rows_dict or [])
+
+    async def order_by(self, path: str) -> str:
+        # order_by => orderby/name,gender&asc
+        paths: List[str] = self.normalize_path(path).split('/')
+        ordr: str = self.order_by_predicate(paths[-1])
+        return await self.response_request(order_by=ordr)
 
     async def projection_only(self, attribute_names: List[str]):
         if self.get_geom_attribute() not in attribute_names:
             return await super(FeatureCollectionResource, self).projection_only(attribute_names)
-        return await self.response_projection(attribute_names)
+        return await self.response_request(attribute_names=attribute_names)
 
     async def projection_filter(self, attribute_names: List[str], selection_path: str):
         if self.get_geom_attribute() not in attribute_names:
@@ -191,7 +198,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
             raise
         print(f'whereclause: {whereclause}')
         where: str = f' where {whereclause}'
-        return await self.response_projection(attribute_names, where)
+        return await self.response_request(attribute_names=attribute_names, where=where, prefix=self.protocol_host())
 
     async def projection_sort(self, attribute_names: List[str], attributes_sort: List[str], order: str = 'asc'):
         if self.get_geom_attribute() not in attribute_names:
@@ -200,39 +207,32 @@ class FeatureCollectionResource(SpatialCollectionResource):
             return await self.get_html_representation()
         enum_column_name: str = self.entity_class().enum_column_names_as_given_attributes(attributes_sort)
         order_by: str = f' order by {enum_column_name} {order}'
-        return await self.response_projection(attribute_names,None, order_by)
+        return await self.response_request(attribute_names=attribute_names, order_by=order_by, prefix=self.protocol_host())
 
-    async def projection_filter_sort(self, attribute_names: List[str], filter_path: str, _order_by: str = 'asc'):
+    async def projection_filter_sort(self, attribute_names: List[str], filter_path: str, _order_by: str):
         if self.get_geom_attribute() not in attribute_names:
             return await super(FeatureCollectionResource, self).projection_filter_sort(attribute_names, filter_path, _order_by)
         where: str = await self.where_interpreted(filter_path)
-        order_by: str = self.orderby(_order_by)
-        return await self.response_projection(attribute_names, where, order_by)
+        order_by: str = self.order_by_predicate(_order_by)
+        return await self.response_request(attribute_names=attribute_names, where=where, order_by=order_by)
 
     def filter_base_response(self, rows):
         return sanic.response.text(rows or [], content_type=CONTENT_TYPE_GEOJSON)
 
-    async def filter(self, path: str):  # -> "AbstractCollectionResource":
-        """
-        params: path
-        return: self
-        description: Filter a collection given an expression
-        example: http://server/api/drivers/filter/license/eq/valid
-        """
+    async def filter_only(self, path: str):
         if CONTENT_TYPE_HTML in self.accept_type():
             return await self.get_html_representation()
-
-        interp = InterpreterNew(path[6:], self.entity_class(), self.dialect_DB())
         try:
-            whereclause = await interp.translate_lookup()
+            whereclause = await self.where_interpreted(path[6:])
         except (Exception, SyntaxError):
             print(f"Error in Path: {path}")
             raise
-        print(f'whereclause: {whereclause}')
-        rows = await self.dialect_DB().filter(whereclause, None ,self.protocol_host())
-        feature_collection = await self.rows_as_dict(rows)
+        return await self.response_request(where=whereclause, prefix=self.protocol_host())
 
-        return sanic.response.json(feature_collection or [])
+    async def filter_order_by(self, filter_expression: str, orderby_expression: str):
+        order_by_: str = self.order_by_predicate(orderby_expression)
+        where: str = await self.where_interpreted(filter_expression)
+        return await self.response_request(where=where, order_by=order_by_)
 
     async def _offsetlimit(self, offset: int, limit: int, str_lst_attribute_comma: str=None, asc: str=None):
         if self.is_content_type_in_accept(CONTENT_TYPE_HTML):
@@ -272,14 +272,14 @@ class FeatureCollectionResource(SpatialCollectionResource):
     http://127.0.0.1:8000/lim-unidade-federacao-a-list/extent/geom
     select st_extent(geom) from bcim.lim_unidade_federacao_a
     
-    http://127.0.0.1:8000/lim-unidade-federacao-a-list/extent/geom/./groupby/sigla
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/extent/geom/*/groupby/sigla
     select sigla, st_extent(geom) from bcim.lim_unidade_federacao_a group by sigla
     
-    http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/regiao/eq/Sul/./extent/geom/./groupby/sigla
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/regiao/eq/Sul/*/extent/geom/*/groupby/sigla
     select sigla, st_extent(geom) from bcim.lim_unidade_federacao_a where regiao = 'Sul' group by sigla
     
     UNION
-    http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/regiao/eq/Sul/./union/geom/./groupby/regiao
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/regiao/eq/Sul/*/union/geom/*/groupby/regiao
     select regiao, st_union(geom) from bcim.lim_unidade_federacao_a where regiao = 'Sul' group by regiao
     """
 

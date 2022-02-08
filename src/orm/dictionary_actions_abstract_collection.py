@@ -34,7 +34,7 @@ dic_abstract_collection_lookup_action: dict[str, ActionFunction] = {
                             'http://a-server/apis/states/count',
                             [CONTENT_TYPE_JSON]),
 
-    'orderby': ActionFunction('orderby',
+    'orderby': ActionFunction('order_by',
                               'AbstractCollection',
                               [],
                               'Returns the amount of resources',
@@ -49,3 +49,6 @@ dic_abstract_collection_lookup_action: dict[str, ActionFunction] = {
                                         representations),
 }
 dic_abstract_collection_lookup_action = {**dic_abstract_resource_action, **dic_abstract_collection_lookup_action}
+
+def action_name(a_key_name: str) -> str:
+    return dic_abstract_collection_lookup_action[a_key_name].name

@@ -74,7 +74,7 @@ class DialectDatabase(AbstractDialectDatabase):
     def schema_sequence(self) -> str:
         return f'{self.schema()}.{self.sequence_name()}'
 
-    def columns_as_comma_list_str(self, columns) -> str:
+    def columns_as_enum_column_names(self, columns: List[Column]) -> str:
         return ','.join([column.name for column in columns])
 
     def enum_column_names(self, column_names: List[str] = None) -> str:
@@ -145,7 +145,7 @@ class DialectDatabase(AbstractDialectDatabase):
     async def fetch_all_as_json(self, tuple_attrib : Tuple[str] = None, a_query: str = None, prefix_col_val: str=None):
         raise NotImplementedError("'fetch_all_as_json' must be implemented in subclasses")
 
-    async def count(self) -> int:
+    async def count(self, where: str) -> int:
         raise NotImplementedError("'count' must be implemented in subclasses")
 
     async def min(self, column_name : str) -> Number:
@@ -154,7 +154,10 @@ class DialectDatabase(AbstractDialectDatabase):
     async def max(self, column_name : str) -> Number:
         raise NotImplementedError("'max' must be implemented in subclasses")
 
-    async def order_by(self, enum):
+    def order_by_predicate(self, column_names: List[str], orders: List[str] = []) -> str:
+        raise NotImplementedError("'order_by_predicate' must be implemented in subclasses")
+
+    async def order_by(self, column_names: List[str], orders: List[str] = []):
         raise NotImplementedError("'order_by' must be implemented in subclasses")
 
     async def projection(self, str_attribute_as_comma_list, orderby=None):
