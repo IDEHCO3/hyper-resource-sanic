@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 
 import httpx
 from sqlalchemy import sql, String, INT
@@ -264,7 +264,7 @@ class InterpreterNew:
     def dialect_db_action(self, typeof: object, word: str):
         return self.dialect_db.action(typeof, word)
 
-    def dict_action(self) -> dict[str, ActionFunction]:
+    def dict_action(self) -> Dict[str, ActionFunction]:
         return self.dialect_db.dict_action()
 
     async def action_function(self, a_token: Optional[Token] = None) -> Optional[ActionFunction]:

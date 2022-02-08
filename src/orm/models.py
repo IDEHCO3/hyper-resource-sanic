@@ -1,4 +1,4 @@
-from __future__ import annotations
+# from __future__ import annotations
 from typing import Dict, Tuple, Sequence, List, Any, Optional
 
 from sqlalchemy import ForeignKey
@@ -72,7 +72,7 @@ class AlchemyBase(Base):
     def attribute_name_given(cls, attribute: InstrumentedAttribute)-> str:
         return attribute.prop.key
     @classmethod
-    def attribute_column_type(cls, attribute_name) -> tuple[str,str,str]:
+    def attribute_column_type(cls, attribute_name) -> Tuple[str, str, str]:
         lst_a_c_t = cls.list_attribute_column_type()
         return next(a_c_t for a_c_t in lst_a_c_t if a_c_t[0] == attribute_name)
         #next((x for x in lst if ...), [default value])

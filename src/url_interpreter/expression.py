@@ -1,6 +1,8 @@
 import re
-from re import Match
+# from re import Match
 from typing import List, Optional
+
+from typing.re import Match
 
 from src.url_interpreter.interpreter_error import PathError
 from src.url_interpreter.tword import TWord
