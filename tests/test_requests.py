@@ -20,6 +20,9 @@ TEXT_HTML_MIME_TYPE = "text/html"
 TEXT_HTML_UTF8_MIME_TYPE = "text/html; charset=utf-8"
 
 FEATURE_TYPE_KEY = "type"
+FEATURE_GEOMETRY_KEY = "geometry"
+FEATURE_PROPERTIES_KEY = "properties"
+
 FEATURE_COLLECTION_TYPE_KEY = "type"
 FEATURE_COLLECTION_FEATURES_KEY = "features"
 
@@ -119,6 +122,12 @@ def get_features_quantity(response):
     return len(data[FEATURE_COLLECTION_FEATURES_KEY])
 # ----------------------------------------- FEATURE COLLECTION FUNCTIONS (END) -----------------------------------------
 
+# --------------------------------------------- FEATURE RESOURCE FUNCTIONS ---------------------------------------------
+def is_feature_resource_content(response):
+    data = json.loads(response.body)
+    return FEATURE_TYPE_KEY in data and FEATURE_GEOMETRY_KEY in data and FEATURE_PROPERTIES_KEY in data
+# ------------------------------------------ FEATURE RESOURCE FUNCTIONS (END) ------------------------------------------
+
 def test_basic_api_entrypoint(app):
     request, response = app.test_client.get("/")
 
@@ -126,6 +135,7 @@ def test_basic_api_entrypoint(app):
     assert json.loads(response.body) == api_entry_point()
     assert response.status == 200
 
+# ---------------------------------------------- FEATURE COLLECTION TESTS ----------------------------------------------
 # http://localhost:8000/lim-unidade-federacao-a-list
 def test_basic_feature_collection(app):
     request, response = app.test_client.get("/lim-unidade-federacao-a-list")
@@ -144,3 +154,44 @@ def test_basic_feature_collection_html(app):
     assert CONTENT_TYPE_HEADER_KEY in get_header_keys(response)
     assert response.headers.get(CONTENT_TYPE_HEADER_KEY) in [TEXT_HTML_MIME_TYPE, TEXT_HTML_UTF8_MIME_TYPE]
     assert response.status == 200
+
+# http://localhost:8000/lim-unidade-federacao-a-list/filter/sigla/in/RJ,ES
+def test_feature_collection_filter_eq(app):
+    request, response = app.test_client.get("/lim-unidade-federacao-a-list/filter/sigla/eq/RJ")
+    assert request.method.lower() == "get"
+    assert response.status == 200
+    assert CONTENT_TYPE_HEADER_KEY in get_header_keys(response)
+    # assert response.headers.get(CONTENT_TYPE_HEADER_KEY) == APPLICATION_GEOJSON_MIME_TYPE
+    assert is_feature_collection_content(response) == True
+    assert get_features_quantity(response) == 1
+
+def test_feature_collection_filter_in(app):
+    request, response = app.test_client.get("/lim-unidade-federacao-a-list/filter/sigla/in/RJ,ES")
+    assert request.method.lower() == "get"
+    assert response.status == 200
+    assert CONTENT_TYPE_HEADER_KEY in get_header_keys(response)
+    # assert response.headers.get(CONTENT_TYPE_HEADER_KEY) == APPLICATION_GEOJSON_MIME_TYPE
+    assert is_feature_collection_content(response) == True
+    assert get_features_quantity(response) == 2
+
+# http://localhost:8000/lim-unidade-federacao-a-list/filter/sigla/in/MT,MS/and/id_objeto/gt/56000
+def test_feature_collection_filter_or(app):
+    request, response = app.test_client.get("/lim-unidade-federacao-a-list/filter/sigla/in/MT,MS/and/id_objeto/gt/56000")
+    assert request.method.lower() == "get"
+    assert response.status == 200
+    assert CONTENT_TYPE_HEADER_KEY in get_header_keys(response)
+    # assert response.headers.get(CONTENT_TYPE_HEADER_KEY) == APPLICATION_GEOJSON_MIME_TYPE
+    assert is_feature_collection_content(response) == True
+    assert get_features_quantity(response) == 1
+# ------------------------------------------- FEATURE COLLECTION TESTS (END) -------------------------------------------
+
+# http://127.0.0.1:8000/lim-unidade-federacao-a-list/56406
+def test_basic_feature_resource(app):
+    request, response = app.test_client.get("/lim-unidade-federacao-a-list/56406")
+
+    assert request.method.lower() == "get"
+    assert response.status == 200
+    assert CONTENT_TYPE_HEADER_KEY in get_header_keys(response)
+    # assert response.headers.get(CONTENT_TYPE_HEADER_KEY) == APPLICATION_GEOJSON_MIME_TYPE
+    assert is_feature_resource_content(response) == True
+
