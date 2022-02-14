@@ -16,6 +16,8 @@ import aiohttp
 CONTENT_TYPE_HEADER_KEY = "content-type"
 APPLICATION_JSON_MIME_TYPE = "application/json"
 APPLICATION_GEOJSON_MIME_TYPE = "application/geo+json"
+TEXT_HTML_MIME_TYPE = "text/html"
+TEXT_HTML_UTF8_MIME_TYPE = "text/html; charset=utf-8"
 
 FEATURE_TYPE_KEY = "type"
 FEATURE_COLLECTION_TYPE_KEY = "type"
@@ -133,4 +135,12 @@ def test_basic_feature_collection(app):
     # assert response.headers.get(CONTENT_TYPE_HEADER_KEY) == APPLICATION_GEOJSON_MIME_TYPE
     assert is_feature_collection_content(response) == True
     assert get_features_quantity(response) == 27
+    assert response.status == 200
+
+def test_basic_feature_collection_html(app):
+    request, response = app.test_client.get("/lim-unidade-federacao-a-list", headers={"accept": "text/html"})
+
+    assert request.method.lower() == "get"
+    assert CONTENT_TYPE_HEADER_KEY in get_header_keys(response)
+    assert response.headers.get(CONTENT_TYPE_HEADER_KEY) in [TEXT_HTML_MIME_TYPE, TEXT_HTML_UTF8_MIME_TYPE]
     assert response.status == 200
