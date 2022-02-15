@@ -24,6 +24,7 @@ class AbstractDialectDatabase():
     def __init__(self, db):
         self.db = db
 
+
 class DialectDatabase(AbstractDialectDatabase):
     def __init__(self, db, metadata_table=None, entity_class: AlchemyBase = None):
         super().__init__(db)
@@ -45,15 +46,15 @@ class DialectDatabase(AbstractDialectDatabase):
         fk_columns = [att for att in attrs if len(att.foreign_keys) > 0]
         return fk_columns
 
-    def foreign_key_column_by_name(self, column_name:str):
+    def foreign_key_column_by_name(self, column_name: str):
         fk_columns = self.foreign_keys_columns()
         col = [column for column in fk_columns if column.key == column_name]
-        if(len(col) == 0):
+        if (len(col) == 0):
             raise NameError(f"The attribute is not existent or does not represent a foreign key: {column_name}")
         else:
             return col[0]
 
-    def get_model_by_foreign_key(self, fk_column:Column):
+    def get_model_by_foreign_key(self, fk_column: Column):
         refered_model_name = list(fk_column.foreign_keys)[0].column.table.name
         for c in Base._decl_class_registry.values():
             if hasattr(c, '__tablename__') and c.__tablename__ == refered_model_name:
@@ -94,7 +95,8 @@ class DialectDatabase(AbstractDialectDatabase):
     def column_names_given_attributes(self, attributes_from_path) -> List[str]:
         return self.entity_class.column_names_given_attributes(attributes_from_path)
 
-    def enum_column_names_alias_attribute_given(self, list_attrib: Tuple[InstrumentedAttribute], prefix_col_val: str = None) -> str:
+    def enum_column_names_alias_attribute_given(self, list_attrib: Tuple[InstrumentedAttribute],
+                                                prefix_col_val: str = None) -> str:
         list_attrib_column = self.list_attribute_column_given(list_attrib)
         return self.entity_class.enum_column_names_alias_attribute_given(list_attrib_column)
 
@@ -110,10 +112,13 @@ class DialectDatabase(AbstractDialectDatabase):
     def attribute_names(self) -> List[str]:
         return [key for key, value in self.entity_class.attributes_with_dereferenceable()]
 
-    def basic_select(self, list_attrib: List[str] = None, prefix_col_val: str = None ) -> str:
+    def query_build_by(self, enum_fields: str = '', enum_schema_table: str ='', enum_join: str ='', enum_order_by:str = '', offsetlimit: str = '') -> str:
+        raise NotImplementedError("'query_build_by' must be implemented in subclasses")
+
+    def basic_select(self, list_attrib: List[str] = None, prefix_col_val: str = None) -> str:
         raise NotImplementedError("'basic_select' must be implemented in subclasses")
 
-    def basic_select_by_id(self, pk, tuple_attrib: Tuple[str] = None, prefix_col_val: str=None):
+    def basic_select_by_id(self, pk, tuple_attrib: Tuple[str] = None, prefix_col_val: str = None):
         raise NotImplementedError("'basic_select_by_id' must be implemented in subclasses")
 
     def alias_column(self, inst_attr: InstrumentedAttribute, prefix_col: str = None):
@@ -130,32 +135,45 @@ class DialectDatabase(AbstractDialectDatabase):
     async def next_val(sequence_name: str):
         raise NotImplementedError("'next_val' must be implemented in subclasses")
 
-    async def offset_limit(self, offset, limit, orderby= None, asc=None, format_row = None):
+    async def offset_limit(self, offset, limit, orderby=None, asc=None, format_row=None):
         raise NotImplementedError("'offset_limit' must be implemented in subclasses")
 
-    async def fetch_all(self, list_attribute: Optional[List] = None, where: Optional[str] = None, order_by: Optional[str] = None, prefix: Optional[str] = None):
+    async def fetch_all(self, list_attribute: Optional[List] = None, where: Optional[str] = None,
+                        order_by: Optional[str] = None, prefix: Optional[str] = None):
         raise NotImplementedError("'fetch_all' must be implemented in subclasses")
 
-    async def fetch_one(self):
+    async def fetch_all_by(self, query: str):
+        raise NotImplementedError("'fetch_all_by' must be implemented in subclasses")
+
+    async def fetch_one(self, dic: dict, all_column: str = None, prefix_col_val: str = None):
         raise NotImplementedError("'fetch_one' must be implemented in subclasses")
 
-    async def fetch_one_as_json(self, id_dict, prefix_col_val: str=None):
+    async def fetch_one_by(self, query: str):
+        raise NotImplementedError("'fetch_one_by' must be implemented in subclasses")
+
+    async def fetch_one_as_json(self, id_dict, prefix_col_val: str = None):
         raise NotImplementedError("'fetch_one_as_json' must be implemented in subclasses")
 
-    async def fetch_all_as_json(self, tuple_attrib : Tuple[str] = None, a_query: str = None, prefix_col_val: str=None):
+    async def fetch_all_as_json(self, tuple_attrib: Tuple[str] = None, a_query: str = None, prefix_col_val: str = None):
         raise NotImplementedError("'fetch_all_as_json' must be implemented in subclasses")
 
     async def count(self, where: str) -> int:
         raise NotImplementedError("'count' must be implemented in subclasses")
 
-    async def min(self, column_name : str) -> Number:
+    async def min(self, column_name: str) -> Number:
         raise NotImplementedError("'min' must be implemented in subclasses")
 
-    async def max(self, column_name : str) -> Number:
+    async def max(self, column_name: str) -> Number:
         raise NotImplementedError("'max' must be implemented in subclasses")
 
-    def order_by_predicate(self, column_names: List[str], orders: List[str] = []) -> str:
+    def predicate_order_by(self, column_names: List[str], orders: List[str] = []) -> str:
         raise NotImplementedError("'order_by_predicate' must be implemented in subclasses")
+
+    def predicate_offset_limit(self, offset: int, limit: int) -> str:
+        raise NotImplementedError("'predicate_offset_limit' must be implemented in subclasses")
+
+    def predicate_collect(self, column_names: List[str], predicate: str, prefix: str) -> str:
+        raise NotImplementedError("'predicate_collect' must be implemented in subclasses")
 
     async def order_by(self, column_names: List[str], orders: List[str] = []):
         raise NotImplementedError("'order_by' must be implemented in subclasses")
@@ -163,7 +181,7 @@ class DialectDatabase(AbstractDialectDatabase):
     async def projection(self, str_attribute_as_comma_list, orderby=None):
         raise NotImplementedError("'projection' must be implemented in subclasses")
 
-    async def group_by_count(enum, enum_attribute: str, orderby=None, format_row = None):
+    async def group_by_count(enum, enum_attribute: str, orderby=None, format_row=None):
         raise NotImplementedError("'groupbycount' must be implemented in subclasses")
 
     async def group_by_sum(enum, enum_attribute: str, attr_to_sum, orderby=None, format_row=None):
@@ -172,7 +190,7 @@ class DialectDatabase(AbstractDialectDatabase):
     async def filter(self, a_filter: str):
         raise NotImplementedError("'filter' must be implemented in subclasses")
 
-    async def filter_as_json(self, a_filter, e_column_names: str = None, prefix_col_val: str=None):
+    async def filter_as_json(self, a_filter, e_column_names: str = None, prefix_col_val: str = None):
         raise NotImplementedError("'filter_as_json' must be implemented in subclasses")
 
     async def delete(self, id_or_dict):
@@ -204,7 +222,7 @@ class DialectDatabase(AbstractDialectDatabase):
         return float(string)
 
     async def convert_to_db_date(self, string: str) -> str:
-        dt: datetime.date =  await ConverterType().convert_to_date(string)
+        dt: datetime.date = await ConverterType().convert_to_date(string)
         return dt.isoformat()
 
     async def convert_to_db_datetime(self, string: str) -> str:
@@ -218,13 +236,13 @@ class DialectDatabase(AbstractDialectDatabase):
     def value_has_url(self, value_str: str) -> bool:
         return (value_str.find('http:') > -1) or (value_str.find('https:') > -1) or (value_str.find('www.') > -1)
 
-    def value_seems_json(self, value_str : str) -> bool:
+    def value_seems_json(self, value_str: str) -> bool:
         return value_str.startswith('{') and value_str.endswith('}')
 
     async def convert_to_db_geometry(self, value_as_str: str) -> str:
         raise NotImplementedError("'convert_to_db_geometry' must be implemented in subclasses")
 
-    async def operation_to_convert_db_value(self, a_type) ->  object:
+    async def operation_to_convert_db_value(self, a_type) -> object:
         d = dict()
         d[str] = self.convert_to_db_string
         d[String] = self.convert_to_db_string

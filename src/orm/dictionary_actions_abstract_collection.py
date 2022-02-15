@@ -17,9 +17,9 @@ dic_abstract_collection_lookup_action: Dict[str, ActionFunction] = {
 
     'collect': ActionFunction('collect',
                               'AbstractCollection',
-                              [ParamAction('expression', str)],
+                              [ParamAction('enum_attribute_names', str), ParamAction('attribute_name', str)],
                               'Returns a collection with some transformation given a expression.',
-                              'http://a-server/apis/states/collect/geom/buffer/1.2',
+                              'http://a-server/apis/states/collect/name,area&geom/buffer/1.2',
                               representations),
 
     'offsetlimit': ActionFunction('offsetlimit',

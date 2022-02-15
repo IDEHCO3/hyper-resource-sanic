@@ -68,7 +68,8 @@ class DialectDbPostgresql(DialectDatabase):
     def __init__(self, db, metadata_table, entity_class):
         super().__init__(db, metadata_table, entity_class)
 
-    async def offset_limit(self, offset, limit, orderby= None, asc=None, format_row = None ):
+    async def offset_limit(self, offset: int, limit: int, orderby= None, asc=None, format_row = None ):
+        offset = offset - 1
         colums_as_comma_name = self.columns_as_enum_column_names(self.metadata_table.columns)
         asc = 'desc' if asc == 'desc' else 'asc'
         orderbyasc = '' if orderby is None else f' order by {orderby} {asc} '
@@ -78,6 +79,8 @@ class DialectDbPostgresql(DialectDatabase):
         else:
             rows = await self.fetch_all_as_json(None, query)
         return rows
+    async def fetch_all_by(self, query: str):
+        return await self.db.fetch_all(query)
 
     async def fetch_all(self, list_attribute: Optional[List] = None, where: Optional[str] = None, order_by: Optional[str] = None, prefix: Optional[str] = None):
         query = self.basic_select(list_attrib=list_attribute, prefix_col_val=prefix) #self.metadata_table.select()
@@ -112,7 +115,7 @@ class DialectDbPostgresql(DialectDatabase):
             attr_name = self.entity_class.attribute_name_given(inst_attr)
             return f'{col_name} as {attr_name}'
 
-    def column_names_alias(self, attrib_names: Optional[List[str]], prefix_col_val: str = None):
+    def column_names_alias(self, attrib_names: Optional[List[str]], prefix_col_val: str = None) -> str:
         attr_names = attrib_names if attrib_names is not None else self.attribute_names()
         attributes = [self.entity_class.__dict__[name] for name in attr_names]
         list_alias = []
@@ -122,19 +125,28 @@ class DialectDbPostgresql(DialectDatabase):
                 list_alias.append(alias)
         return ','.join(list_alias)
 
-    def enum_column_names_alias_attribute_given(self, attributes: List[InstrumentedAttribute], prefix_col_val: str = None):
+    def enum_column_names_alias_attribute_given(self, attributes: List[InstrumentedAttribute], prefix_col_val: str = None) -> str:
         list_alias = []
         for att in attributes:
             alias = self.alias_column(att, prefix_col_val)
             if alias is not None:
                 list_alias.append(alias)
         return ','.join(list_alias)
+
     async def fetch_one(self, dic: dict, all_column: str=None, prefix_col_val: str=None ):
         key_or_unique = next(key for key in dic.keys())
         query = self.basic_select(all_column, prefix_col_val)
         query = f"{query} where {key_or_unique} = :{key_or_unique}"
         row = await self.db.fetch_one(query=query, values=dic)
         return row
+
+    def query_build_by(self, enum_fields: str = '', enum_schema_table: str ='', enum_join: str ='', enum_order_by:str = '', offsetlimit: str = '') -> str:
+        predicate_field: str        = self.enum_column_names() if enum_fields == '' else enum_fields
+        predicate_schema_table: str = self.schema_table_name() if enum_schema_table == '' else enum_schema_table
+        predicate_join: str         = '' if enum_join == '' else f'where {enum_join}'
+        predicate_orderby: str      = '' if enum_order_by == '' else f'order by {enum_order_by}'
+        predicate_offset: str       = '' if offsetlimit == '' else offsetlimit
+        return f'select {predicate_field} from {predicate_schema_table} {predicate_join} {predicate_orderby} {predicate_offset}'
 
     def basic_select(self, list_attrib: List[str] = None, prefix_col_val: str = None ) -> str:
 
@@ -211,7 +223,10 @@ class DialectDbPostgresql(DialectDatabase):
         row = await self.db.fetch_one(query)
         return row['count']
 
-    def order_by_predicate(self, column_names: List[str], orders: List[str] = []) -> str:
+    def predicate_offset_limit(self, offset: int, limit: int) -> str:
+        return f'limit {limit} offset {offset - 1} '
+
+    def predicate_order_by(self, column_names: List[str], orders: List[str] = []) -> str:
         if len(column_names) == len(orders):
             predicate: str = ','.join([f' {col} {orders[idx]}' for idx, col in enumerate(column_names)])
             return f' order by {predicate}'
@@ -221,9 +236,16 @@ class DialectDbPostgresql(DialectDatabase):
         enum_column_name: str = ','.join(column_names)
         return f' order by {enum_column_name}'
 
+    def predicate_collect(self, attribute_names: Optional[List[str]], predicate_action: str, prefix: str) -> str:
+
+        if len(attribute_names) == 0:
+            return f'{predicate_action}'
+        enum_column_names = self.column_names_alias(attribute_names, prefix)
+        return f'{enum_column_names}, {predicate_action}'
+
     async def order_by(self, column_names: List[str], orders: List[str] = []):
         cacls = self.columns_as_enum_column_names(self.metadata_table.columns)
-        predicate: str = self.order_by_predicate(column_names, orders)
+        predicate: str = self.predicate_order_by(column_names, orders)
         query = f'select {cacls} from {self.schema_table_name()} {predicate}'
         rows = await self.db.fetch_all(query)
         return rows
@@ -281,7 +303,7 @@ class DialectDbPostgresql(DialectDatabase):
         await self.db.execute(query=query, values=dict_column_value)
         return pk_value
     def db_type_name_given_attribute(self, attribute_name: str)->str:
-        tp_name = self.entity_class().attribute_column_type(attribute_name)[2]
+        tp_name = self.entity_class().attrib_name_col_name_type_col_name(attribute_name)[2]
         if ('VARCHAR' in tp_name) or ('CHAR' in tp_name):
             return 'VARCHAR'
         if tp_name in ('INTEGER', 'INT', 'Integer'):
@@ -319,3 +341,29 @@ class DialectDbPostgresql(DialectDatabase):
                 val = value
             dic[key] = val
         return dic
+
+    def action(self, typeof: object, action_name: str) -> Optional[ActionFunction]:
+        if typeof in self.dict_action() and (action_name in self.dict_action()[typeof]):
+            d = self.dict_action()[typeof]
+            return d[action_name]
+        return None
+
+    def actions_in_chain(self, a_type: type, action_names: List[str]) -> List[ActionFunction]:
+        tp: object = a_type
+        actions: List[ActionFunction] = list()
+        index: int = 0
+        len_action: int = len(action_names)
+        while index < len_action:
+            action: ActionFunction = self.action(tp, action_names[index])
+            actions.append(action)
+            tp = action.answer
+            if action.has_parameters():
+                index += 1
+            index += 1
+        return actions
+
+    def last_action_in_chain(self,a_type: type, action_names: List[str]) -> ActionFunction:
+        return self.actions_in_chain(a_type, action_names)[-1]
+
+    def type_of_last_action_in_chain(self,a_type: type, action_names: List[str]) -> object:
+        return self.last_action_in_chain(a_type, action_names)

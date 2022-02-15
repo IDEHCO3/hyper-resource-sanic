@@ -65,17 +65,33 @@ class AlchemyBase(Base):
     @classmethod
     def all_attribute_names(cls) -> List[str]:
         return [key for key, value in cls.__dict__.items() if isinstance(value, InstrumentedAttribute)]
+
     @classmethod
     def has_attribute(cls, attribute_name: str) -> bool:
         return attribute_name in cls.all_attribute_names()
+
+    @classmethod
+    def has_not_attribute(cls, attribute_name: str) -> bool:
+        return not cls.has_attribute(attribute_name)
+
+    @classmethod
+    def has_all_attributes(cls, attribute_names: List[str]) -> bool:
+        return all( att in cls.__dict__ for att in attribute_names)
+
     @classmethod
     def attribute_name_given(cls, attribute: InstrumentedAttribute)-> str:
         return attribute.prop.key
+
     @classmethod
-    def attribute_column_type(cls, attribute_name) -> Tuple[str, str, str]:
+    def attrib_name_col_name_type_col_name(cls, attribute_name) -> Tuple[str, str, str]:
         lst_a_c_t = cls.list_attribute_column_type()
         return next(a_c_t for a_c_t in lst_a_c_t if a_c_t[0] == attribute_name)
         #next((x for x in lst if ...), [default value])
+
+    @classmethod
+    def attribute_column_type(cls, attribute_name) -> Tuple[str, ColumnProperty, type]:
+        lst_a_c_t = cls.ls_attribute_column_type()
+        return next(a_c_t for a_c_t in lst_a_c_t if a_c_t[0] == attribute_name)
 
     @classmethod
     def attribute_type_given(cls, attribute_name: str) -> Optional[type]:
@@ -154,9 +170,16 @@ class AlchemyBase(Base):
         if attributes_from_path is None:
             return cls.list_attribute_column_type()
         return [(attrib_name, column_name) for (attrib_name, column_name) in cls.list_attribute_column() if attrib_name in attributes_from_path]
+
     @classmethod
     def list_attribute_column_type(cls) -> List[Tuple[str, str, str]]:
         return [(key, value.prop.columns[0].name, value.prop.columns[0].type.__str__()) for key, value in cls.__dict__.items() if cls.is_attribute_without_relationship(value)]
+
+    @classmethod
+    def ls_attribute_column_type(cls) -> List[Tuple[str, ColumnProperty, type]]:
+        return [(key, value.prop.columns[0], value.prop.columns[0].type) for key, value in
+                cls.__dict__.items() if cls.is_attribute_without_relationship(value)]
+
     @classmethod
     def list_attribute_column_type_given(cls, attributes : List[str]) -> List[Tuple]:
         return [(key, value.prop.columns[0].name, value.prop.columns[0].type.__str__()) for key, value in

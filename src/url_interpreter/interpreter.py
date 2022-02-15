@@ -354,7 +354,7 @@ class Interpreter:
     async def convert_value(self, token):
 
         attribute = self.get_value_related_attribute(token)
-        tuple_attrib_column_type = self.modelClass.attribute_column_type(attribute)
+        tuple_attrib_column_type = self.modelClass.attrib_name_col_name_type_col_name(attribute)
 
         if self.word_is_url(token):
             token = self.url_word()
@@ -373,7 +373,7 @@ class Interpreter:
         return convert_data(token, tuple_attrib_column_type[-1])
 
     async def translate_for_attribute(self, translated: str) -> str:
-        tuple_attrib_column_type = self.modelClass.attribute_column_type(self.word)
+        tuple_attrib_column_type = self.modelClass.attrib_name_col_name_type_col_name(self.word)
         translated += tuple_attrib_column_type[1]
         # tk = self.nextWord() #After attribute word, next word could be relational operator or In operator or null operator or function operator
         # if self.word_is_relational_operator(tk):

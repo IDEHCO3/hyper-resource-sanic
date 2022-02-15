@@ -36,7 +36,7 @@ class AbstractResource:
 
         return self.dialect_db
 
-    def normalize_path_splitted(self, path: str, splitter: str) -> List[str]:
+    def normalize_path_as_list(self, path: str, splitter: str) -> List[str]:
         paths: List[str] = path.split(splitter)
         return paths if paths[-1] != '' else paths[:-1]
 

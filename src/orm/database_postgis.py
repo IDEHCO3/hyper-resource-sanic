@@ -62,7 +62,8 @@ class DialectDbPostgis(DialectDbPostgresql):
         sub_query += where or ''
         sub_query += order_by or ''
         geom = self.entity_class.geo_column_name()
-        sub_query = sub_query.replace(f'ST_AsEWKB({geom})', geom)
+        if list_attribute == None:
+            sub_query = sub_query.replace(f'ST_AsEWKB({geom})', geom)
         query = f"SELECT  ST_AsGeobuf(q, '{geom}') FROM ({sub_query}) AS q"
         rows = await self.db.fetch_all(query)
         return rows[0]['st_asgeobuf']
@@ -73,8 +74,9 @@ class DialectDbPostgis(DialectDbPostgresql):
         sub_query += where or ''
         sub_query += order_by or ''
         geom = self.entity_class.geo_column_name()
-        sub_query = sub_query.replace(f'ST_AsEWKB({geom})', geom)
-        query = f"SELECT  ST_AsFlatGeobuf(q, '{geom}') FROM ({sub_query}) AS q"
+        if list_attribute == None:
+            sub_query = sub_query.replace(f'ST_AsEWKB({geom})', geom)
+        query = f"SELECT ST_AsFlatGeobuf(q.*) FROM ({sub_query}) AS q"
         rows = await self.db.fetch_all(query)
         return rows[0]['st_asflatgeobuf']
 

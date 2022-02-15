@@ -92,7 +92,7 @@ class TokenAttribute(Token):
         return self.typeof
 
     def column_name(self, model_class: Optional[AlchemyBase]):
-        return model_class.attribute_column_type(self.word())[1]
+        return model_class.attrib_name_col_name_type_col_name(self.word())[1]
 
     async def translate(self, translated: str = None, model_class: Optional[AlchemyBase] = None, db: Optional[DialectDatabase] = None) -> str:
         if self.next_token and self.next_token.is_operation():
@@ -207,7 +207,7 @@ class TokenInArg(Token):
 class TokenBetween(Token):
 
     async def translate(self, translated: str = None, model_class: Optional[AlchemyBase] = None,  db: Optional[DialectDatabase] = None) -> str:
-        tuple_attrib_column_type = model_class.attribute_column_type(self.word())
+        tuple_attrib_column_type = model_class.attrib_name_col_name_type_col_name(self.word())
         column_name = tuple_attrib_column_type[1]
         params = self.next_token.word().split('&')
         param1 = await db.value_db_converted(params[0], self.typeof)

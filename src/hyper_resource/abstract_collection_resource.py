@@ -129,23 +129,22 @@ class AbstractCollectionResource(AbstractResource):
             raise SyntaxError("The operation offsetlimit has two mandatory integer arguments.")
         # offsetlimit with 4 arguments. Ex.: offsetlimit/1&10/orderby/name,sexo&desc
         if len(arguments_from_url) == 2:
-            return await self._offsetlimit(int(arguments_from_url[0]), int(arguments_from_url[1]))
+            return await self.offsetlimit_only(int(arguments_from_url[0]), int(arguments_from_url[1]))
         if len(arguments_from_url) == 3:
-            return await self._offsetlimit(int(arguments_from_url[0]), int(arguments_from_url[1]), arguments_from_url[2] )
+            return await self.offsetlimit_only(int(arguments_from_url[0]), int(arguments_from_url[1]), arguments_from_url[2])
         if len(arguments_from_url) == 4:
-            return await self._offsetlimit(int(arguments_from_url[0]), int(arguments_from_url[1]), arguments_from_url[2],arguments_from_url[3] )
+            return await self.offsetlimit_only(int(arguments_from_url[0]), int(arguments_from_url[1]), arguments_from_url[2], arguments_from_url[3])
         raise SyntaxError("The operation offsetlimit has two mandatory integer arguments.")
 
-    async def _offsetlimit(self, offset: int, limit: int, str_lst_attribute_comma: str = None, asc: str = None):
+    async def offsetlimit_only(self, offset: int, limit: int, str_lst_attribute_comma: str = None, asc: str = None):
         #if self.is_content_type_in_accept('text/html'):
         #    return await self.get_html_representation()
-        rows = await self.dialect_DB().offset_limit(offset, limit, str_lst_attribute_comma, asc, None)
-        rows_dict = await self.rows_as_dict(rows)
-        return sanic.response.text(rows_dict or [], content_type='application/json')
+        rows = await self.dialect_DB().offset_limit(offset-1, limit, str_lst_attribute_comma, asc, None)
+        return await self.response_given(rows)
 
     async def count(self, path):
         result = await self.dialect_DB().count()
-        return sanic.response.json(result['count'])
+        return sanic.response.json(result)
 
     async def response_fetch_all(self, list_attribute: Optional[List] = None, where: Optional[str] = None, order_by: Optional[str] = None, prefix: Optional[str] = None):
         rows = await self.dialect_DB().fetch_all(list_attribute=list_attribute, where=where, order_by=order_by, prefix=self.protocol_host())
@@ -162,7 +161,7 @@ class AbstractCollectionResource(AbstractResource):
         else:
             attribute_name_sort: List[str] = order_by_asc_dsc.split(',')
         column_names: List[str] = self.entity_class().column_names_given_attributes(attribute_name_sort)
-        return self.dialect_DB().order_by_predicate(column_names, orders_by_asc_dsc)
+        return self.dialect_DB().predicate_order_by(column_names, orders_by_asc_dsc)
 
     async def order_by(self, path: str) -> str:
         # order_by => orderby/name,gender&asc,desc
@@ -171,15 +170,19 @@ class AbstractCollectionResource(AbstractResource):
         rows = await self.dialect_DB().fetch_all(order_by=ordr, prefix=self.protocol_host())
         return await self.response_given(rows)
 
-    async def where_interpreted(self, selection_path: str) -> str:
-        interp = InterpreterNew(selection_path, self.entity_class(), self.dialect_DB())
+    async def translate_path(self, path) -> str:
+        interp = InterpreterNew(path, self.entity_class(), self.dialect_DB())
         try:
-            where_clause: str = await interp.translate_lookup()
+            translated: str = await interp.translate_lookup()
         except (Exception, SyntaxError):
-            print(f"Error in Path: {selection_path}")
+            print(f"Error in Path: {path}")
             raise
-        print(f'whereclause: {where_clause}')
-        return f' where {where_clause}'
+        return translated
+
+    async def where_interpreted(self, selection_path: str) -> str:
+        predicate: str = await self.translate_path(selection_path)
+        print(f'whereclause: {predicate}')
+        return f' where {predicate}'
 
     async def response_given(self, rows: List):
         rows_dict = await self.rows_as_dict(rows)
@@ -312,6 +315,48 @@ class AbstractCollectionResource(AbstractResource):
                 ls.append('/' + s + '/')
             ls.append('/' + ls_path[0])
             return ls
+    async def collect(self, path):
+        """
+        collect
+        collect orderby
+        collect offsetlimit
+        collect orderby offsetlimit
+        collect collect
+        collect collect ...orderby
+        collect collect ...offselimit
+        collect collect ...orderby offsetlimit
+
+        :param path:
+        :return:
+        """
+        paths: List[str] = self.normalize_path_as_list(path, '/*/')
+        if len(paths) == 1:
+            return await self.collect_only(paths[0])
+
+    async def collect_only(self, path: str): #/collect/date,name&geom/transform/3005/area
+        a_path: str = path[8:] #len(collect/) = 8
+        if '&' in a_path:
+            paths: List[str] = a_path.split('&')
+            attribute_name_actions: str = paths[1]
+            enum_attrib_name: str = paths[0]
+        else:
+            attribute_name_actions: str = a_path
+            enum_attrib_name: Optional[str] = ''   #/collect/geom/transform/3005/area
+        action_translated: str = await self.translate_path(attribute_name_actions)  # path => filter/license/eq/valid
+        attribute_names: List[str] = enum_attrib_name.split(',') + [attribute_name_actions[0: attribute_name_actions.index('/')]]
+        if not self.entity_class().has_all_attributes(attribute_names):
+            non_attribute_names = [att for att in attribute_names if self.entity_class().has_not_attribute(att)]
+            if len(non_attribute_names) == 1:
+                return sanic.response.text(f'This attribute {non_attribute_names} does not exist.', status=400)
+            else:
+                return sanic.response.text(f'These attributes {",".join(non_attribute_names)} do not exist.', status=400)
+        attribute_name_actions_norm = self.normalize_path(attribute_name_actions)
+        last_action_name: str = attribute_name_actions_norm[attribute_name_actions_norm.rindex("/")+ 1:]
+        predicate_action: str = f'{action_translated} as {last_action_name}'
+        select_fields: str = self.dialect_DB().predicate_collect(attribute_names[0:-1], predicate_action, self.protocol_host())
+        query = self.dialect_DB().query_build_by(enum_fields=select_fields)
+        rows = await self.dialect_DB().fetch_all_by(query)
+        return await self.response_given(rows)
 
     async def filter(self, path: str):  # -> "AbstractCollectionResource":
         """
@@ -324,11 +369,11 @@ class AbstractCollectionResource(AbstractResource):
         """
         #self.call_filter(path)
         #return sanic.response.json([json.dumps(dict(row)) for row in rows])  # response.json(self.rows_as_dict(rows))
-        paths: List[str] = self.normalize_path_splitted(path, '/*/')
+        paths: List[str] = self.normalize_path_as_list(path, '/*/')
         if len(paths) == 1:
             return await self.filter_only(path)
         if len(paths) == 2:
-            sub_paths: List[str] = self.normalize_path_splitted(paths[-1], '/')
+            sub_paths: List[str] = self.normalize_path_as_list(paths[-1], '/')
             operation_1: str = self.normalize_path(sub_paths[0].strip('/').strip().lower())
             if operation_1 == 'count':
                 return await self.filter_count(paths[0])

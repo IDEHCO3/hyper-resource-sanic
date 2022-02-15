@@ -309,7 +309,7 @@ class InterpreterNew:
         return await ConverterType().convert_parameters(params, action.param_types())
 
     async def translate_for_attribute(self, translated: str) -> str:
-        tuple_attrib_column_type = self.model_class.attribute_column_type(self.token.word())
+        tuple_attrib_column_type = self.model_class.attrib_name_col_name_type_col_name(self.token.word())
         translated += tuple_attrib_column_type[1]
         return translated
 
