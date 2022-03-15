@@ -1,6 +1,7 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 import pyproj
+from geoalchemy2 import Geometry
 from shapely import wkb
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping
@@ -21,9 +22,16 @@ class AlchemyGeoBase(AlchemyBase):
                      tuple_name_type[2].lower().startswith('geometry(')), None)
 
     @classmethod
-    def geo_attribute_name(cls) -> str:
-        return cls.get_geo_attribute_or_column()
+    def is_geometry(cls, value: object) -> bool:
+        return isinstance(value, InstrumentedAttribute) and type(value.property.columns[0].type) == Geometry
 
+    @classmethod
+    def geo_attribute_name(cls) -> Optional[str]:
+        return next((key for key, value in cls.__dict__.items() if cls.is_geometry(value)), None)
+
+    @classmethod
+    def geo_attribute_type(cls) -> Optional[type]:
+        return next((type(value.property.columns[0].type) for key, value in cls.__dict__.items() if cls.is_geometry(value)), None)
 
     @classmethod
     def geo_column_name(cls) -> str:
@@ -72,6 +80,9 @@ class AlchemyGeoBase(AlchemyBase):
         project = pyproj.Transformer.from_crs(crs_orig, crs_dest, always_xy=True).transform
         return transform(project, self.get_base_geom())
 
+    def buffer(self, distance: float) -> float:
+        return self.get_base_geom().buffer(distance)
+
     def area(self, epsg: int = None) -> float:
         """
         Returns the area (float) of the object.
@@ -82,6 +93,7 @@ class AlchemyGeoBase(AlchemyBase):
             return self.get_base_geom().area
         temp_geom = self.transform(3005)
         return temp_geom.area
+
     def bound(self) -> Tuple[float, float, float, float]:
         """
         Returns a (minx, miny, maxx, maxy) tuple (float values) that bounds the object.
@@ -118,10 +130,10 @@ class AlchemyGeoBase(AlchemyBase):
         The key is a operation or attribute name. The value is a an action.
         """
         dic = {
-            'transform': ActionFunction('transform', BaseGeometry, [ ParamAction('srid_dest', int)]),
-            'srid': ActionFunction('srid', int),
-            'area': ActionAttribute('area',float),
-            'buffer': ActionFunction('buffer', BaseGeometry, [ParamAction('buf_dest', float)]),
+            'transform': ActionFunction('transform','transform' , BaseGeometry, [ ParamAction('srid_dest', int)]),
+            'srid': ActionFunction('srid','srid', int),
+            'area': ActionAttribute('area', float),
+            'buffer': ActionFunction('buffer','buffer', BaseGeometry, [ParamAction('buf_dest', float)]),
             'wkt': ActionAttribute('wkt', BaseGeometry),
         }
         return dic
@@ -134,7 +146,12 @@ class AlchemyGeoBase(AlchemyBase):
         dic = dic_action #{cls: cls.actions_to_dissemination()}
         dic.update(super().action_dic())
         return dic
-
+    def yourself_action(self):
+        return {
+            'transform': ActionFunction('transform','transform', Geometry, [ParamAction('srid', int)]),
+            'buffer': ActionFunction('transform','transform', Geometry, [ParamAction('srid', int)]),
+            'area': ActionAttribute('area',float),
+        }
     @classmethod
     def instances_operation(cls) -> Dict:
         return dic_action

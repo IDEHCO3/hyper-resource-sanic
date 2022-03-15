@@ -95,6 +95,9 @@ class DialectDatabase(AbstractDialectDatabase):
     def column_names_given_attributes(self, attributes_from_path) -> List[str]:
         return self.entity_class.column_names_given_attributes(attributes_from_path)
 
+    def column_names_alias(self, attrib_names: Optional[List[str]], prefix_col_val: str = None) -> str:
+        raise NotImplementedError("'column_names_alias' must be implemented in subclasses")
+
     def enum_column_names_alias_attribute_given(self, list_attrib: Tuple[InstrumentedAttribute],
                                                 prefix_col_val: str = None) -> str:
         list_attrib_column = self.list_attribute_column_given(list_attrib)
@@ -241,6 +244,13 @@ class DialectDatabase(AbstractDialectDatabase):
 
     async def convert_to_db_geometry(self, value_as_str: str) -> str:
         raise NotImplementedError("'convert_to_db_geometry' must be implemented in subclasses")
+
+    def last_action_in_chain(self,a_type: type, action_names: List[str]) -> ActionFunction:
+        raise NotImplementedError("'last_action_in_chain' must be implemented in subclasses")
+
+    def type_of_last_action_in_chain(self,a_type: type, action_names: List[str]) -> object:
+        raise NotImplementedError("'type_of_last_action_in_chain' must be implemented in subclasses")
+
 
     async def operation_to_convert_db_value(self, a_type) -> object:
         d = dict()

@@ -1,7 +1,16 @@
+import io
+import matplotlib.pyplot as plt
 import time
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
+import geopandas as gpd
+#gpd.read_postgis(sql, con=engine)
 
-from geoalchemy2 import Geometry
+import cartopy.crs as ccrs
+import shapely
+from geopandas import GeoDataFrame
+from shapely.geometry import Point, LineString, Polygon, MultiPolygon, MultiPoint, MultiLineString
+from databases.backends.postgres import Record
+from geoalchemy2 import Geometry, shape
 from shapely import wkb
 
 from settings import BASE_DIR, SOURCE_DIR
@@ -9,13 +18,16 @@ import sanic
 
 from src.hyper_resource.common_resource import CONTENT_TYPE_HTML, CONTENT_TYPE_OCTET_STREAM, CONTENT_TYPE_GEOBUF, \
     CONTENT_TYPE_WKB, CONTENT_TYPE_VECTOR_TILE, CONTENT_TYPE_JSON, CONTENT_TYPE_GEOJSON, CONTENT_TYPE_GML, \
-    CONTENT_TYPE_FLATGEOBUFFERS
+    CONTENT_TYPE_FLATGEOBUFFERS, CONTENT_TYPE_IMAGE_PNG
 from src.hyper_resource.spatial_collection_resource import SpatialCollectionResource
+from src.orm.action_type import ActionFunction
 from src.orm.database_postgis import DialectDbPostgis
 import json, os
 
 from src.orm.dictionary_actions_abstract_collection import action_name
+from src.orm.query_builder import QueryBuilder
 from src.url_interpreter.interpreter import Interpreter
+from src.url_interpreter.interpreter_error import PathError
 from src.url_interpreter.interpreter_new import InterpreterNew
 
 MIME_TYPE_JSONLD = "application/ld+json"
@@ -24,36 +36,53 @@ class FeatureCollectionResource(SpatialCollectionResource):
 
     def __init__(self, request):
         super().__init__(request)
+        self.extent = None
 
     def get_geom_attribute(self) -> str:
-        return  self.entity_class().geo_attribute_name()
+        return self.entity_class().geo_attribute_name()
 
-    def geom_attribute_in(self, enum_attribute_name: str) -> bool:
+    def get_geom_column(self) -> str:
+        return self.dialect_DB().get_geom_column()
+
+    def has_geom_attribute(self, enum_attribute_name: str) -> bool:
         return self.get_geom_attribute() in enum_attribute_name.split(',')
 
-    def geom_attribute_not_in(self, enum_attribute_name: str) -> bool:
-        return not self.geom_attribute_in(enum_attribute_name)
+    def has_not_geom_attribute(self, enum_attribute_name: str) -> bool:
+        return not self.has_geom_attribute(enum_attribute_name)
 
     def is_action_geom(self, attribute_name: str, action_names: List[str]) -> bool:
         a_type: type = self.entity_class().attribute_type_given(attribute_name)
         tp: object = self.dialect_DB().last_action_in_chain(a_type, action_names)
-        return tp in [Geometry]
+        return tp.answer in [Geometry]
 
     def is_not_action_geom(self,attribute_name: str, action_names: List[str]) -> bool:
         return not self.is_action_geom(attribute_name, action_names )
 
-    def get_spatial_function_names(self) -> List[str]:
-        return self.dialect_DB().get_spatial_function_names()
+    def get_function_names(self) -> List[str]:
+        if self.function_names is None:
+            collection_func: List[str] = super(FeatureCollectionResource, self).get_function_names()
+            self.function_names = collection_func + self.dialect_DB().get_spatial_function_names()
+        return self.function_names
 
     def lookup_function_names(self) -> List[str]:
         return self.dialect_DB().get_spatial_lookup_function_names()
 
-    async def rows_as_dict(self, rows):
+    def aggregate_function_names(self) -> List[str]:
+        return self.dialect_DB().get_spatial_aggregate_function_names()
+
+
+    async def get_extent(self, query: Optional[str] = None):
+        if self.extent is None:
+            self.extent = await self.dialect_DB().extent(query)
+        return self.extent
+
+    async def rows_as_dict(self, rows, geom_attribute_name: Optional[str] = None):
         if CONTENT_TYPE_HTML in self.accept_type():
             return await super(FeatureCollectionResource, self).rows_as_dict(rows)
         response_data = []
-        geom_attrubute = self.get_geom_attribute()
-        if geom_attrubute not in list(rows[0].keys()):
+        geom_attribute = geom_attribute_name or self.get_geom_attribute()
+        a_row: Record = rows[0]
+        if geom_attribute not in list(a_row):
             return await super(FeatureCollectionResource, self).rows_as_dict(rows)
         feature_collection = { "type": "FeatureCollection",}
         try:
@@ -61,8 +90,13 @@ class FeatureCollectionResource(SpatialCollectionResource):
             for row in rows:
                 row_dict = await self.dialect_DB().convert_row_to_dict(row)
                 feature = {"type": "Feature"}
-                geometry = wkb.loads(row_dict[geom_attrubute]).__geo_interface__ #json.loads(row_dict[geom_attrubute])
-                row_dict.pop(geom_attrubute, None)
+                geom_value = row_dict[geom_attribute]
+                if type(geom_value) == str:
+                    geom_value = wkb.loads(geom_value, hex=True)
+                else:
+                    geom_value = wkb.loads(geom_value)
+                geometry = geom_value.__geo_interface__ #json.loads(row_dict[geom_attrubute])
+                row_dict.pop(geom_attribute, None)
                 #geometry.pop("crs", None)
                 #"crs": {
                 #    "type": "name",
@@ -96,7 +130,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
             start = time.time()
             print(f"time: {start} start rows in python")
             action_name = path.split('/')[0].strip().lower()
-            if action_name in self.get_spatial_function_names():
+            if action_name in self.get_function_names():
                 where = await self.predicate_query_from(path)
                 rows = await self.dialect_DB().execute_spatial_function(action_name, where)
             rows_from_db = await self.rows_as_dict(rows)
@@ -118,6 +152,61 @@ class FeatureCollectionResource(SpatialCollectionResource):
             content = self.set_html_variables(html_content)
             return sanic.response.html(content, 200)
 
+    async def linestring_as_figure(self, geometries: List):
+        #fig = plt.figure()
+        # fig.set_visible(False)
+        ax = plt.axes(projection=ccrs.PlateCarree(),  frameon=False)
+        #ax = fig.add_axes([0, 0, 1, 1], projection=ccrs.PlateCarree(), frameon=False)
+        ext: List[float] = await self.get_extent()
+        ax.set_extent(ext, ccrs.PlateCarree())
+        ax.patch.set_visible(False)
+        ax.add_geometries(geometries, ccrs.PlateCarree(), facecolor='none',  edgecolor="black")
+        b = io.BytesIO()
+        plt.savefig(b, format='png')
+        plt.close()
+        return b.getvalue()
+
+    async def polygon_as_figure(self, geometries: List):
+        #fig = plt.figure()
+        # fig.set_visible(False)
+        #ax = fig.add_axes([0, 0, 1, 1], projection=ccrs.PlateCarree(), frameon=False)
+        ax = plt.axes(projection=ccrs.PlateCarree(), frameon=False)
+        #ax.set_extent([-74.018, -28.877, -33.742, 5.2672], ccrs.PlateCarree())
+        ext: List[float] = await self.get_extent()
+        ax.set_extent(ext, ccrs.PlateCarree())
+        ax.add_geometries(geometries, ccrs.PlateCarree(), facecolor='#C8A2C8', alpha=0.5, edgecolor="black")
+        b = io.BytesIO()
+        plt.savefig(b, format='png')
+        plt.close()
+        return b.getvalue()
+
+    async def point_as_figure(self, geometries: List):
+        ax = plt.axes(projection=ccrs.PlateCarree(), frameon=False)
+        ext: List[float] = await self.get_extent()
+        ax.set_extent(ext, ccrs.PlateCarree())
+        #ax.patch.set_visible(False)
+        for point in geometries:
+            plt.plot(point.x, point.y,  markersize=1, marker='o', color='b', transform=ccrs.PlateCarree())
+        b = io.BytesIO()
+        plt.savefig(b, format='png')
+        plt.close()
+        return b.getvalue()
+
+
+    async def get_image_representation(self, query: str):
+        a_query: str = self.dialect_DB().wkb_query(query)
+        await self.get_extent(query)
+        rows: List[Record] = await self.dialect_DB().fetch_all_by(a_query)
+        geometries = [shapely.wkb.loads(row.get('st_asbinary')) for row in rows]
+        if len(geometries) > 0 and (type(geometries[0]) == MultiPolygon or type(geometries[0]) == Polygon):
+            res = await self.polygon_as_figure(geometries)
+        elif len(geometries) > 0 and (type(geometries[0]) == LineString or type(geometries[0]) == MultiLineString):
+            res = await self.linestring_as_figure(geometries)
+        elif len(geometries) > 0 and (type(geometries[0]) == Point or type(geometries[0]) == MultiPoint):
+            res = await self.point_as_figure(geometries)
+
+        return sanic.response.raw(res, content_type=CONTENT_TYPE_IMAGE_PNG)
+
     async def get_flatgeobuf_representation(self, list_attribute: List[str] = None, where: Optional[str] = None,
                                         order_by: Optional[str] = None, prefix: str = None):
         rows = await self.dialect_DB().fetch_all_as_flatgeobuf(list_attribute=list_attribute, where=where,
@@ -134,6 +223,10 @@ class FeatureCollectionResource(SpatialCollectionResource):
         #print(f"time: {end - start} end rows in python")
         #return res
 
+    async def get_wkb_representation(self, where: Optional[str] = None, order_by: Optional[str] = None) -> Record:
+        rows = await self.dialect_DB().fetch_all_as_wkb(where=where, order_by=order_by)
+        return sanic.response.raw(rows or [], content_type=CONTENT_TYPE_WKB)
+
     async def get_representation(self):
         accept = self.accept_type()
         if CONTENT_TYPE_HTML in accept:
@@ -142,6 +235,9 @@ class FeatureCollectionResource(SpatialCollectionResource):
             return await self.get_geobuf_representation(prefix=self.protocol_host())
         elif (CONTENT_TYPE_FLATGEOBUFFERS in accept):
             return await self.get_flatgeobuf_representation(prefix=self.protocol_host())
+        elif CONTENT_TYPE_IMAGE_PNG in self.accept_type():
+            query: str = self.dialect_DB().query_build_by()
+            return await self.get_image_representation(query)
         else:
             return await self.get_json_representation()
 
@@ -152,7 +248,135 @@ class FeatureCollectionResource(SpatialCollectionResource):
         res = sanic.response.raw(rows or [], content_type= CONTENT_TYPE_VECTOR_TILE)
         return res
 
-    async def get_representation_given_path(self, path: str):
+    async def add_where_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_where(await self.interpreter(path[6:]).translate_lookup())
+
+    async def add_collect_in_qb(self, qb, path):
+        if not qb.has_geometry and self.has_geometry_in_collect(path):
+            action: ActionFunction = await self.last_action_in_collect(path.split('/')[1:])
+            qb.set_geom_attribute_name(action.name)
+        qb.add_collect(await self.interpreter().translate_collect(path, self.protocol_host()))
+
+    async def add_projection_in_qb(self, qb: QueryBuilder, path: str):
+        path_ = path if path[0: len('projection/')] == 'projection/' else 'projection/' + path
+        qb.has_geometry = self.has_geom_attribute(path_[len('projection/'):])
+        qb.add_column(self.predicate_projection(path_))
+
+    async def add_group_by_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_group_by(await self.predicate_group_by(path))
+
+    def add_count_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_count()
+
+    def add_offsetlimit_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_offsetlimit(self.predicate_offsetlimit(path))
+
+    def add_order_by_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_offsetlimit(self.predicate_order_by(path[8:]))
+
+    def add_sum_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_sum(path)
+
+    def add_avg_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_avg(path)
+
+    async def add_spatial_lookup_in_qb(self, qb: QueryBuilder, path: str):
+        filter_path: str = f'{self.get_geom_attribute()}/{path}'
+        where_clause: str = await self.interpreter(filter_path).translate_lookup()
+        qb.add_where(where_clause)
+
+    async def add_spatial_aggregate_in_qb(self, qb: QueryBuilder, path: str):
+        aggregate: str = f'collect/{self.get_geom_attribute()}/{path}'
+        qb.add_collect(await self.interpreter().translate_collect(aggregate, self.protocol_host()))
+
+    def dict_qb_function(self) -> Dict:
+        return {
+            'filter': self.add_where_in_qb,
+            'collect': self.add_collect_in_qb,
+            'projection': self.add_projection_in_qb,
+            'groupby': self.add_group_by_in_qb,
+            'count': self.add_count_in_qb,
+            'offsetlimit': self.add_offsetlimit_in_qb,
+            'orderby': self.add_order_by_in_qb,
+            'sum': self.add_sum_in_qb,
+            'avg': self.add_avg_in_qb
+        }
+
+    def dict_qb_lookup_function(self) -> Dict:
+        dic = {}
+        for name in self.lookup_function_names():
+            dic[name] = self.add_spatial_lookup_in_qb
+        return dic
+
+    def dict_qb_aggregate_function(self) -> Dict:
+        dic = {}
+        for name in self.aggregate_function_names():
+            dic[name] = self.add_spatial_aggregate_in_qb
+        return dic
+
+    async def execute_qb_function(self, qb, path):
+        qb_function: Dict = {**self.dict_qb_function(), **self.dict_qb_lookup_function(), **self.dict_qb_aggregate_function() }
+        operation_name: str = self.operation_name_in_path(path)
+        if operation_name not in qb_function:
+            msg: str = f"Error in path. This {operation_name} does not exists"
+            raise PathError(msg, 400)
+        return await qb_function[operation_name](*[qb, path])
+
+    async def get_representation_given_path(self, path: str) -> str:
+        try:
+            paths: List[str] = self.normalize_path_as_list(path, '/*/')
+            qb: QueryBuilder = QueryBuilder(dialect_db=self.dialect_DB(), entity_class=self.entity_class())
+            qb.has_geometry = True
+            for path in paths:
+                await self.execute_qb_function(qb, path)
+            qb.add_table_name(self.dialect_DB().schema_table_name())
+            return await self.response_by_qb(qb)
+        except PathError as err:
+            return sanic.response.json(err.message, err.code)
+        except (RuntimeError, TypeError, NameError) as err:
+            return sanic.response.json("Error {0}". format(err))
+
+    async def get_representation_given_path_new(self, path: str) -> str:
+        try:
+
+            paths: List[str] = self.normalize_path_as_list(path, '/*/')
+            qb: QueryBuilder = QueryBuilder(self.dialect_DB())
+            qb.has_geometry = True
+            if len(paths) == 1:
+                return await self.execute_method(paths[0])
+            for path in paths:
+                operation_name: str = self.operation_name_in_path(path)
+                if operation_name == 'filter':
+                    qb.add_where(await self.interpreter(path[6:]).translate_lookup())
+                elif operation_name == 'collect':
+                    if not qb.has_geometry and self.has_geometry_in_collect(path):
+                            action: ActionFunction = await self.last_action_in_collect(path.split('/')[1:])
+                            qb.set_geom_attribute_name(action.name)
+                    qb.add_collect(await self.interpreter().translate_collect(path, self.protocol_host()))
+                elif operation_name == 'projection':
+                    path_ = path if path[0: len('projection/')] == 'projection/' else 'projection/' + path
+                    qb.has_geometry = self.has_geom_attribute(path_[len('projection/'):])
+                    qb.add_column(self.predicate_projection(path_))
+                elif operation_name == 'groupby':
+                    qb.add_group_by(await self.predicate_group_by(path))
+                elif operation_name == 'count':
+                    qb.add_count()
+                elif operation_name == 'offsetlimit':
+                    qb.add_offsetlimit(self.predicate_offsetlimit(path))
+                elif operation_name == 'orderby':
+                    qb.add_offsetlimit(self.predicate_order_by(path[8:]))
+                elif operation_name == 'sum':
+                    qb.add_sum(path)
+                elif operation_name == 'avg':
+                    count_ = self.predicate_avg(path)
+            qb.add_table_name(self.dialect_DB().schema_table_name())
+            return await self.response_by_qb(qb)
+        except PathError as err:
+            return sanic.response.json(err.message, err.code)
+        except (RuntimeError, TypeError, NameError) as err:
+            return sanic.response.json("Error {0}". format(err))
+
+    async def get_representation_given_path_old(self, path: str):
         try:
             if CONTENT_TYPE_HTML in self.accept_type() and self.get_geom_attribute() in self.attribute_names_from(path):
                 return await self.get_html_representation()
@@ -193,20 +417,79 @@ class FeatureCollectionResource(SpatialCollectionResource):
         if (CONTENT_TYPE_JSON in self.accept_type()) or (CONTENT_TYPE_GEOJSON in self.accept_type()):
             rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=order_by, prefix=prefix)
             rows_dict = await self.rows_as_dict(rows)
-            return sanic.response.json(rows_dict or [])
+            return sanic.response.json(rows_dict or [], content_type=CONTENT_TYPE_GEOJSON)
+        if CONTENT_TYPE_WKB in self.accept_type():
+            rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=order_by, prefix=prefix)
+            rows_dict = await self.rows_as_dict(rows)
+            return sanic.response.json(rows_dict or [], content_type=CONTENT_TYPE_GEOJSON)
         if CONTENT_TYPE_GEOBUF in self.accept_type():
             return await self.get_geobuf_representation(list_attribute=attribute_names, where=where, order_by=order_by, prefix=prefix)
         if CONTENT_TYPE_FLATGEOBUFFERS in self.accept_type():
             return await self.get_flatgeobuf_representation(list_attribute=attribute_names, where=where, order_by=order_by, prefix=prefix)
+        if CONTENT_TYPE_IMAGE_PNG in self.accept_type():
+            query: str = self.dialect_DB().query_build_by( where_predicate=where or '', enum_order_by=order_by or '')
+            return await self.get_image_representation(query)
+
         rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=order_by,
                                                  prefix=prefix)
+        rows_dict = await self.rows_as_dict(rows)
+        return sanic.response.json(rows_dict or [])
+
+    async def response_by_qb(self, qb: QueryBuilder):
+        if CONTENT_TYPE_HTML in self.accept_type():
+            return await self.get_html_representation()
+        if qb.has_count:
+            return sanic.response.json(await qb.count())
+        if (CONTENT_TYPE_JSON in self.accept_type()) or (CONTENT_TYPE_GEOJSON in self.accept_type()):
+            rows = await self.dialect_DB().fetch_all_by(qb.query())
+            if not qb.has_geometry:
+                rows_dict = await super().rows_as_dict(rows)
+                return sanic.response.json(rows_dict or [], content_type=CONTENT_TYPE_JSON)
+            rows_dict = await self.rows_as_dict(rows, qb.geom_attribute_name)
+            return sanic.response.json(rows_dict or [], content_type=CONTENT_TYPE_GEOJSON)
+        if CONTENT_TYPE_GEOBUF in self.accept_type():
+            geo_buf = await qb.fetch_all_as_geobuf()
+            if geo_buf is None:
+                return sanic.response.text('This query does not found any resource', status=404)
+            return sanic.response.raw(geo_buf or None, content_type=CONTENT_TYPE_GEOBUF)
+        if CONTENT_TYPE_FLATGEOBUFFERS in self.accept_type():
+            flat_geo_buffer = await qb.fetch_all_as_flatgeobuffers()
+            if flat_geo_buffer is None:
+                return sanic.response.text('This query does not found any resource', status=404)
+            return sanic.response.raw(flat_geo_buffer, content_type=CONTENT_TYPE_FLATGEOBUFFERS)
+        if CONTENT_TYPE_IMAGE_PNG in self.accept_type():
+            return await self.get_image_representation(qb.query())
+
+        rows = await self.dialect_DB().fetch_all_by(qb.query())
+        rows_dict = await self.rows_as_dict(rows)
+        return sanic.response.json(rows_dict or [])
+
+    async def response_by(self, query: str):
+        if CONTENT_TYPE_HTML in self.accept_type():
+            return await self.get_html_representation()
+        if (CONTENT_TYPE_JSON in self.accept_type()) or (CONTENT_TYPE_GEOJSON in self.accept_type()):
+            rows = await self.dialect_DB().fetch_all_by(query)
+            rows_dict = await self.rows_as_dict(rows)
+            return sanic.response.json(rows_dict or [], content_type=CONTENT_TYPE_GEOJSON)
+        if CONTENT_TYPE_GEOBUF in self.accept_type():
+            a_query: str = self.dialect_db.geobuf_query(query)
+            rows = await self.dialect_DB().fetch_all_by(a_query)
+            return sanic.response.raw(rows or [], content_type=CONTENT_TYPE_GEOBUF)
+        if CONTENT_TYPE_FLATGEOBUFFERS in self.accept_type():
+            a_query: str = self.dialect_db.flatgeobuf_query(query)
+            rows = await self.dialect_DB().fetch_all_by(a_query)
+            return sanic.response.raw(rows or [], content_type=CONTENT_TYPE_FLATGEOBUFFERS)
+        if CONTENT_TYPE_IMAGE_PNG in self.accept_type():
+            return self.get_image_representation(query)
+
+        rows = await self.dialect_DB().fetch_all_by(query)
         rows_dict = await self.rows_as_dict(rows)
         return sanic.response.json(rows_dict or [])
 
     async def order_by(self, path: str) -> str:
         # order_by => orderby/name,gender&asc
         paths: List[str] = self.normalize_path(path).split('/')
-        ordr: str = self.order_by_predicate(paths[-1])
+        ordr: str = self.predicate_order_by(paths[-1])
         return await self.response_request(order_by=ordr)
 
     async def projection_only(self, attribute_names: List[str]):
@@ -240,26 +523,33 @@ class FeatureCollectionResource(SpatialCollectionResource):
         if self.get_geom_attribute() not in attribute_names:
             return await super(FeatureCollectionResource, self).projection_filter_sort(attribute_names, filter_path, _order_by)
         where: str = await self.where_interpreted(filter_path)
-        order_by: str = self.order_by_predicate(_order_by)
+        order_by: str = self.predicate_order_by(_order_by)
         return await self.response_request(attribute_names=attribute_names, where=where, order_by=order_by)
 
-    async def collect_only(self, path: str): #/collect/date,name&geom/transform/3005/area
-        a_path: str = path[8:] #len(collect/) = 8
+    async def last_action_in_collect(self, attrib_actions: List[str]):
+        attribute_names: List[str] = attrib_actions[0].split("&")
+        attribute_name: str = attribute_names[0] if len(attribute_names) == 1 else attribute_names[1]
+        a_type: type = self.entity_class().attribute_type_given(attribute_name)
+        return self.dialect_DB().last_action_in_chain(a_type, attrib_actions[1:])
 
+    async def collect_base(self, path: str) -> str:  # /collect/date,name&geom/transform/3005/area
+        interp = self.interpreter()
+        collect: str= await interp.translate_collect(path, self.protocol_host())
+        return collect
+        a_path: str = path[8:]  # len(collect/) = 8
         if '&' in a_path:
             paths: List[str] = a_path.split('&')
             attribute_name_actions: str = paths[1]
             enum_attrib_name: str = paths[0]
         else:
             attribute_name_actions: str = a_path
-            enum_attrib_name: Optional[str] = ''   #/collect/geom/transform/3005/area
-
+            enum_attrib_name: Optional[str] = ''  # /collect/geom/transform/3005/area
         attrib_actions: List[str] = self.normalize_path_as_list(attribute_name_actions, '/')
-
-        if self.geom_attribute_not_in(enum_attrib_name) and self.is_not_action_geom(attrib_actions[0], attrib_actions[1:] ):
-            return await super(FeatureCollectionResource, self).collect_only(path)
+        if self.has_not_geom_attribute(enum_attrib_name) and self.is_not_action_geom(attrib_actions[0], attrib_actions[1:]):
+            return await super(FeatureCollectionResource, self).collect_base(path)
         action_translated: str = await self.translate_path(attribute_name_actions)  # path => filter/license/eq/valid
-        attribute_names: List[str] = enum_attrib_name.split(',') + [attribute_name_actions[0: attribute_name_actions.index('/')]]
+        attribute_names: List[str] = enum_attrib_name.split(',') + [
+            attribute_name_actions[0: attribute_name_actions.index('/')]]
         if not self.entity_class().has_all_attributes(attribute_names):
             non_attribute_names = [att for att in attribute_names if self.entity_class().has_not_attribute(att)]
             if len(non_attribute_names) == 1:
@@ -267,14 +557,37 @@ class FeatureCollectionResource(SpatialCollectionResource):
             else:
                 return sanic.response.text(f'These attributes {",".join(non_attribute_names)} do not exist.', status=400)
         attribute_name_actions_norm = self.normalize_path(attribute_name_actions)
-        last_action_name: str = attribute_name_actions_norm[attribute_name_actions_norm.rindex("/")+ 1:]
+        last_action: ActionFunction = await self.last_action_in_collect(attrib_actions=attrib_actions)
+        last_action_name = attrib_actions[-1] if last_action.has_not_parameters() else attrib_actions[-2]
         predicate_action: str = f'{action_translated} as {last_action_name}'
-        select_fields: str = self.dialect_DB().predicate_collect(attribute_names[0:-1], predicate_action, self.protocol_host())
-        query = self.dialect_DB().query_build_by(enum_fields=select_fields)
-        rows = await self.dialect_DB().fetch_all_by(query)
-        return await self.response_given(rows)
+        return self.dialect_DB().predicate_collect(attribute_names[0:-1], predicate_action, self.protocol_host())
 
-    async def filter_only(self, path: str):
+    def is_geometry_type_last_action(self, action_names: List[str]) -> bool:
+        tp = self.dialect_db.type_of_last_action_in_chain(self.entity_class().geo_attribute_type(), action_names)
+        return tp == Geometry
+
+    def has_geometry_in_collect(self, path: str) -> bool:
+        words: List[str] = path.split('/')
+        word: str = words[1].lower().strip()
+        if '&' not in path: #collect/geom/transform/3005/area
+            if self.get_geom_attribute() != word:
+                return False
+            else:
+                return self.is_geometry_type_last_action(words[2:])
+        enum_attribute: str = word.split('&')[0]
+        if self.has_geom_attribute(enum_attribute):
+            return True
+        return self.is_geometry_type_last_action(words[2:])
+
+    async def collect(self, path: str): #collect/date,name&geom/transform/3005/area
+        interp = self.interpreter()
+        if not self.has_geometry_in_collect(path):
+            return await super(FeatureCollectionResource, self).collect(path)
+        select_fields: str = await interp.translate_collect(path, self.protocol_host())
+        query: str = self.dialect_DB().query_build_by(enum_fields=select_fields)
+        return await self.response_by(query)
+
+    async def filter(self, path: str):
         if CONTENT_TYPE_HTML in self.accept_type():
             return await self.get_html_representation()
         try:
@@ -284,8 +597,15 @@ class FeatureCollectionResource(SpatialCollectionResource):
             raise
         return await self.response_request(where=whereclause, prefix=self.protocol_host())
 
+    async def filter_collect(self, path_filter: str, sub_paths: List[str]):
+        whereclause: str = await self.where_interpreted(path_filter)
+        collect_predicate: str = await self.collect_base('/'.join(sub_paths))
+        #query = self.dialect_DB().query_build_by(enum_fields=collect_predicate, where_predicate=whereclause)
+        #rows = await self.dialect_DB().fetch_all_by(query)
+        return await self.response_request(attribute_names=collect_predicate, where=whereclause)
+
     async def filter_order_by(self, filter_expression: str, orderby_expression: str):
-        order_by_: str = self.order_by_predicate(orderby_expression)
+        order_by_: str = self.predicate_order_by(orderby_expression)
         where: str = await self.where_interpreted(filter_expression)
         return await self.response_request(where=where, order_by=order_by_)
 
@@ -324,17 +644,17 @@ class FeatureCollectionResource(SpatialCollectionResource):
     """
     AGGREGATE FUNCTIONS
     EXTENT
-    http://127.0.0.1:8000/lim-unidade-federacao-a-list/extent/geom
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/extent
     select st_extent(geom) from bcim.lim_unidade_federacao_a
     
-    http://127.0.0.1:8000/lim-unidade-federacao-a-list/extent/geom/*/groupby/sigla
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/extent/*/groupby/sigla
     select sigla, st_extent(geom) from bcim.lim_unidade_federacao_a group by sigla
     
-    http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/regiao/eq/Sul/*/extent/geom/*/groupby/sigla
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/regiao/eq/Sul/*/extent/*/groupby/sigla
     select sigla, st_extent(geom) from bcim.lim_unidade_federacao_a where regiao = 'Sul' group by sigla
     
     UNION
-    http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/regiao/eq/Sul/*/union/geom/*/groupby/regiao
+    http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/regiao/eq/Sul/*/union/*/groupby/regiao
     select regiao, st_union(geom) from bcim.lim_unidade_federacao_a where regiao = 'Sul' group by regiao
     """
 

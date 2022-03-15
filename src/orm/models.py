@@ -51,7 +51,7 @@ class AlchemyBase(Base):
         if isinstance(inst_attr.prop, ColumnProperty):
             return inst_attr.prop.columns[0].name
         elif isinstance(inst_attr.prop, RelationshipProperty) and list(inst_attr.prop._user_defined_foreign_keys)[0] is not None:
-            return inst_attr.prop._user_defined_foreign_keys[0].name
+            return list(inst_attr.prop._user_defined_foreign_keys)[0].name
         return None
     @classmethod
     def class_given_relationship_fk(cls, inst_attr: InstrumentedAttribute):
@@ -165,6 +165,7 @@ class AlchemyBase(Base):
     @classmethod
     def list_attribute_column(cls) -> List[Tuple]:
         return [ (key, value.prop.columns[0].name) for key, value in cls.__dict__.items() if cls.is_attribute_without_relationship(value)]
+
     @classmethod
     def list_attribute_column_given(cls,attributes_from_path: Tuple[str]) -> List[Tuple]:
         if attributes_from_path is None:
@@ -314,8 +315,12 @@ class AlchemyBase(Base):
         for att_name in enum:
             dic_attr[att_name] = getattr(self, att_name)
         return dic_attr
-    def object_has_action(self, a_type: type, action_name: str) -> object:
 
+    def object_has_action(self, obj: object, action_name: str) -> object:
+        if self == obj:
+            return self.has_action(action_name)
+
+        a_type = type(obj)
         if a_type not in dic_action:
             return False
 
@@ -331,14 +336,22 @@ class AlchemyBase(Base):
     async def converter_parameters(self, params: List[str], param_type_arr: List[tuple]) -> List:
         return await ConverterType().convert_parameters(params, param_type_arr)
 
-    def get_action(self, a_type: type, action_name: str) -> Action:
+    def get_action(self, obj: object, action_name: str) -> Action:
+        if self == obj:
+            return self.yourself_action()[action_name]
+        a_type: type = type(obj)
         return self.__class__.action_dic()[a_type][action_name]
+
+    def yourself_action(self):
+        return {}
+    def has_action(self, action_name) -> bool:
+        return action_name in self.yourself_action()
 
     async def execute_action(self, obj, action_names: List[str]) -> object:
         action_name = action_names.pop(0)
-        if not self.object_has_action(type(obj), action_name):
+        if not self.object_has_action(obj, action_name):
             raise NotImplementedError(f"The function {action_name} is not implemented in {type(obj)}")
-        action = self.get_action(type(obj), action_name)
+        action = self.get_action(obj, action_name)
         return await action.execute(obj, action_names)
 
     async def execute_actionOLD(self, obj, arr_actions: List[str]) -> object:

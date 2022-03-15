@@ -3,7 +3,10 @@
 from typing import Dict, Tuple, Sequence, List
 import unittest
 
+from src.orm.database_postgis import DialectDbPostgis
+from src.url_interpreter.expression import MultiExpression
 from src.url_interpreter.interpreter_new import Expression
+from tests.db.model import UnidadeFederacao
 
 
 class TestExpression():
@@ -37,12 +40,13 @@ class TestExpression():
         assert twords[0].is_simple() and twords[1].is_simple() and twords[2].is_simple()
         assert twords[3].is_simple() and twords[4].is_simple()
 
-        s1 = "geom/buffer/1.2/bbcontains/Point(1,2)"
+        s1 = "geom/buffer/1.2/bbcontains/Point(1,2)/and/name/eq/Brazil"
         expr = Expression(s1)
         words = expr.words()
-        assert len(words) == 5
+        assert len(words) == 9
         assert words[0] == 'geom' and words[1] == 'buffer' and words[2] == '1.2'
         assert words[3] == 'bbcontains' and words[4] == 'Point(1,2)'
+        assert words[5] =='and' and words[6] =='name' and words[7] =='eq' and words[8] =='Brazil'
         twords = expr.twords()
         assert twords[0].is_simple() and twords[1].is_simple() and twords[2].is_simple()
         assert twords[3].is_simple() and twords[4].is_simple()
@@ -105,3 +109,46 @@ class TestExpression():
     def test_is_balanced(self):
         expr = Expression("/(/id_objeto/gt/5/and/id_objeto/lte/56407/)/or/(/id_objeto/eq/56406/and/sigla/eq/RJ/)/")
         assert expr.is_balanced()
+
+
+dbe = DialectDbPostgis(None, UnidadeFederacao.__table__, UnidadeFederacao)
+
+class TestMultiExpression:
+
+    def test_expressions(self):
+        url = "filter/valor/gt/50/count"
+        mult_exp = MultiExpression(url, UnidadeFederacao, dbe)
+        assert len(mult_exp.get_expressions()) == 2
+        exp0 = mult_exp.get_expressions()[0]
+        assert len(exp0.words()) == 4
+        assert exp0.words()[0] == 'filter'
+        assert exp0.words()[1] == 'valor' and exp0.words()[2] == 'eq' and exp0.words()[3] == '50'
+        exp1 = mult_exp.get_expressions()[1]
+        assert len(exp1.words()) == 1
+        assert exp0.words()[0] == 'count'
+
+        url = "/projection/sigla,geom/offset-limit/5&2"
+        mult_exp = MultiExpression(url, UnidadeFederacao, dbe)
+        assert len(mult_exp.get_expressions()) == 2
+        exp0 = mult_exp.get_expressions()[0]
+        assert len(exp0.words()) == 2
+        assert exp0.words()[0] == 'projection'
+        assert exp0.words()[1] == 'sigla,geom'
+        exp1 = mult_exp.get_expressions()[1]
+        assert len(exp1.words()) == 2
+        assert exp1.words()[0] == 'offset-limit' and exp1.words()[1] == "5&2"
+
+        url = "/projection/sigla,geom/offset-limit/5&2/collect/sigla&geom/buffer/0.8"
+        mult_exp = MultiExpression(url, UnidadeFederacao, dbe)
+        assert len(mult_exp.get_expressions()) == 3
+        exp0 = mult_exp.get_expressions()[0]
+        assert len(exp0.words()) == 2
+        assert exp0.words()[0] == 'projection'
+        assert exp0.words()[1] == 'sigla,geom'
+        exp1 = mult_exp.get_expressions()[1]
+        assert len(exp1.words()) == 2
+        assert exp1.words()[0] == 'offset-limit' and exp1.words()[1] == "5&2"
+        exp3 = mult_exp.get_expressions()[2]
+        assert len(exp3.words()) == 4
+        assert exp3.words()[0] == 'collect'
+        assert exp3.words()[1] == "sigla&geom" and exp3.words()[2] == "buffer" and exp3.words()[3] == "0.8"

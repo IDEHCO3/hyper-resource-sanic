@@ -7,6 +7,7 @@ representations = [CONTENT_TYPE_JSON, CONTENT_TYPE_XML, CONTENT_TYPE_FLATBUFFERS
 dic_abstract_resource_action: Dict[str, ActionFunction] = {
 
     'projection': ActionFunction('projection',
+                                 'projection',
                                'AbstractResource',
                                [ParamAction('attribute_names', 'Enumeration')],
                                'Returns a resource, given attributes names separated by comma.',

@@ -147,6 +147,12 @@ class TestInterpreterNew():
                                 self.db)
         assert await interp.translate_lookup() == "( ST_Area(ST_Transform(geom,3005))> 100000.0 and sigla in ('RJ','ES') ) or ST_Area(ST_Transform(geom,3005))<> 100.0 "
 
+    @pytest.mark.asyncio
+    async def test_translate_collect(self):
+        interp = InterpreterNew("", LimUnidadeFederacaoA, self.db)
+        print("ererererer")
+        collect: str = await interp.translate_collect('collect/sigla,nome&geom/transform/3005/area', '')
+        assert collect == 'sigla as sigla,nome as nome, ST_Area(ST_Transform(geom,3005)) as area'
     # @pytest.mark.asyncio
     # async def test_translate_with_operation(self):
     #     interp = Interpreter("/geom/area/lt/10", LimUnidadeFederacaoA, DialectDbPostgis)

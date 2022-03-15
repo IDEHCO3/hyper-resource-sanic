@@ -1,6 +1,5 @@
-
-import asyncio
 import aiohttp
+#import matplotlib.pyplot as plt
 from aiohttp import ClientSession
 from databases import Database
 from environs import Env
@@ -20,9 +19,8 @@ from sanic_cors import CORS, cross_origin
 
 #Create Sanic app
 app = Sanic(__name__)
-# CORS(app)
-# app.blueprint(swagger_blueprint)
-
+CORS(app)
+app.blueprint(swagger_blueprint)
 #Setup env
 env = Env()
 env.read_env()  # read .env file, if it exists

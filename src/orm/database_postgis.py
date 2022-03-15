@@ -1,25 +1,28 @@
 import json
 from typing import List, Tuple, Dict, Optional
-
-from shapely import wkb
+from databases.backends.postgres import Record
 from sqlalchemy.orm import InstrumentedAttribute
 from geoalchemy2 import functions, Geometry
-
 from src.aiohttp_client import ClientIOHTTP
 from src.hyper_resource.common_resource import CONTENT_TYPE_GEOJSON, CONTENT_TYPE_WKB, CONTENT_TYPE_JSON
-from src.orm.converter import ConverterType
 from src.orm.database_postgresql import DialectDbPostgresql
-from src.orm.dictionary_actions import ActionFunction, ParamAction
-from src.orm.dictionary_actions_abstract_collection import dic_abstract_collection_lookup_action
-from src.orm.dictionary_actions_postgis import dic_spatial_lookup_action, dic_action
+from src.orm.dictionary_actions import ActionFunction
+from src.orm.dictionary_actions_postgis import dic_spatial_lookup_action, dic_action, dic_spatial_aggregate_action
+from shapely import wkb
 
 class DialectDbPostgis(DialectDbPostgresql):
     def __init__(self, db, metadata_table, entity_class):
         super().__init__(db, metadata_table, entity_class)
         self.srid = 4674
 
-    def get_spatial_lookup_function_names(self):
+    def get_spatial_lookup_function_names(self) -> List[str]:
         return list(dic_spatial_lookup_action.keys())
+
+    def get_spatial_aggregate_function_names(self) -> List[str]:
+        return list(dic_spatial_aggregate_action.keys())
+
+    def get_spatial_function_names(self) -> List[str]:
+        return self.get_spatial_lookup_function_names() + self.get_spatial_aggregate_function_names()
 
     def has_geom_column(self, tuple_attrib) -> bool:
         return self.entity_class.geo_column_name()  in tuple_attrib
@@ -50,12 +53,21 @@ class DialectDbPostgis(DialectDbPostgresql):
         rows = await self.db.fetch_one(sql)
         return rows if rows is None else rows[self.function_db()]
 
+    def wkb_query(self, sub_query: str) -> str:
+        geom: str = self.get_geom_column()
+        return f"SELECT ST_AsBinary({geom}) FROM ({sub_query}) AS q"
+
     async def fetch_all_as_wkb(self, where: Optional[str] = None, order_by: Optional[str] = None):
         geom: str = self.get_geom_column()
-        query = f"SELECT ST_AsBinary({geom}) FROM {self.schema_table_name()}"
+        attribute_geom: str = self.get_geom_attribute()
+        query = f"SELECT ST_AsBinary({geom}) as {attribute_geom} FROM {self.schema_table_name()}"
         query += where or ''
         query += order_by or ''
         return await self.db.fetch_all(query)
+
+    def geobuf_query(self, sub_query: str) -> str:
+        geom: str = self.get_geom_column()
+        return f"SELECT  ST_AsGeobuf(q, '{geom}') FROM ({sub_query}) AS q"
 
     async def fetch_all_as_geobuf(self, list_attribute: List[str] = None,  where: Optional[str] = None, order_by: Optional[str] = None, prefix_col_val: str = None):
         sub_query = self.basic_select(list_attrib=list_attribute, prefix_col_val=prefix_col_val)  # self.metadata_table.select()
@@ -64,19 +76,33 @@ class DialectDbPostgis(DialectDbPostgresql):
         geom = self.entity_class.geo_column_name()
         if list_attribute == None:
             sub_query = sub_query.replace(f'ST_AsEWKB({geom})', geom)
-        query = f"SELECT  ST_AsGeobuf(q, '{geom}') FROM ({sub_query}) AS q"
+        query: str = self.geobuf_query(sub_query) #f"SELECT  ST_AsGeobuf(q, '{geom}') FROM ({sub_query}) AS q"
         rows = await self.db.fetch_all(query)
         return rows[0]['st_asgeobuf']
 
+    def extent_query(self, sub_query: str) -> str:
+        return f"SELECT ST_Extent({self.get_geom_column()}) FROM ({sub_query or self.schema_table_name()}) AS q"
+
+    async def extent(self, sub_query: str) -> List[float]:
+        query: str = self.extent_query(sub_query)
+        rows: List[Record] = await self.db.fetch_all(query)
+        s: str = rows[0]['st_extent']
+        coords = s.removeprefix('BOX(').removesuffix(')').split(',')[0].split(' ') + \
+                 s.removeprefix('BOX(').removesuffix(')').split(',')[1].split(' ')
+        return [float(coord) for coord in coords]
+
+    def flatgeobuf_query(self, sub_query: str) -> str:
+        return f"SELECT ST_AsFlatGeobuf(q.*) FROM ({sub_query}) AS q"
+
     async def fetch_all_as_flatgeobuf(self,  list_attribute: List[str] = None,  where: Optional[str] = None, order_by: Optional[str] = None, prefix_col_val: str = None):
-        sub_query = self.basic_select(list_attrib=list_attribute,
+        sub_query: str = self.basic_select(list_attrib=list_attribute,
                                       prefix_col_val=prefix_col_val)  # self.metadata_table.select()
         sub_query += where or ''
         sub_query += order_by or ''
         geom = self.entity_class.geo_column_name()
         if list_attribute == None:
             sub_query = sub_query.replace(f'ST_AsEWKB({geom})', geom)
-        query = f"SELECT ST_AsFlatGeobuf(q.*) FROM ({sub_query}) AS q"
+        query: str = self.flatgeobuf_query(sub_query) #f"SELECT ST_AsFlatGeobuf(q.*) FROM ({sub_query}) AS q"
         rows = await self.db.fetch_all(query)
         return rows[0]['st_asflatgeobuf']
 
@@ -95,6 +121,10 @@ class DialectDbPostgis(DialectDbPostgresql):
         for column in self.metadata_table.columns:
             if hasattr(column.type, "geometry_type"):
                 return str(column.name)
+        #self.entity_class.geo_column_name()
+
+    def get_geom_attribute(self) -> Optional[str]:
+        return self.entity_class.geo_attribute_name
 
     def get_columns_sql(self) -> List[str]:
         full_columns_names = []
@@ -106,7 +136,7 @@ class DialectDbPostgis(DialectDbPostgresql):
                 full_columns_names.append(self.metadata_table.fullname + "." + col.name)
         return full_columns_names
 
-    def alias_column(self, inst_attr: InstrumentedAttribute, prefix_col: str = None):
+    def alias_column_old(self, inst_attr: InstrumentedAttribute, prefix_col: str = None):
         if self.entity_class.is_relationship_fk_attribute(inst_attr)  and prefix_col is not None:
             col_name = self.entity_class.column_name_or_None(inst_attr) #inst_attr.prop._user_defined_foreign_keys[0].name
             model_class = self.entity_class.class_given_relationship_fk(inst_attr)
@@ -147,10 +177,6 @@ class DialectDbPostgis(DialectDbPostgresql):
         if content_type == CONTENT_TYPE_GEOJSON:
             return await self.fetch_all_as_json('*', query, )
         return []
-    def get_spatial_lookup_function_names(self) -> List[str]:
-        if self.function_names is None:
-            self.function_names = list(dic_spatial_lookup_action.keys())
-        return self.function_names
 
     def dict_action(self) -> Dict[str, ActionFunction]:
         d = {Geometry: dic_action}
@@ -190,8 +216,9 @@ class DialectDbPostgis(DialectDbPostgresql):
         headers = {'accept': accept}
         async with ClientIOHTTP().session.get(url, headers=headers) as resp:
             if resp.content_type == CONTENT_TYPE_WKB:
-                geometry = await resp.read()
-                return f"ST_SetSRID('{wkb.loads(geometry).wkb_hex}'::geometry, {self.srid})"
+                geom = await resp.read()
+                #return wkb.loads(geom.decode(), hex=True)
+                return f"ST_SetSRID('{wkb.loads(geom.decode(), hex=True)}'::geometry, {self.srid})"
             elif resp.content_type in [CONTENT_TYPE_GEOJSON, CONTENT_TYPE_JSON]:
                 geometry = await resp.json()
                 if 'geometry' in geometry:

@@ -1,3 +1,4 @@
+import cartopy
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from shapely.geometry import shape
@@ -11,4 +12,6 @@ res = requests.get('http://127.0.0.1:8000/lim-unidade-federacao-a-list')
 data = res.json()
 features = data['features']
 geometries = [shape(f['geometry']) for f in features]
-ax.add_geometries(geometries, ccrs.PlateCarree(), facecolor='#C8A2C8', alpha=0.5)
+ax.add_geometries(geometries, ccrs.PlateCarree(), facecolor='#C8A2C8', alpha=0.5, edgecolor="black")
+#ax = plt.axes(projection=cartopy.crs.PlateCarree())
+#ax.add_feature(geometries, linewidth=.5, edgecolor="black")

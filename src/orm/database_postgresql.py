@@ -107,7 +107,7 @@ class DialectDbPostgresql(DialectDatabase):
             pref = f'{prefix_col}{self.entity_class.router_list()}/' if prefix_col is not None  else ''
             col_name = self.entity_class.column_name_or_None(inst_attr)
             attr_name = self.entity_class.attribute_name_given(inst_attr)
-            return f"'{pref}' || {col_name} as {attr_name}"
+            return f"{col_name} as {attr_name}" if pref == '' else f"'{pref}' || {col_name} as {attr_name}"
         elif self.entity_class.is_relationship_attribute(inst_attr):
             return None
         else:
@@ -115,7 +115,7 @@ class DialectDbPostgresql(DialectDatabase):
             attr_name = self.entity_class.attribute_name_given(inst_attr)
             return f'{col_name} as {attr_name}'
 
-    def column_names_alias(self, attrib_names: Optional[List[str]], prefix_col_val: str = None) -> str:
+    def column_names_alias(self, attrib_names: Optional[List[str]] = None, prefix_col_val: str = None) -> str:
         attr_names = attrib_names if attrib_names is not None else self.attribute_names()
         attributes = [self.entity_class.__dict__[name] for name in attr_names]
         list_alias = []
@@ -140,10 +140,11 @@ class DialectDbPostgresql(DialectDatabase):
         row = await self.db.fetch_one(query=query, values=dic)
         return row
 
-    def query_build_by(self, enum_fields: str = '', enum_schema_table: str ='', enum_join: str ='', enum_order_by:str = '', offsetlimit: str = '') -> str:
+
+    def query_build_by(self, enum_fields: str = '', enum_schema_table: str ='', where_predicate: str ='', enum_order_by:str = '', offsetlimit: str = '') -> str:
         predicate_field: str        = self.enum_column_names() if enum_fields == '' else enum_fields
         predicate_schema_table: str = self.schema_table_name() if enum_schema_table == '' else enum_schema_table
-        predicate_join: str         = '' if enum_join == '' else f'where {enum_join}'
+        predicate_join: str         = '' if where_predicate == '' else f'{where_predicate} '
         predicate_orderby: str      = '' if enum_order_by == '' else f'order by {enum_order_by}'
         predicate_offset: str       = '' if offsetlimit == '' else offsetlimit
         return f'select {predicate_field} from {predicate_schema_table} {predicate_join} {predicate_orderby} {predicate_offset}'
@@ -180,6 +181,7 @@ class DialectDbPostgresql(DialectDatabase):
         print(sql)
         rows = await self.db.fetch_one(sql)
         return rows if rows is None else rows[self.function_db()]
+
     async def fetch_all_model(self, tuple_attrib : Tuple[str] = None, prefix_col_val: str=None):
         query = self.basic_select(tuple_attrib, prefix_col_val)
         print(query)
@@ -217,9 +219,10 @@ class DialectDbPostgresql(DialectDatabase):
         rows = await self.fetch_all_as_json(None, query)
         return rows
 
-    async def count(self, where: str = None) -> int:
+    async def count(self, column_name: str = None, where: str = None) -> int:
+        asterisk: str = column_name or '*'
         where_clause = where or ''
-        query = f'select count(*) from {self.schema_table_name()} {where_clause}'
+        query = f'select count({asterisk}) from {self.schema_table_name()} {where_clause}'
         row = await self.db.fetch_one(query)
         return row['count']
 
@@ -255,6 +258,7 @@ class DialectDbPostgresql(DialectDatabase):
         query = f'select {str_attribute_as_comma_list} from {self.schema_table_name()} {order_by}'
         rows = await self.db.fetch_all(query)
         return rows
+
     async def group_by_count(self, str_attr_as_comma_list, orderby=None, format_row = None):
         order_by = '' if orderby is None else f' order by {orderby} '
         query = f'select {str_attr_as_comma_list}, count(*) from {self.schema_table_name()} {order_by} group by {str_attr_as_comma_list}'
@@ -264,6 +268,7 @@ class DialectDbPostgresql(DialectDatabase):
         else:
             rows = await self.fetch_all_as_json(None, query)
         return rows
+
     async def group_by_sum(self, str_attr_as_comma_list, attr_to_sum, orderby=None, format_row=None):
         order_by = '' if orderby is None else f' order by {orderby} '
         query = f'select {str_attr_as_comma_list}, sum({attr_to_sum}) from {self.schema_table_name()} {order_by} group by {str_attr_as_comma_list}'
@@ -274,6 +279,7 @@ class DialectDbPostgresql(DialectDatabase):
         return rows
     def get_sql_function(self, sql_type, function_name):
         return [operation for operation in SQLALCHEMY_TYPES_SQL_OPERATIONS[sql_type] if operation == function_name][0]
+
     async def delete(self, id_or_dict : dict):
         id_dict = id_or_dict if type(id_or_dict) == dict else {self.entity_class.primary_key() : id_or_dict}
         tuple_key_value = id_dict.popitem()
@@ -281,6 +287,7 @@ class DialectDbPostgresql(DialectDatabase):
         query = f"DELETE FROM {self.schema_table_name()} WHERE {col_eq_value}"
         res = await self.db.execute(query=query)
         return res
+
     async def update(self, id_or_dict: dict, attribute_value: dict):
         id_dict = id_or_dict if type(id_or_dict) == dict else {self.entity_class.primary_key(): id_or_dict}
         list_attr_col_type = self.list_attribute_column_type_given(attribute_value.keys())
@@ -291,6 +298,7 @@ class DialectDbPostgresql(DialectDatabase):
         query = f"UPDATE {self.schema_table_name()} SET {enum_col_eq_value} WHERE {col_eq_value} "
         res = await self.db.execute(query=query, values=dict_column_value)
         return res
+
     async def insert(self, attribute_value: dict):
         list_attr_col_type = self.list_attribute_column_type_given(attribute_value.keys())
         dict_column_value = self.convert_all_to_db(list_attr_col_type, attribute_value)
@@ -302,6 +310,7 @@ class DialectDbPostgresql(DialectDatabase):
         query = f"INSERT INTO {self.schema_table_name()}({self.enum_column_names(column_names)}) VALUES ({self.enum_colon_column_names(column_names)})"
         await self.db.execute(query=query, values=dict_column_value)
         return pk_value
+
     def db_type_name_given_attribute(self, attribute_name: str)->str:
         tp_name = self.entity_class().attrib_name_col_name_type_col_name(attribute_name)[2]
         if ('VARCHAR' in tp_name) or ('CHAR' in tp_name):
@@ -325,6 +334,7 @@ class DialectDbPostgresql(DialectDatabase):
         if a_type in ('DATE'):
             return date.fromisoformat(val) #iso => yyyy-mm-dd
         return val
+
     def convert_all_to_db(self, attribute_column_type: List[tuple], attribute_value: dict, is_update : bool = False) -> dict:
         column_value = {}
         for attr, col,typ  in attribute_column_type:
@@ -366,4 +376,4 @@ class DialectDbPostgresql(DialectDatabase):
         return self.actions_in_chain(a_type, action_names)[-1]
 
     def type_of_last_action_in_chain(self,a_type: type, action_names: List[str]) -> object:
-        return self.last_action_in_chain(a_type, action_names)
+        return self.last_action_in_chain(a_type, action_names).answer

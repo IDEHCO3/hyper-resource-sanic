@@ -2,8 +2,10 @@ import re
 # from re import Match
 from typing import List, Optional
 
-from typing.re import Match
+from re import Match
 
+from src.orm.database import DialectDatabase
+from src.orm.models import AlchemyBase
 from src.url_interpreter.interpreter_error import PathError
 from src.url_interpreter.tword import TWord
 
@@ -12,7 +14,6 @@ LEFT_DELIMITER = r'\/\(\/'
 RIGHT_DELIMITER = r'\/\)\/'
 REGEX_DELIMITER = r'(\/\(\/.*?\/\)\/)'
 TEMP_WORD = 'word-54f7a73c-ff96-479b-b9a8-72e7b730d2cc'
-
 
 class Expression:
     def __init__(self, string: str = None):
@@ -135,3 +136,14 @@ class Expression:
         list_tword = self.twords()
         return [tword.word for tword in list_tword]
 
+
+class MultiExpression:
+
+    def __init__(self, string: str, model_class: type, dialect_db: DialectDatabase):
+        self.string = string
+        self._expressions: List[Optional[Expression]] = []
+        self.model_class: type = model_class
+        self.dialect_db = dialect_db
+
+    def get_expressions(self) -> List[Expression]:
+        return self._expressions

@@ -159,7 +159,8 @@ class InterpreterNew:
 
     async def word_is_operation_arg(self, a_word: str, prv_token: Token) -> bool:
         if prv_token is None:
-            msg_error = f'Must have a function name before {self.token.word()}'
+            msg = self.token.word()
+            msg_error = f'Must have a function name before {msg}'
             print(msg_error)
             raise PathError(msg_error, 400)
         if prv_token.is_not_operation():
@@ -228,7 +229,7 @@ class InterpreterNew:
             action = self.dialect_db_action(a_type, tword.word)
             tk = TokenOperation(tword, Token.OPERATION_CATEGORY, a_type, prv_token, action.answer)
             return self.set_next_token_on_token(tk, prv_token)
-        elif await self.word_is_operation_arg(tword.word, prv_token) and prv_token is not None:
+        elif prv_token is not None and await self.word_is_operation_arg(tword.word, prv_token):
             a_type = prv_token.typeof
             # action = self.dialect_db_action(a_type, tword.word)
             tk = TokenArg(tword, Token.OPERATION_ARG_CATEGORY, str, prv_token)
@@ -464,9 +465,43 @@ class InterpreterNew:
         return translated_to_where_db
 
     async def translate_in_query(self, path: str) -> str:
+        pass
 
-        paths: List[str] = path.split('.')
-        expressions: List[Expression] = [Expression(a_path) for a_path in paths]
+    async def translate_path(self, path) -> str:
+        interp: InterpreterNew = InterpreterNew(path, self.model_class, self.dialect_db)
+        return await interp.translate_lookup()
 
+    async def last_action_in_collect(self, attrib_actions: List[str]):
+        attribute_name: str = attrib_actions[0]
+        a_type: type = self.model_class.attribute_type_given(attribute_name)
+        return self.dialect_db.last_action_in_chain(a_type, attrib_actions[1:])
 
+    def raise_path_error_if_has_not_attributes(self, attribute_names):
+        if not self.model_class.has_all_attributes(attribute_names):
+            non_attribute_names = [att for att in attribute_names if self.model_class.has_not_attribute(att)]
+            if len(non_attribute_names) == 1:
+                raise PathError(f'This attribute {non_attribute_names} does not exist.', 400)
+            else:
+                raise PathError(f'These attributes {",".join(non_attribute_names)} do not exist.', 400)
+
+    async def translate_collect(self, path, protocol_host: str) -> str:
+      # /collect/date,name&geom/transform/3005/area
+        a_path: str = path[8:]  # len(collect/) = 8
+        if '&' in a_path:
+            paths: List[str] = a_path.split('&')
+            attribute_name_actions: str = paths[1]
+            enum_attrib_name: str = paths[0]
+        else:
+            attribute_name_actions: str = a_path
+            enum_attrib_name: Optional[str] = ''  # /collect/geom/transform/3005/area
+        attrib_actions: List[str] = normalize_path_as_list(attribute_name_actions, '/')
+        action_translated: str = await self.translate_path(attribute_name_actions)  # path => filter/license/eq/valid
+
+        enum_att_list: List[str] = enum_attrib_name.split(',') if len(enum_attrib_name) > 0 else []
+        attribute_names: List[str] = enum_att_list + [ attribute_name_actions[0: attribute_name_actions.index('/')]]
+        self.raise_path_error_if_has_not_attributes(attribute_names)
+        last_action: ActionFunction = await self.last_action_in_collect(attrib_actions=attrib_actions)
+        last_action_name: str = attrib_actions[-1] if last_action.has_not_parameters() else attrib_actions[-2]
+        predicate_action: str = f'{action_translated} as {last_action_name}'
+        return self.dialect_db.predicate_collect(attribute_names[0:-1], predicate_action, protocol_host)
 

@@ -63,8 +63,9 @@ class ActionAttribute(Action):
 
 class ActionFunction(Action):
 
-    def __init__(self, name: str, answer: object = None, param_actions: List[ParamAction] = [], description: str = None, example: str = None, representations: List[str] =[]):
+    def __init__(self, name: str, name_operation: str, answer: object = None, param_actions: List[ParamAction] = [], description: str = None, example: str = None, representations: List[str] =[]):
         super().__init__(name, answer, description, example, representations)
+        self.name_operation = name_operation
         self.param_actions = param_actions
 
     def count_params(self):

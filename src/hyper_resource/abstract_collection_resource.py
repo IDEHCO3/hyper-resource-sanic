@@ -10,6 +10,7 @@ import json, os
 from src.hyper_resource.abstract_resource import AbstractResource, MIME_TYPE_JSONLD
 from src.hyper_resource.context.abstract_context import AbstractCollectionContext
 from src.hyper_resource.common_resource import CONTENT_TYPE_HTML, CONTENT_TYPE_JSON, CONTENT_TYPE_XML, dict_to_xml
+from ..orm.query_builder import QueryBuilder
 from ..url_interpreter.interpreter import Interpreter
 from ..url_interpreter.interpreter_error import PathError
 from ..url_interpreter.interpreter_new import InterpreterNew
@@ -76,6 +77,7 @@ class AbstractCollectionResource(AbstractResource):
             return await self.get_html_representation()
         else:
             return await self.get_json_representation()
+
     def first_word(self, path: str)->str:
         """
         :param path: is a substr from iri.  Ex.: filter/first_name/eq/John
@@ -83,12 +85,81 @@ class AbstractCollectionResource(AbstractResource):
         """
         return path.split('/')[0].strip().lower()
 
+    def operation_name_in_path(self, path) -> str:
+        operation_name_or_attribute_comma: str = self.first_word(path)
+        if ',' in operation_name_or_attribute_comma:
+            return 'projection'
+        if operation_name_or_attribute_comma in self.get_function_names():
+            return operation_name_or_attribute_comma
+        msg = f"This {path} is incorrect"
+        print(msg)
+        raise PathError(msg, 400)
+
     def normalize_path(self, path: str) -> str:
         """
         :param path: is a substr from iri.  Ex.: /filter/first_name/eq/John
         :return: Removes trail slash and returns str
         """
         return path[:-1] if path[-1] == '/' else path
+
+    async def predicate_filter(self, path: str) -> str:
+        return await self.interpreter(path).translate_lookup()
+
+    async def predicate_group_by(self, path: str) -> str:
+        return path.split('/')[1]
+
+    async def predicate_collect(self, path: str, query_collect: str) -> str:
+        a_query_collect: str = query_collect
+        if len(query_collect) == 0:
+            return await self.interpreter(path).translate_collect(path,self.protocol_host())
+        a_query_collect += f', ({await self.interpreter(path).translate_collect(path, self.protocol_host())})'
+
+    def predicate_projection(self, path: str) -> str:
+        attr_names: List[str] = path[len('projection/'):].split(',')
+        attr_differs: List[str] = list(set(attr_names) - set(self.attribute_names()))
+        size_difference: int = len(attr_differs)
+        if size_difference == 0:
+            return self.dialect_DB().column_names_alias(attrib_names=attr_names, prefix_col_val=self.protocol_host())
+        elif size_difference == 1:
+            att = attr_differs[0]
+            raise PathError(f"The attribute {att} does not exists", 400)
+        elif size_difference >= 2:
+            atts = attr_differs
+            raise PathError(f"These attributes {atts} do not exist", 400)
+        return ','.join(attr_names)
+
+    def predicate_offsetlimit(self, path) -> str:
+        pass
+
+    async def execute_method(self, path):
+        operation_name = self.operation_name_in_path(path)
+        return await getattr(self, action_name(operation_name))(*[path])
+
+    async def get_representation_given_path_new(self, path: str) -> str:
+        paths: List[str] = self.normalize_path_as_list(path, '/*/')
+        qb: QueryBuilder = QueryBuilder()
+        if len(paths) == 1:
+            return await self.execute_method(paths[0])
+        for path in paths:
+            operation_name: str = self.operation_name_in_path(path)
+            if operation_name == 'filter':
+                qb.add_where(await self.interpreter(path[6:]).translate_lookup())
+            elif operation_name == 'collect':
+                qb.add_column(await self.interpreter().translate_collect(path, self.protocol_host()))
+            elif operation_name == 'projection':
+                qb.add_column(self.predicate_projection(path))
+            elif operation_name == 'groupby':
+                qb.add_group_by(await self.predicate_group_by(path))
+            elif operation_name == 'count':
+                qb.add_count()
+            elif operation_name == 'offsetlimit':
+                qb.add_offsetlimit(self.predicate_offsetlimit(path))
+            elif operation_name == 'sum':
+                qb.add_sum(path)
+            elif operation_name == 'avg':
+                count_ = self.predicate_avg(path)
+        qb.add_table_name(self.dialect_DB().schema_table_name())
+        return await self.response_by_qb(qb)
 
     async def get_representation_given_path(self, path: str):
         # result = getattr(foo, 'bar')(*params)
@@ -150,7 +221,7 @@ class AbstractCollectionResource(AbstractResource):
         rows = await self.dialect_DB().fetch_all(list_attribute=list_attribute, where=where, order_by=order_by, prefix=self.protocol_host())
         return await self.response_given(rows)
 
-    def order_by_predicate(self, path: str) -> str:
+    def predicate_order_by(self, path: str) -> str:
         order_by_asc_dsc: str = path
         order_by_asc_dsc = self.normalize_path(order_by_asc_dsc)
         orders_by_asc_dsc: List[str] = []
@@ -163,15 +234,18 @@ class AbstractCollectionResource(AbstractResource):
         column_names: List[str] = self.entity_class().column_names_given_attributes(attribute_name_sort)
         return self.dialect_DB().predicate_order_by(column_names, orders_by_asc_dsc)
 
-    async def order_by(self, path: str) -> str:
+    async def orderby(self, path: str) -> str:
         # order_by => orderby/name,gender&asc,desc
         paths: List[str] = self.normalize_path(path).split('/')
-        ordr: str = self.order_by_predicate(paths[-1])
+        ordr: str = self.predicate_order_by(paths[-1])
         rows = await self.dialect_DB().fetch_all(order_by=ordr, prefix=self.protocol_host())
         return await self.response_given(rows)
 
+    def interpreter(self, path: str = ''):
+        return InterpreterNew(path, self.entity_class(), self.dialect_DB())
+
     async def translate_path(self, path) -> str:
-        interp = InterpreterNew(path, self.entity_class(), self.dialect_DB())
+        interp = self.interpreter(path)
         try:
             translated: str = await interp.translate_lookup()
         except (Exception, SyntaxError):
@@ -183,6 +257,7 @@ class AbstractCollectionResource(AbstractResource):
         predicate: str = await self.translate_path(selection_path)
         print(f'whereclause: {predicate}')
         return f' where {predicate}'
+
 
     async def response_given(self, rows: List):
         rows_dict = await self.rows_as_dict(rows)
@@ -266,7 +341,7 @@ class AbstractCollectionResource(AbstractResource):
             raise
         print(f'whereclause: {whereclause}')
         where: str = f' where {whereclause}'
-        an_order: str = self.order_by_predicate(_order_by)
+        an_order: str = self.predicate_order_by(_order_by)
         rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=an_order, prefix=self.protocol_host())
         return await self.response_given(rows)
 
@@ -315,7 +390,8 @@ class AbstractCollectionResource(AbstractResource):
                 ls.append('/' + s + '/')
             ls.append('/' + ls_path[0])
             return ls
-    async def collect(self, path):
+
+    async def collect_old(self, path):
         """
         collect
         collect orderby
@@ -333,28 +409,34 @@ class AbstractCollectionResource(AbstractResource):
         if len(paths) == 1:
             return await self.collect_only(paths[0])
 
-    async def collect_only(self, path: str): #/collect/date,name&geom/transform/3005/area
-        a_path: str = path[8:] #len(collect/) = 8
+    async def collect_base(self, path: str) -> str:
+        a_path: str = path[8:]  # len(collect/) = 8
         if '&' in a_path:
             paths: List[str] = a_path.split('&')
             attribute_name_actions: str = paths[1]
             enum_attrib_name: str = paths[0]
         else:
             attribute_name_actions: str = a_path
-            enum_attrib_name: Optional[str] = ''   #/collect/geom/transform/3005/area
+            enum_attrib_name: Optional[str] = ''  # /collect/geom/transform/3005/area
         action_translated: str = await self.translate_path(attribute_name_actions)  # path => filter/license/eq/valid
-        attribute_names: List[str] = enum_attrib_name.split(',') + [attribute_name_actions[0: attribute_name_actions.index('/')]]
+        attribute_names: List[str] = enum_attrib_name.split(',') + [
+            attribute_name_actions[0: attribute_name_actions.index('/')]]
         if not self.entity_class().has_all_attributes(attribute_names):
             non_attribute_names = [att for att in attribute_names if self.entity_class().has_not_attribute(att)]
             if len(non_attribute_names) == 1:
                 return sanic.response.text(f'This attribute {non_attribute_names} does not exist.', status=400)
             else:
-                return sanic.response.text(f'These attributes {",".join(non_attribute_names)} do not exist.', status=400)
+                return sanic.response.text(f'These attributes {",".join(non_attribute_names)} do not exist.',
+                                           status=400)
         attribute_name_actions_norm = self.normalize_path(attribute_name_actions)
-        last_action_name: str = attribute_name_actions_norm[attribute_name_actions_norm.rindex("/")+ 1:]
+        last_action_name: str = attribute_name_actions_norm[attribute_name_actions_norm.rindex("/") + 1:]
         predicate_action: str = f'{action_translated} as {last_action_name}'
-        select_fields: str = self.dialect_DB().predicate_collect(attribute_names[0:-1], predicate_action, self.protocol_host())
-        query = self.dialect_DB().query_build_by(enum_fields=select_fields)
+        return self.dialect_DB().predicate_collect(attribute_names[0:-1], predicate_action,
+                                                                 self.protocol_host())
+    async def collect(self, path: str): #/collect/date,name&geom/transform/3005/area
+        interp = self.interpreter()
+        select_fields: str = await interp.translate_collect(path, self.protocol_host())
+        query: str = self.dialect_DB().query_build_by(enum_fields=select_fields)
         rows = await self.dialect_DB().fetch_all_by(query)
         return await self.response_given(rows)
 
@@ -375,10 +457,13 @@ class AbstractCollectionResource(AbstractResource):
         if len(paths) == 2:
             sub_paths: List[str] = self.normalize_path_as_list(paths[-1], '/')
             operation_1: str = self.normalize_path(sub_paths[0].strip('/').strip().lower())
+            filter_path: str = paths[0] + '/' if paths[0][-1] == ')' else paths[0]
             if operation_1 == 'count':
-                return await self.filter_count(paths[0])
+                return await self.filter_count(filter_path)
             if operation_1 == 'orderby':
-                return await self.filter_order_by(paths[0][6:], sub_paths[1])
+                return await self.filter_order_by(filter_path[6:], sub_paths[1])
+            if operation_1 == 'collect':
+                return await self.filter_collect(filter_path[6:], sub_paths)
 
     async def filter_only(self, path: str):  # -> "AbstractCollectionResource":
         """
@@ -394,7 +479,7 @@ class AbstractCollectionResource(AbstractResource):
         return await self.response_given(rows)  # self.filter_base_response(rows)
 
     async def filter_order_by(self, filter_expression: str, orderby_expression: str):
-        order_by_: str = self.order_by_predicate(orderby_expression)
+        order_by_: str = self.predicate_order_by(orderby_expression)
         where: str = await self.where_interpreted(filter_expression)
         rows = await self.dialect_DB().fetch_all( where=where, order_by= order_by_,prefix=self.protocol_host())
         return await self.response_given(rows)
@@ -404,7 +489,7 @@ class AbstractCollectionResource(AbstractResource):
         row = await self.dialect_DB().count(where=where)
         return sanic.response.json(row)
 
-    async def filter_collect(self, path: str):
+    async def filter_collect(self, filter_path: str, sub_paths: List[str]):
         pass
 
     async def head(self):

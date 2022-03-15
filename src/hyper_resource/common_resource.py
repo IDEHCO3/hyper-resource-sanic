@@ -59,3 +59,8 @@ def list_type_name_wkt()->List[str]:
 def dict_to_xml(dict_or_list_dict) -> str:
     xml = dicttoxml(dict_or_list_dict, attr_type=False)
     return parseString(xml).toprettyxml()
+
+
+def normalize_path_as_list( path: str, splitter: str) -> List[str]:
+        paths: List[str] = path.split(splitter)
+        return paths if paths[-1] != '' else paths[:-1]
