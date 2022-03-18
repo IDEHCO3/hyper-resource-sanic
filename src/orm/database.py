@@ -163,6 +163,12 @@ class DialectDatabase(AbstractDialectDatabase):
     async def count(self, where: str) -> int:
         raise NotImplementedError("'count' must be implemented in subclasses")
 
+    async def sum(self, where: str) -> float:
+        raise NotImplementedError("'sum' must be implemented in subclasses")
+
+    async def avg(self, where: str) -> float:
+        raise NotImplementedError("'avg' must be implemented in subclasses")
+
     async def min(self, column_name: str) -> Number:
         raise NotImplementedError("'min' must be implemented in subclasses")
 

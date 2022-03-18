@@ -178,7 +178,7 @@ class DialectDbPostgis(DialectDbPostgresql):
             return await self.fetch_all_as_json('*', query, )
         return []
 
-    def dict_action(self) -> Dict[str, ActionFunction]:
+    def dict_action(self) -> Dict[type, ActionFunction]:
         d = {Geometry: dic_action}
         return d
 

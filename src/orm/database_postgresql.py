@@ -16,6 +16,7 @@ from sqlalchemy import ARRAY, BIGINT, CHAR, BigInteger, BINARY, BLOB, BOOLEAN, B
 
 # reference: https://www.postgresql.org/docs/9.1/functions-string.html
 from .dictionary_actions import ActionFunction
+from .dictionary_actions_postgres import dic_math_aggregate_action
 from .models import AlchemyBase
 from src.hyper_resource.basic_route import BasicRoute
 STRING_SQL_OPERATIONS = ["lower", "replace", "upper"]
@@ -226,8 +227,30 @@ class DialectDbPostgresql(DialectDatabase):
         row = await self.db.fetch_one(query)
         return row['count']
 
+    async def only_one_aggregate_function(self, expression_function: str, where: str = None) -> float:
+        where_clause = where or ''
+        query = f'select {expression_function} from {self.schema_table_name()} {where_clause}'
+        return await self.db.fetch_one(query)
+
+
+    async def sum(self, expression_function: str, where: str = None) -> float:
+        row = await self.only_one_aggregate_function(expression_function=expression_function, where=where)
+        return row['sum']
+
+    async def avg(self, expression_function: str, where: str = None) -> float:
+        row = await self.only_one_aggregate_function(expression_function=expression_function, where=where)
+        return row['avg']
+
+    async def min(self, expression_function: str, where: str = None) -> float:
+        return await self.only_one_aggregate_function(function_name='min', column_name=column_name, where=where)
+
+    async def max(self, expression_function: str, where: str = None) -> float:
+        row = await self.only_one_aggregate_function(expression_function=expression_function, where=where)
+        return row['avg']
+
     def predicate_offset_limit(self, offset: int, limit: int) -> str:
-        return f'limit {limit} offset {offset - 1} '
+        res = f'limit {limit} offset {offset - 1} ' if offset is not None and offset > 0 else f'limit {limit}'
+        return res
 
     def predicate_order_by(self, column_names: List[str], orders: List[str] = []) -> str:
         if len(column_names) == len(orders):
@@ -351,7 +374,12 @@ class DialectDbPostgresql(DialectDatabase):
                 val = value
             dic[key] = val
         return dic
+    def dict_action(self) -> Dict[type, ActionFunction]:
+        d = {int: dic_math_aggregate_action,
+             float: dic_math_aggregate_action,
+            }
 
+        return d
     def action(self, typeof: object, action_name: str) -> Optional[ActionFunction]:
         if typeof in self.dict_action() and (action_name in self.dict_action()[typeof]):
             d = self.dict_action()[typeof]

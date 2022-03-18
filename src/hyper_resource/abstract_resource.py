@@ -36,7 +36,7 @@ class AbstractResource:
 
         return self.dialect_db
 
-    def normalize_path_as_list(self, path: str, splitter: str) -> List[str]:
+    def normalize_path_as_list(self, path: str, splitter) -> List[str]:
         paths: List[str] = path.split(splitter)
         return paths if paths[-1] != '' else paths[:-1]
 
@@ -72,17 +72,6 @@ class AbstractResource:
 
     def fields_from_path_not_in_attribute_names(self, fields_from_path)-> bool :
         return not self.fields_from_path_in_attribute_names(fields_from_path)
-
-    def dict_name_operation(self) -> Dict[str, 'function']:
-        return {}
-
-    def doc_for_operation(self, operation_name: str) -> List[str]:
-        dic_name_oper = self.dict_name_operation()
-        if operation_name not in dic_name_oper:
-            raise LookupError(f'This {operation_name} is not supported')
-        operation = dic_name_oper[operation_name]
-        doc_str = operation.__doc__
-        return [s.strip() for s in doc_str.split('\n') if s.strip() != '']
 
     async def get_representation(self, id_or_key_value: Optional[Any] = None):
         raise NotImplementedError("'get_representation' must be implemented in subclasses")

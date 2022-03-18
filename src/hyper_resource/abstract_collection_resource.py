@@ -10,6 +10,7 @@ import json, os
 from src.hyper_resource.abstract_resource import AbstractResource, MIME_TYPE_JSONLD
 from src.hyper_resource.context.abstract_context import AbstractCollectionContext
 from src.hyper_resource.common_resource import CONTENT_TYPE_HTML, CONTENT_TYPE_JSON, CONTENT_TYPE_XML, dict_to_xml
+from ..orm.action_type import ActionFunction
 from ..orm.query_builder import QueryBuilder
 from ..url_interpreter.interpreter import Interpreter
 from ..url_interpreter.interpreter_error import PathError
@@ -129,39 +130,104 @@ class AbstractCollectionResource(AbstractResource):
         return ','.join(attr_names)
 
     def predicate_offsetlimit(self, path) -> str:
-        pass
+        paths: List[str] = self.normalize_path_as_list(path, '/')
+        off_limit: List[str] = paths[1].split('&')
+        if len(off_limit) == 1:
+            return self.dialect_DB().predicate_offset_limit(0, int(off_limit[0]))
+        return self.dialect_DB().predicate_offset_limit(int(off_limit[0]), int(off_limit[1]))
 
     async def execute_method(self, path):
         operation_name = self.operation_name_in_path(path)
         return await getattr(self, action_name(operation_name))(*[path])
 
-    async def get_representation_given_path_new(self, path: str) -> str:
-        paths: List[str] = self.normalize_path_as_list(path, '/*/')
-        qb: QueryBuilder = QueryBuilder()
-        if len(paths) == 1:
-            return await self.execute_method(paths[0])
-        for path in paths:
-            operation_name: str = self.operation_name_in_path(path)
-            if operation_name == 'filter':
-                qb.add_where(await self.interpreter(path[6:]).translate_lookup())
-            elif operation_name == 'collect':
-                qb.add_column(await self.interpreter().translate_collect(path, self.protocol_host()))
-            elif operation_name == 'projection':
-                qb.add_column(self.predicate_projection(path))
-            elif operation_name == 'groupby':
-                qb.add_group_by(await self.predicate_group_by(path))
-            elif operation_name == 'count':
-                qb.add_count()
-            elif operation_name == 'offsetlimit':
-                qb.add_offsetlimit(self.predicate_offsetlimit(path))
-            elif operation_name == 'sum':
-                qb.add_sum(path)
-            elif operation_name == 'avg':
-                count_ = self.predicate_avg(path)
-        qb.add_table_name(self.dialect_DB().schema_table_name())
-        return await self.response_by_qb(qb)
+    async def response_by_qb(self, qb: QueryBuilder):
+        if qb.has_only_one_aggregate_math_function():
+            return sanic.response.json(await qb.count())
 
-    async def get_representation_given_path(self, path: str):
+        if (CONTENT_TYPE_JSON in self.accept_type()):
+            rows = await self.dialect_DB().fetch_all_by(qb.query())
+            rows_dict = await self.rows_as_dict(rows)
+            return sanic.response.json(rows_dict or [], content_type=CONTENT_TYPE_JSON)
+
+        #if CONTENT_TYPE_HTML in self.accept_type():
+        #    return await self.get_html_representation()
+
+        rows = await self.dialect_DB().fetch_all_by(qb.query())
+        rows_dict = await self.rows_as_dict(rows)
+        return sanic.response.json(rows_dict or [])
+
+
+    async def add_where_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_where(await self.interpreter(path[6:]).translate_lookup())
+
+    async def add_collect_in_qb(self, qb, path):
+        qb.add_collect(await self.interpreter().translate_collect(path, self.protocol_host()))
+
+    async def add_projection_in_qb(self, qb: QueryBuilder, path: str):
+        path_ = path if path[0: len('projection/')] == 'projection/' else 'projection/' + path
+        qb.add_column(self.predicate_projection(self.normalize_path(path_)))
+
+    async def add_group_by_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_group_by(await self.predicate_group_by(path))
+
+    async def add_count_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_count()
+
+    async def add_offsetlimit_in_qb(self, qb: QueryBuilder, path: str):
+        pred_offset_limit: str = self.predicate_offsetlimit(path)
+        qb.add_offsetlimit(pred_offset_limit)
+
+    async def add_order_by_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_offsetlimit(self.predicate_order_by(path[8:]))
+
+    async def add_sum_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_sum(path)
+
+    async def add_avg_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_avg(path)
+
+    def dict_qb_function(self) -> Dict:
+        return {
+            'filter': self.add_where_in_qb,
+            'collect': self.add_collect_in_qb,
+            'projection': self.add_projection_in_qb,
+            'groupby': self.add_group_by_in_qb,
+            'count': self.add_count_in_qb,
+            'offsetlimit': self.add_offsetlimit_in_qb,
+            'orderby': self.add_order_by_in_qb,
+            'sum': self.add_sum_in_qb,
+            'avg': self.add_avg_in_qb
+        }
+
+    def dict_qb_lookup_function(self) -> Dict:
+        return {}
+
+    def dict_qb_aggregate_function(self) -> Dict:
+        return {}
+
+    async def execute_qb_function(self, qb, path):
+        qb_function: Dict = {**self.dict_qb_function(), **self.dict_qb_lookup_function(), **self.dict_qb_aggregate_function() }
+        operation_name: str = self.operation_name_in_path(path)
+        if operation_name not in qb_function:
+            msg: str = f"Error in path. This {operation_name} does not exists"
+            raise PathError(msg, 400)
+        return await qb_function[operation_name](*[qb, path])
+
+    async def get_representation_given_path(self, path: str) -> str:
+        try:
+            paths: List[str] = self.normalize_path_as_list(path, '/*/')
+            qb: QueryBuilder = QueryBuilder(dialect_db=self.dialect_DB(), entity_class=self.entity_class())
+            qb.has_geometry = True
+            for path in paths:
+                await self.execute_qb_function(qb, path)
+            qb.add_table_name(self.dialect_DB().schema_table_name())
+            return await self.response_by_qb(qb)
+        except PathError as err:
+            return sanic.response.json(err.message, err.code)
+        except (RuntimeError, TypeError, NameError) as err:
+            return sanic.response.json("Error {0}". format(err))
+
+    async def get_representation_given_path_old(self, path: str):
         # result = getattr(foo, 'bar')(*params)
         #path = self.normalize_path(a_path)
         try:
@@ -182,41 +248,6 @@ class AbstractCollectionResource(AbstractResource):
             print(err)
             raise
 
-    async def offsetlimit(self, path):
-        """
-        offsetlimit
-        offsetlimit orderby
-        offsetlimit agregate
-        offsetlimit agregate agregate
-        offsetlimit agregate orderby
-        offsetlimit agregate agragate orderby
-        :param path:
-        :return:
-        """
-        arguments_from_url_by_slash = path.split('/')
-        arguments_from_url = arguments_from_url_by_slash[1].split('&')
-        # offsetlimit with 2 arguments. Ex.: offsetlimit/1&10
-        if len(arguments_from_url_by_slash) != 2:
-            raise SyntaxError("The operation offsetlimit has two mandatory integer arguments.")
-        # offsetlimit with 4 arguments. Ex.: offsetlimit/1&10/orderby/name,sexo&desc
-        if len(arguments_from_url) == 2:
-            return await self.offsetlimit_only(int(arguments_from_url[0]), int(arguments_from_url[1]))
-        if len(arguments_from_url) == 3:
-            return await self.offsetlimit_only(int(arguments_from_url[0]), int(arguments_from_url[1]), arguments_from_url[2])
-        if len(arguments_from_url) == 4:
-            return await self.offsetlimit_only(int(arguments_from_url[0]), int(arguments_from_url[1]), arguments_from_url[2], arguments_from_url[3])
-        raise SyntaxError("The operation offsetlimit has two mandatory integer arguments.")
-
-    async def offsetlimit_only(self, offset: int, limit: int, str_lst_attribute_comma: str = None, asc: str = None):
-        #if self.is_content_type_in_accept('text/html'):
-        #    return await self.get_html_representation()
-        rows = await self.dialect_DB().offset_limit(offset-1, limit, str_lst_attribute_comma, asc, None)
-        return await self.response_given(rows)
-
-    async def count(self, path):
-        result = await self.dialect_DB().count()
-        return sanic.response.json(result)
-
     async def response_fetch_all(self, list_attribute: Optional[List] = None, where: Optional[str] = None, order_by: Optional[str] = None, prefix: Optional[str] = None):
         rows = await self.dialect_DB().fetch_all(list_attribute=list_attribute, where=where, order_by=order_by, prefix=self.protocol_host())
         return await self.response_given(rows)
@@ -233,13 +264,6 @@ class AbstractCollectionResource(AbstractResource):
             attribute_name_sort: List[str] = order_by_asc_dsc.split(',')
         column_names: List[str] = self.entity_class().column_names_given_attributes(attribute_name_sort)
         return self.dialect_DB().predicate_order_by(column_names, orders_by_asc_dsc)
-
-    async def orderby(self, path: str) -> str:
-        # order_by => orderby/name,gender&asc,desc
-        paths: List[str] = self.normalize_path(path).split('/')
-        ordr: str = self.predicate_order_by(paths[-1])
-        rows = await self.dialect_DB().fetch_all(order_by=ordr, prefix=self.protocol_host())
-        return await self.response_given(rows)
 
     def interpreter(self, path: str = ''):
         return InterpreterNew(path, self.entity_class(), self.dialect_DB())
@@ -345,39 +369,6 @@ class AbstractCollectionResource(AbstractResource):
         rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=an_order, prefix=self.protocol_host())
         return await self.response_given(rows)
 
-    async def groupbycount(self, path):
-        str_atts = path.split('/')[1]  # groupbycount/departamento
-        rows = await self.dialect_DB().group_by_count(str_atts, None, 'JSON')
-        return sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON)
-
-    async def groupbysum(self, path):
-        str_atts = path.split('/')[1]  # empolyees/name&salary
-        fields_from_path = str_atts[1].split('&')
-        if self.fields_from_path_not_in_attribute_names(fields_from_path):
-            return sanic.response.json(f"The attribute {str_atts} does not exists", status=400)
-        return await self._groupbysum(self, path, 'JSON')
-
-    async def _groupbysum(self, str_att_names_as_comma, att_to_sum):
-        rows = await self.dialect_DB().group_by_sum(str_att_names_as_comma, att_to_sum, 'JSON')
-        return sanic.response.json(rows)
-
-
-    def dict_name_operation(self) -> Dict[str, 'function']:
-        return {'filter': self.filter}
-
-    def filter_base_response(self, rows):
-        return sanic.response.text(rows or [], content_type=CONTENT_TYPE_JSON)
-
-    async def predicate_query_from(self, path: str)-> str:
-
-        interp = Interpreter(path, self.entity_class(), self.dialect_DB())
-        try:
-            return await interp.translate()
-
-        except  (Exception, SyntaxError):
-            print(f"path: {path}")
-            raise
-
     def path_as_array_lookup_aggregate_order(self, path: str) -> List[str]:
         ls_path = path.split('/./')
         if len(ls_path) == 1:
@@ -390,107 +381,6 @@ class AbstractCollectionResource(AbstractResource):
                 ls.append('/' + s + '/')
             ls.append('/' + ls_path[0])
             return ls
-
-    async def collect_old(self, path):
-        """
-        collect
-        collect orderby
-        collect offsetlimit
-        collect orderby offsetlimit
-        collect collect
-        collect collect ...orderby
-        collect collect ...offselimit
-        collect collect ...orderby offsetlimit
-
-        :param path:
-        :return:
-        """
-        paths: List[str] = self.normalize_path_as_list(path, '/*/')
-        if len(paths) == 1:
-            return await self.collect_only(paths[0])
-
-    async def collect_base(self, path: str) -> str:
-        a_path: str = path[8:]  # len(collect/) = 8
-        if '&' in a_path:
-            paths: List[str] = a_path.split('&')
-            attribute_name_actions: str = paths[1]
-            enum_attrib_name: str = paths[0]
-        else:
-            attribute_name_actions: str = a_path
-            enum_attrib_name: Optional[str] = ''  # /collect/geom/transform/3005/area
-        action_translated: str = await self.translate_path(attribute_name_actions)  # path => filter/license/eq/valid
-        attribute_names: List[str] = enum_attrib_name.split(',') + [
-            attribute_name_actions[0: attribute_name_actions.index('/')]]
-        if not self.entity_class().has_all_attributes(attribute_names):
-            non_attribute_names = [att for att in attribute_names if self.entity_class().has_not_attribute(att)]
-            if len(non_attribute_names) == 1:
-                return sanic.response.text(f'This attribute {non_attribute_names} does not exist.', status=400)
-            else:
-                return sanic.response.text(f'These attributes {",".join(non_attribute_names)} do not exist.',
-                                           status=400)
-        attribute_name_actions_norm = self.normalize_path(attribute_name_actions)
-        last_action_name: str = attribute_name_actions_norm[attribute_name_actions_norm.rindex("/") + 1:]
-        predicate_action: str = f'{action_translated} as {last_action_name}'
-        return self.dialect_DB().predicate_collect(attribute_names[0:-1], predicate_action,
-                                                                 self.protocol_host())
-    async def collect(self, path: str): #/collect/date,name&geom/transform/3005/area
-        interp = self.interpreter()
-        select_fields: str = await interp.translate_collect(path, self.protocol_host())
-        query: str = self.dialect_DB().query_build_by(enum_fields=select_fields)
-        rows = await self.dialect_DB().fetch_all_by(query)
-        return await self.response_given(rows)
-
-    async def filter(self, path: str):  # -> "AbstractCollectionResource":
-        """
-        filter
-        filter orderby
-        filter count
-        filter collect
-        filter collect orderby
-        filter collect collect orderby
-        """
-        #self.call_filter(path)
-        #return sanic.response.json([json.dumps(dict(row)) for row in rows])  # response.json(self.rows_as_dict(rows))
-        paths: List[str] = self.normalize_path_as_list(path, '/*/')
-        if len(paths) == 1:
-            return await self.filter_only(path)
-        if len(paths) == 2:
-            sub_paths: List[str] = self.normalize_path_as_list(paths[-1], '/')
-            operation_1: str = self.normalize_path(sub_paths[0].strip('/').strip().lower())
-            filter_path: str = paths[0] + '/' if paths[0][-1] == ')' else paths[0]
-            if operation_1 == 'count':
-                return await self.filter_count(filter_path)
-            if operation_1 == 'orderby':
-                return await self.filter_order_by(filter_path[6:], sub_paths[1])
-            if operation_1 == 'collect':
-                return await self.filter_collect(filter_path[6:], sub_paths)
-
-    async def filter_only(self, path: str):  # -> "AbstractCollectionResource":
-        """
-        params: path
-        return: self
-        description: Filter a collection given an expression
-        example: http://server/api/drivers/filter/license/eq/valid
-        :param path:
-        :return:
-        """
-        whereclause = await self.where_interpreted(path[6:])  # path => filter/license/eq/valid
-        rows = await self.dialect_DB().fetch_all(where=whereclause, prefix=self.protocol_host())
-        return await self.response_given(rows)  # self.filter_base_response(rows)
-
-    async def filter_order_by(self, filter_expression: str, orderby_expression: str):
-        order_by_: str = self.predicate_order_by(orderby_expression)
-        where: str = await self.where_interpreted(filter_expression)
-        rows = await self.dialect_DB().fetch_all( where=where, order_by= order_by_,prefix=self.protocol_host())
-        return await self.response_given(rows)
-
-    async def filter_count(self, path: str):
-        where = await self.where_interpreted(path[6:])  # path => filter/license/eq/valid
-        row = await self.dialect_DB().count(where=where)
-        return sanic.response.json(row)
-
-    async def filter_collect(self, filter_path: str, sub_paths: List[str]):
-        pass
 
     async def head(self):
         return sanic.response.json({"context": 1})

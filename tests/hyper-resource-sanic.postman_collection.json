@@ -148,7 +148,13 @@
 							"name": "json-uf-filter-count",
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
 								"url": {
 									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/filter/sigla/in/ES,RJ/*/count",
 									"host": [
@@ -171,7 +177,13 @@
 							"name": "json-uf-filter-only",
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
 								"url": {
 									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/filter/sigla/in/ES,RJ/",
 									"host": [
@@ -193,7 +205,13 @@
 							"name": "json-uf-filter-only-geom-transform-3005-area-gt-100000",
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
 								"url": {
 									"raw": "http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/geom/transform/3005/area/gt/1000000000000/",
 									"protocol": "http",
@@ -287,7 +305,13 @@
 							"name": "json-uf-filter-orderby-sigla-desc",
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/geo+json",
+										"type": "text"
+									}
+								],
 								"url": {
 									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/filter/sigla/in/ES,RJ/*/orderby/sigla&desc",
 									"host": [
@@ -336,6 +360,100 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "flatgeobuf-uf-filter-only-geom-transform-3005-area-gt-",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/x-flatgeobuffers",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/filter/sigla/in/ES,RJ/*/orderby/sigla",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"lim-unidade-federacao-a-list",
+										"filter",
+										"sigla",
+										"in",
+										"ES,RJ",
+										"*",
+										"orderby",
+										"sigla"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "json-uf-filter-collect-buffer",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/filter/sigla/in/ES,RJ/*/collect/sigla&geom/buffer/1.2",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"lim-unidade-federacao-a-list",
+										"filter",
+										"sigla",
+										"in",
+										"ES,RJ",
+										"*",
+										"collect",
+										"sigla&geom",
+										"buffer",
+										"1.2"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "png-uf-filter-only-sigla-in-rjes",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "image/png",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://127.0.0.1:8000/lim-unidade-federacao-a-list/filter/sigla/in/RJ,ES",
+									"protocol": "http",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "8000",
+									"path": [
+										"lim-unidade-federacao-a-list",
+										"filter",
+										"sigla",
+										"in",
+										"RJ,ES"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				}
@@ -372,13 +490,14 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{SERVER}}/gasto-list/valor,data_do_gasto,tipo_gasto/orderby/valor/",
+									"raw": "{{SERVER}}/gasto-list/valor,data_do_gasto,tipo_gasto/*/orderby/valor/",
 									"host": [
 										"{{SERVER}}"
 									],
 									"path": [
 										"gasto-list",
 										"valor,data_do_gasto,tipo_gasto",
+										"*",
 										"orderby",
 										"valor",
 										""
@@ -393,13 +512,14 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{SERVER}}/gasto-list/valor,data_do_gasto,tipo_gasto/orderby/valor&desc/",
+									"raw": "{{SERVER}}/gasto-list/valor,data_do_gasto,tipo_gasto/*/orderby/valor&desc/",
 									"host": [
 										"{{SERVER}}"
 									],
 									"path": [
 										"gasto-list",
 										"valor,data_do_gasto,tipo_gasto",
+										"*",
 										"orderby",
 										"valor&desc",
 										""
@@ -414,13 +534,14 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{SERVER}}/gasto-list/valor,data_do_gasto,tipo_gasto/filter/valor/gte/150",
+									"raw": "{{SERVER}}/gasto-list/valor,data_do_gasto,tipo_gasto/*/filter/valor/gte/150",
 									"host": [
 										"{{SERVER}}"
 									],
 									"path": [
 										"gasto-list",
 										"valor,data_do_gasto,tipo_gasto",
+										"*",
 										"filter",
 										"valor",
 										"gte",
@@ -436,13 +557,14 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{SERVER}}/gasto-list/valor,data_do_gasto,tipo_gasto/filter/valor/gte/150/*/orderby/valor",
+									"raw": "{{SERVER}}/gasto-list/valor,data_do_gasto,tipo_gasto/*/filter/valor/gte/150/*/orderby/valor",
 									"host": [
 										"{{SERVER}}"
 									],
 									"path": [
 										"gasto-list",
 										"valor,data_do_gasto,tipo_gasto",
+										"*",
 										"filter",
 										"valor",
 										"gte",
@@ -461,13 +583,14 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{SERVER}}/gasto-list/valor,data_do_gasto,tipo_gasto/filter/valor/gte/150/*/orderby/valor&desc",
+									"raw": "{{SERVER}}/gasto-list/valor,data_do_gasto,tipo_gasto/*/filter/valor/gte/150/*/orderby/valor&desc",
 									"host": [
 										"{{SERVER}}"
 									],
 									"path": [
 										"gasto-list",
 										"valor,data_do_gasto,tipo_gasto",
+										"*",
 										"filter",
 										"valor",
 										"gte",
@@ -492,7 +615,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER}}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/filter/valor/gt/100/*/orderby/valor",
+									"raw": "{{SERVER}}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/*/filter/valor/gt/100/*/orderby/valor",
 									"host": [
 										"{{SERVER}}"
 									],
@@ -500,6 +623,7 @@
 										"gasto-list",
 										"projection",
 										"valor,data_do_gasto,tipo_gasto",
+										"*",
 										"filter",
 										"valor",
 										"gt",
@@ -538,7 +662,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{SERVER}}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/filter/valor/gt/100/*/orderby/valor&desc/",
+									"raw": "{{SERVER}}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/*/filter/valor/gt/100/*/orderby/valor&desc/",
 									"host": [
 										"{{SERVER}}"
 									],
@@ -546,6 +670,7 @@
 										"gasto-list",
 										"projection",
 										"valor,data_do_gasto,tipo_gasto",
+										"*",
 										"filter",
 										"valor",
 										"gt",
@@ -565,7 +690,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{SERVER}}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/orderby/valor",
+									"raw": "{{SERVER}}/gasto-list/projection/valor,data_do_gasto,tipo_gasto/*/orderby/valor",
 									"host": [
 										"{{SERVER}}"
 									],
@@ -573,6 +698,7 @@
 										"gasto-list",
 										"projection",
 										"valor,data_do_gasto,tipo_gasto",
+										"*",
 										"orderby",
 										"valor"
 									]
@@ -597,13 +723,14 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/nome,sigla,geom/filter/sigla/in/ES,RJ/*/orderby/sigla",
+									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/nome,sigla,geom/*/filter/sigla/in/ES,RJ/*/orderby/sigla",
 									"host": [
 										"{{SERVER}}"
 									],
 									"path": [
 										"lim-unidade-federacao-a-list",
 										"nome,sigla,geom",
+										"*",
 										"filter",
 										"sigla",
 										"in",
@@ -635,13 +762,14 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/nome,sigla,geom/filter/sigla/in/ES,RJ/*/orderby/sigla",
+									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/nome,sigla,geom/*/filter/sigla/in/ES,RJ/*/orderby/sigla",
 									"host": [
 										"{{SERVER}}"
 									],
 									"path": [
 										"lim-unidade-federacao-a-list",
 										"nome,sigla,geom",
+										"*",
 										"filter",
 										"sigla",
 										"in",
@@ -653,7 +781,7 @@
 									"query": [
 										{
 											"key": "",
-											"value": null,
+											"value": "",
 											"disabled": true
 										}
 									]
@@ -702,7 +830,13 @@
 							"name": "json-aldeia-indigena",
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/geo+json",
+										"type": "text"
+									}
+								],
 								"url": {
 									"raw": "http://127.0.0.1:8000/loc-aldeia-indigena-p-list/",
 									"protocol": "http",
@@ -725,7 +859,13 @@
 							"name": "json-trecho-ferroviario",
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/geo+json",
+										"type": "text"
+									}
+								],
 								"url": {
 									"raw": "{{SERVER}}/tra-trecho-ferroviario-l-list",
 									"host": [
@@ -791,6 +931,13 @@
 									],
 									"path": [
 										"lim-unidade-federacao-a-list"
+									],
+									"query": [
+										{
+											"key": "",
+											"value": null,
+											"disabled": true
+										}
 									]
 								}
 							},
@@ -837,6 +984,64 @@
 									],
 									"path": [
 										"tra-trecho-ferroviario-l-list"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "png-unidade-federacao",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "image/png",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://127.0.0.1:8000/lim-unidade-federacao-a-list/",
+									"protocol": "http",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "8000",
+									"path": [
+										"lim-unidade-federacao-a-list",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "png-aldeia-indigena",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "image/png",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://127.0.0.1:8000/loc-aldeia-indigena-p-list/",
+									"protocol": "http",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "8000",
+									"path": [
+										"loc-aldeia-indigena-p-list",
+										""
 									]
 								}
 							},
@@ -976,7 +1181,13 @@
 							"name": "json-uf-orderby",
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/geo+json",
+										"type": "text"
+									}
+								],
 								"url": {
 									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/orderby/nome",
 									"host": [
@@ -995,7 +1206,13 @@
 							"name": "json-uf-orderby-desc",
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/geo+json",
+										"type": "text"
+									}
+								],
 								"url": {
 									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/orderby/nome&desc",
 									"host": [
@@ -1015,189 +1232,207 @@
 			]
 		},
 		{
-			"name": "Grupo - criar- post",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\"nome\": \"Família\", \"descricao\":\"Grupo da família relacionado a gasto\"}",
-					"options": {
-						"raw": {
-							"language": "json"
+			"name": "collect",
+			"item": [
+				{
+					"name": "collection",
+					"item": []
+				},
+				{
+					"name": "FeatureCollection",
+					"item": [
+						{
+							"name": "json-uf-sigla,nome&geom-transform-3005-area",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/collect/sigla,nome&geom/transform/3005/area",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"lim-unidade-federacao-a-list",
+										"collect",
+										"sigla,nome&geom",
+										"transform",
+										"3005",
+										"area"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "json-uf-sigla-area-geom",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/collect/sigla,nome,geom&geom/transform/3005/area",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"lim-unidade-federacao-a-list",
+										"collect",
+										"sigla,nome,geom&geom",
+										"transform",
+										"3005",
+										"area"
+									]
+								}
+							},
+							"response": []
 						}
-					}
-				},
-				"url": {
-					"raw": "http://127.0.0.1:8002/grupo-list/",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8002",
-					"path": [
-						"grupo-list",
-						""
-					]
-				},
-				"description": "http://127.0.0.1:8002/grupo-list"
-			},
-			"response": []
-		},
-		{
-			"name": "Grupo - update - patch",
-			"request": {
-				"method": "PATCH",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\"nome\": \"Sem família\"}"
-				},
-				"url": {
-					"raw": "http://127.0.0.1:8002/grupo-list/10",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8002",
-					"path": [
-						"grupo-list",
-						"10"
 					]
 				}
-			},
-			"response": []
+			]
 		},
 		{
-			"name": "Grupo-excluir-delete",
-			"request": {
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "http://127.0.0.1:8002/grupo-list/10",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8002",
-					"path": [
-						"grupo-list",
-						"10"
+			"name": "count",
+			"item": [
+				{
+					"name": "collection",
+					"item": [
+						{
+							"name": "json-gasto",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/gasto-list/count",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"gasto-list",
+										"count"
+									]
+								}
+							},
+							"response": []
+						}
 					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "http://127.0.0.1:8002/pessoa-list",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"cachorro\": \"Gabriel\",\r\n    \"data_nascimento\": \"1995-07-04\",\r\n    \"is_usuario\": false\r\n}"
 				},
-				"url": {
-					"raw": "http://127.0.0.1:8002/pessoa-list",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8002",
-					"path": [
-						"pessoa-list"
+				{
+					"name": "FeatureCollection",
+					"item": [
+						{
+							"name": "json-uf",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/lim-unidade-federacao-a-list/count",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"lim-unidade-federacao-a-list",
+										"count"
+									]
+								}
+							},
+							"response": []
+						}
 					]
 				}
-			},
-			"response": []
+			]
 		},
 		{
-			"name": "http://127.0.0.1:8002/grupo-list/15",
-			"request": {
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "http://127.0.0.1:8002/grupo-list/15",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8002",
-					"path": [
-						"grupo-list",
-						"15"
+			"name": "offsetlimit",
+			"item": [
+				{
+					"name": "collection",
+					"item": [
+						{
+							"name": "{{SERVER}}/gasto-list/offsetlimit/1&2/",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/gasto-list/offsetlimit/1&2/",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"gasto-list",
+										"offsetlimit",
+										"1&2",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "json-gasto-list-filter-offsetlimit",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://127.0.0.1:8000/gasto-list/filter/valor/gt/100/*/offsetlimit/1&2",
+									"protocol": "http",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "8000",
+									"path": [
+										"gasto-list",
+										"filter",
+										"valor",
+										"gt",
+										"100",
+										"*",
+										"offsetlimit",
+										"1&2"
+									]
+								}
+							},
+							"response": []
+						}
 					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Pessoa-put-update",
-			"request": {
-				"method": "PUT",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n\"cachorro\": \"Planeta Vermelho\",\r\n\"data_nascimento\": \"2021-10-10\",\r\n\"id_pessoa\": 9,\r\n\"is_usuario\": true\r\n}"
 				},
-				"url": {
-					"raw": "http://127.0.0.1:8002/pessoa-list/9",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8002",
-					"path": [
-						"pessoa-list",
-						"9"
+				{
+					"name": "FeatureCollection",
+					"item": [
+						{
+							"name": "http://127.0.0.1:8000/lim-unidade-federacao-a-list/offsetlimit/1&3",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://127.0.0.1:8000/lim-unidade-federacao-a-list/offsetlimit/1&3",
+									"protocol": "http",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "8000",
+									"path": [
+										"lim-unidade-federacao-a-list",
+										"offsetlimit",
+										"1&3"
+									]
+								}
+							},
+							"response": []
+						}
 					]
 				}
-			},
-			"response": []
-		},
-		{
-			"name": "TipoGasto-criar-post",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\"descricao\": \"Lazer\"}"
-				},
-				"url": {
-					"raw": "http://127.0.0.1:8002/tipo-gasto-list",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8002",
-					"path": [
-						"tipo-gasto-list"
-					]
-				}
-			},
-			"response": []
+			]
 		},
 		{
 			"name": "UnidadeFederecaoMG-wkb",

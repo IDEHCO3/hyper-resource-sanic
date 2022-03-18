@@ -48,8 +48,8 @@ class QueryBuilder:
     def add_order_by(self, order_by: str):
         self.order_by = order_by
 
-    def add_offsetlimit(self, offsetlimit: str):
-        self.offset_limit = offsetlimit
+    def add_offsetlimit(self, offset_limit_: str):
+        self.offset_limit = offset_limit_
 
     def add_count(self, column_name: str = None):
         asterisk_or_column: str = column_name or '*'
@@ -58,11 +58,20 @@ class QueryBuilder:
 
     def add_sum(self, sum_str: str):
         self.has_sum = True
-        self.add_column(f"{sum_str}")
+        self.add_column(f"sum({sum_str})")
 
     def add_avg(self, avg_str: str):
         self.has_avg = True
-        self.add_column(f"{avg_str}")
+        self.add_column(f"avg({avg_str})")
+
+    def has_only_one_aggregate_math_function(self):
+        return len(self.columns) == 1 and (self.has_sum or self.has_count or self.has_avg)
+
+    def exec_only_one_aggregate_math_function(self):
+        if self.has_count:
+            return self.count()
+        if self.has_sum:
+            return self.sum()
 
     def select_enum_columns(self) -> str:
         if len(self.columns) == 0:
@@ -111,6 +120,15 @@ class QueryBuilder:
 
     async def count(self) -> int:
         return await self.dialect_db.count(where=self.where())
+
+    async def sum(self) -> float:
+        return await self.dialect_db.sum(self.columns[0], where=self.where())
+
+    async def avg(self) -> float:
+        return await self.dialect_db.avg(where=self.where())
+
+    async def min(self) -> float:
+        return await self.dialect_db.min(column_name=self.columns[0], where=self.where())
 
     async def fetch_all_as_geobuf(self):
         a_query: str = self.dialect_db.geobuf_query(self.query())
