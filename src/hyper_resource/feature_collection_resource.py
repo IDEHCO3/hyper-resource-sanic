@@ -454,40 +454,6 @@ class FeatureCollectionResource(SpatialCollectionResource):
         ordr: str = self.predicate_order_by(paths[-1])
         return await self.response_request(order_by=ordr)
 
-    async def projection_only(self, attribute_names: List[str]):
-        if self.get_geom_attribute() not in attribute_names:
-            return await super(FeatureCollectionResource, self).projection_only(attribute_names)
-        return await self.response_request(attribute_names=attribute_names)
-
-    async def projection_filter(self, attribute_names: List[str], selection_path: str):
-        if self.get_geom_attribute() not in attribute_names:
-            return super(FeatureCollectionResource, self).projection_filter(attribute_names, selection_path)
-        interp = InterpreterNew(selection_path, self.entity_class(), self.dialect_DB())
-        try:
-            whereclause = await interp.translate_lookup()
-        except (Exception, SyntaxError):
-            print(f"Error in Path: {selection_path}")
-            raise
-        print(f'whereclause: {whereclause}')
-        where: str = f' where {whereclause}'
-        return await self.response_request(attribute_names=attribute_names, where=where, prefix=self.protocol_host())
-
-    async def projection_sort(self, attribute_names: List[str], attributes_sort: List[str], order: str = 'asc'):
-        if self.get_geom_attribute() not in attribute_names:
-            return await super(FeatureCollectionResource, self).projection_sort(attribute_names, attributes_sort, order)
-        if CONTENT_TYPE_HTML in self.accept_type():
-            return await self.get_html_representation()
-        enum_column_name: str = self.entity_class().enum_column_names_as_given_attributes(attributes_sort)
-        order_by: str = f' order by {enum_column_name} {order}'
-        return await self.response_request(attribute_names=attribute_names, order_by=order_by, prefix=self.protocol_host())
-
-    async def projection_filter_sort(self, attribute_names: List[str], filter_path: str, _order_by: str):
-        if self.get_geom_attribute() not in attribute_names:
-            return await super(FeatureCollectionResource, self).projection_filter_sort(attribute_names, filter_path, _order_by)
-        where: str = await self.where_interpreted(filter_path)
-        order_by: str = self.predicate_order_by(_order_by)
-        return await self.response_request(attribute_names=attribute_names, where=where, order_by=order_by)
-
     async def last_action_in_collect(self, attrib_actions: List[str]):
         attribute_names: List[str] = attrib_actions[0].split("&")
         attribute_name: str = attribute_names[0] if len(attribute_names) == 1 else attribute_names[1]

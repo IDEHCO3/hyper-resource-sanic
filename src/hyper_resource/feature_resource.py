@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from typing import Optional, Any
 
 from sanic import response
@@ -129,8 +130,16 @@ class FeatureResource(SpatialResource):
                 res = convert_to_json(result)
                 return sanic.response.json(res)
             else:
+                start = time.time()
+                print(f" Start time: {start} load from database")
                 model = await self.dialect_DB().fetch_one_model(id_or_key_value)
+                end = time.time()
+                print(f"time: {end - start} to load from database")
+                start = time.time()
+                print(f" Start execute function load --- time: {start} in python")
                 res = await model.execute_function_given(a_path)
+                end = time.time()
+                print(f"Execute function End time: {end - start} in python")
                 if isinstance(res, dict):
                     res = model.json_dict(list(res.keys()))
                     return sanic.response.json(res)

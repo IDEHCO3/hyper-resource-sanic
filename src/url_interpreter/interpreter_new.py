@@ -498,10 +498,11 @@ class InterpreterNew:
         action_translated: str = await self.translate_path(attribute_name_actions)  # path => filter/license/eq/valid
 
         enum_att_list: List[str] = enum_attrib_name.split(',') if len(enum_attrib_name) > 0 else []
-        attribute_names: List[str] = enum_att_list + [ attribute_name_actions[0: attribute_name_actions.index('/')]]
+        attribute_names: List[str] = enum_att_list + [attribute_name_actions[0: attribute_name_actions.index('/')]]
         self.raise_path_error_if_has_not_attributes(attribute_names)
         last_action: ActionFunction = await self.last_action_in_collect(attrib_actions=attrib_actions)
-        last_action_name: str = attrib_actions[-1] if last_action.has_not_parameters() else attrib_actions[-2]
-        predicate_action: str = f'{action_translated} as {last_action_name}'
+        #last_action_name: str = attrib_actions[-1] if last_action.has_not_parameters() else attrib_actions[-2]
+        attribute_name_act = attribute_name_actions.split('/')[0]
+        predicate_action: str = f'{action_translated} as {attribute_name_act}_{last_action.name}'
         return self.dialect_db.predicate_collect(attribute_names[0:-1], predicate_action, protocol_host)
 

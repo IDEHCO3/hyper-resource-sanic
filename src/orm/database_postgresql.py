@@ -377,6 +377,12 @@ class DialectDbPostgresql(DialectDatabase):
     def dict_action(self) -> Dict[type, ActionFunction]:
         d = {int: dic_math_aggregate_action,
              float: dic_math_aggregate_action,
+             Float: dic_math_aggregate_action,
+             FLOAT: dic_math_aggregate_action,
+             INT: dic_math_aggregate_action,
+             Integer: dic_math_aggregate_action,
+             INTEGER: dic_math_aggregate_action,
+
             }
 
         return d

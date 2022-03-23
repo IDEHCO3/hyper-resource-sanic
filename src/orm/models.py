@@ -344,6 +344,7 @@ class AlchemyBase(Base):
 
     def yourself_action(self):
         return {}
+
     def has_action(self, action_name) -> bool:
         return action_name in self.yourself_action()
 
@@ -353,6 +354,32 @@ class AlchemyBase(Base):
             raise NotImplementedError(f"The function {action_name} is not implemented in {type(obj)}")
         action = self.get_action(obj, action_name)
         return await action.execute(obj, action_names)
+
+    def action(self, typeof: object, action_name: str) -> Optional[ActionFunction]:
+        if typeof in self.dict_action() and (action_name in self.dict_action()[typeof]):
+            d = self.dict_action()[typeof]
+            return d[action_name]
+        return None
+
+    def actions_in_chain(self, a_type: type, action_names: List[str]) -> List[ActionFunction]:
+        tp: object = a_type
+        actions: List[ActionFunction] = list()
+        index: int = 0
+        len_action: int = len(action_names)
+        while index < len_action:
+            action: ActionFunction = self.action(tp, action_names[index])
+            actions.append(action)
+            tp = action.answer
+            if action.has_parameters():
+                index += 1
+            index += 1
+        return actions
+
+    def last_action_in_chain(self, a_type: type, action_names: List[str]) -> ActionFunction:
+        return self.actions_in_chain(a_type, action_names)[-1]
+
+    def type_of_last_action_in_chain(self, a_type: type, action_names: List[str]) -> object:
+        return self.last_action_in_chain(a_type, action_names).answer
 
     async def execute_actionOLD(self, obj, arr_actions: List[str]) -> object:
         action = arr_actions.pop(0)

@@ -161,7 +161,8 @@ class AbstractCollectionResource(AbstractResource):
         qb.add_where(await self.interpreter(path[6:]).translate_lookup())
 
     async def add_collect_in_qb(self, qb, path):
-        qb.add_collect(await self.interpreter().translate_collect(path, self.protocol_host()))
+        colL_predicate: str = await self.interpreter().translate_collect(path, self.protocol_host())
+        qb.add_collect(colL_predicate)
 
     async def add_projection_in_qb(self, qb: QueryBuilder, path: str):
         path_ = path if path[0: len('projection/')] == 'projection/' else 'projection/' + path
@@ -186,6 +187,10 @@ class AbstractCollectionResource(AbstractResource):
     async def add_avg_in_qb(self, qb: QueryBuilder, path: str):
         qb.add_avg(path)
 
+    async def add_aggregate_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_math_aggregate()
+        self.dialect_DB()
+
     def dict_qb_function(self) -> Dict:
         return {
             'filter': self.add_where_in_qb,
@@ -195,15 +200,18 @@ class AbstractCollectionResource(AbstractResource):
             'count': self.add_count_in_qb,
             'offsetlimit': self.add_offsetlimit_in_qb,
             'orderby': self.add_order_by_in_qb,
-            'sum': self.add_sum_in_qb,
-            'avg': self.add_avg_in_qb
+
         }
 
     def dict_qb_lookup_function(self) -> Dict:
         return {}
 
     def dict_qb_aggregate_function(self) -> Dict:
-        return {}
+        return {
+            'sum': self.add_aggregate_in_qb,
+            'avg': self.add_aggregate_in_qb,
+            'max': self.add_aggregate_in_qb,
+        }
 
     async def execute_qb_function(self, qb, path):
         qb_function: Dict = {**self.dict_qb_function(), **self.dict_qb_lookup_function(), **self.dict_qb_aggregate_function() }
@@ -217,7 +225,7 @@ class AbstractCollectionResource(AbstractResource):
         try:
             paths: List[str] = self.normalize_path_as_list(path, '/*/')
             qb: QueryBuilder = QueryBuilder(dialect_db=self.dialect_DB(), entity_class=self.entity_class())
-            qb.has_geometry = True
+            qb.has_geometry = False
             for path in paths:
                 await self.execute_qb_function(qb, path)
             qb.add_table_name(self.dialect_DB().schema_table_name())
@@ -294,80 +302,6 @@ class AbstractCollectionResource(AbstractResource):
             return sanic.response.text(dict_xml, content_type=CONTENT_TYPE_XML)
         return sanic.response.json(rows_dict or [])
 
-    async def projection(self, path: str):
-        """
-        :param path:
-        :return:
-        path should be:
-        name,gender
-        name,gender/filter/age/gte/100
-        name,gender/orderby/name,age
-        name,gender/filter/age/gte/100/*/orderby/name,age
-        projection/name,gender
-        projection/name,gender/filter/age/gte/100
-        projection/name,gender/orderby/name,age&asc
-        projection/name,gender/filter/age/gte/100/*/orderby/name,age&asc
-        """
-
-        paths: List[str] = path.split('/')
-        paths = paths[0:-1] if paths[-1] == '' else paths
-        if paths[0].lower().strip() != 'projection': #path ->name,gender
-            paths.insert(0,'projection')
-        attribute_names: List[str] = [a.strip() for a in paths[1].split(',')]
-        if len(paths) == 2:
-            return await self.projection_only(attribute_names)
-        if paths[2] == 'filter' and '*' not in paths:
-            filter_path: str = '/'.join(paths[3:])
-            return await self.projection_filter(attribute_names, filter_path)
-        if paths[2] == 'orderby' and '*' not in paths:
-            if '&' in paths[3]:
-                enum_attribute_sort, order = paths[3].split('&')
-            else:
-                enum_attribute_sort = paths[3]
-                order = 'asc'
-            return await self.projection_sort(attribute_names, enum_attribute_sort.split(','), order)
-        if paths[2] == 'filter' and '*' in paths and paths[-2].lower().strip()=='orderby':
-            idx_ast: int = paths.index('*')
-            filter_path: str = '/'.join(paths[3: idx_ast])
-            _order_by: str = paths[-1]
-            return await self.projection_filter_sort(attribute_names, filter_path, _order_by)
-        return PathError(f'Error in {path}', 400)
-
-    async def projection_only(self, attribute_names: List[str]):
-        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, prefix=self.protocol_host())
-        return await self.response_given(rows)
-
-    async def projection_filter(self, attribute_names: List[str], selection_path: str):
-        interp = InterpreterNew(selection_path, self.entity_class(), self.dialect_DB())
-        try:
-            whereclause = await interp.translate_lookup()
-        except (Exception, SyntaxError):
-            print(f"Error in Path: {selection_path}")
-            raise
-        print(f'whereclause: {whereclause}')
-        where: str = f' where {whereclause}'
-        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names,where=where, prefix=self.protocol_host())
-        return await self.response_given(rows)
-
-    async def projection_sort(self, attribute_names: List[str], attributes_sort: List[str], order: str = 'asc'):
-        enum_column_name: str = self.entity_class().enum_column_names_as_given_attributes(attributes_sort)
-        order_by: str = f' order by {enum_column_name} {order}'
-        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=None, order_by=order_by,
-                                                 prefix=self.protocol_host())
-        return await self.response_given(rows)
-
-    async def projection_filter_sort(self, attribute_names: List[str], filter_path: str, _order_by: str):
-        interp = InterpreterNew(filter_path, self.entity_class(), self.dialect_DB())
-        try:
-            whereclause = await interp.translate_lookup()
-        except (Exception, SyntaxError):
-            print(f"Error in Path: {filter_path}")
-            raise
-        print(f'whereclause: {whereclause}')
-        where: str = f' where {whereclause}'
-        an_order: str = self.predicate_order_by(_order_by)
-        rows = await self.dialect_DB().fetch_all(list_attribute=attribute_names, where=where, order_by=an_order, prefix=self.protocol_host())
-        return await self.response_given(rows)
 
     def path_as_array_lookup_aggregate_order(self, path: str) -> List[str]:
         ls_path = path.split('/./')

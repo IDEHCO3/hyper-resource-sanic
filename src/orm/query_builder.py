@@ -1,3 +1,4 @@
+from numbers import Number
 from typing import Optional, List
 
 from src.orm.database import DialectDatabase

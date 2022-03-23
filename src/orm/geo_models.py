@@ -71,7 +71,8 @@ class AlchemyGeoBase(AlchemyBase):
 
     def get_base_geom(self) -> BaseGeometry:
         if self.base_geom is None:
-            self.base_geom = wkb.loads(self.get_geom())
+            geo = self.get_geom()
+            self.base_geom = wkb.loads(geo, hex=True) if type(geo) == str else wkb.loads(geo)
         return self.base_geom
 
     def transform(self, srid_dest: int = None) -> BaseGeometry:
@@ -150,7 +151,7 @@ class AlchemyGeoBase(AlchemyBase):
         return {
             'transform': ActionFunction('transform','transform', Geometry, [ParamAction('srid', int)]),
             'buffer': ActionFunction('transform','transform', Geometry, [ParamAction('srid', int)]),
-            'area': ActionAttribute('area',float),
+            'area': ActionFunction('area', 'area',float, [ParamAction('srid', int, False)]),
         }
     @classmethod
     def instances_operation(cls) -> Dict:

@@ -141,8 +141,9 @@ class TokenOperation(Token):
         converted_db_params_str: str = ''
         if action.has_parameters():
             nx_token: Token = self.next_token
-            params_str: List[str] = nx_token.word().split('&')
-            converted_db_params_str: str = ',' + await db.convert_db_args(params_str, action.param_types())
+            if nx_token is not None and action.count_mandatory_params() > 0:
+                params_str: List[str] = nx_token.word().split('&')
+                converted_db_params_str: str = ',' + await db.convert_db_args(params_str, action.param_types())
         if self.prev_token.is_attribute():
             prev_translated = self.prev_token.column_name(model_class)
             return f'{action.name_operation}({prev_translated}{converted_db_params_str})'

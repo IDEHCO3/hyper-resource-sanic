@@ -48,6 +48,14 @@ class Action:
     def execute(self, obj, action_names: List[str]) -> object:
         raise NotImplementedError("'execute' must be implemented in subclasses")
 
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+
+
 class ActionAttribute(Action):
     def __init__(self, name: str,  answer: object=None, description: str = None, example: str = None, representations: List[str] =[]):
         super().__init__(name, answer, description, example, representations)
@@ -84,9 +92,9 @@ class ActionFunction(Action):
         return [param._type for param in self.param_actions]
 
     async def execute(self, obj, action_names: List[str]) -> object:
-        if not self.has_parameters():
+        if self.has_not_parameters() or (len(action_names) == 0 and self.count_mandatory_params() == 0):
             return getattr(obj, self.name)()
-        if len(action_names) == 0:
+        if len(action_names) == 0 and self.count_mandatory_params() > 0:
             para_text = f" these parameters: {self.param_actions}" if self.count_params() > 1 else f" this parameter: {self.param_actions}"
             raise SyntaxError(f"The operation {self.name} must have at least {para_text}")
         params = action_names.pop(0).split('&')
