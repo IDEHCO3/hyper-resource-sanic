@@ -19,7 +19,7 @@ from sanic_cors import CORS, cross_origin
 
 #Create Sanic app
 app = Sanic(__name__)
-CORS(app)
+CORS(app, automatic_options=False)
 app.blueprint(swagger_blueprint)
 #Setup env
 env = Env()
@@ -34,12 +34,22 @@ MIME_TYPE_JSONLD = "application/ld+json"
 async def print_on_request(request):
     pass
    
-@app.route("/")
+@app.route("/", methods=["GET"])
 def handle_request(request: Request):
     base_iri = request.scheme +'://' +request.host
 
     _headers = {'Access-Control-Expose-Headers': 'Link', 'Link': f'<{base_iri}>;rel=https://schema.org/EntryPoint'}
     print(_headers)
+    print("GET and OPTIONS")
+    #return response.json(api_entry_point())
+    return response.json(api_entry_point(), headers=_headers, status=200)
+
+@app.route("/", methods=["OPTIONS"])
+def handle_request_options(request: Request):
+    base_iri = request.scheme +'://' +request.host
+    _headers = {'Access-Control-Expose-Headers': 'Link', 'Link': f'<{base_iri}>;rel=https://schema.org/EntryPoint'}
+    print(_headers)
+    print("GET and OPTIONS")
     #return response.json(api_entry_point())
     return response.json(api_entry_point(), headers=_headers, status=200)
 

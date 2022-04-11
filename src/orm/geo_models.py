@@ -111,13 +111,16 @@ class AlchemyGeoBase(AlchemyBase):
             #dic_attr[att_name] =  getattr(self, att_name)
         return dic_attr
 
+    def bbox(self):
+        return self.get_base_geom().bounds
+
     async def execute_attribute_given(self, path: str) -> object:
         """
         :param path is a string and have to start with one attribute
         :return: object. It could be anything, for example: an instance of int, float,str,BaseGeometry, etc
         """
         arr_actions = self.__class__.path_as_list(path)
-        attrib = self.get_base_geom() if arr_actions[0] == self.__class__.geo_attribute_name() else arr_actions[0]
+        #attrib = self.get_base_geom() if arr_actions[0] == self.__class__.geo_attribute_name() else arr_actions[0]
         obj = self.get_base_geom() if arr_actions[0] == self.__class__.geo_attribute_name() else getattr(self, arr_actions[0])
         arr_actions = arr_actions[1:]
         while len(arr_actions) > 0:
@@ -152,6 +155,8 @@ class AlchemyGeoBase(AlchemyBase):
             'transform': ActionFunction('transform','transform', Geometry, [ParamAction('srid', int)]),
             'buffer': ActionFunction('transform','transform', Geometry, [ParamAction('srid', int)]),
             'area': ActionFunction('area', 'area',float, [ParamAction('srid', int, False)]),
+            'bbox': ActionFunction('bbox', 'bbox', [], []),
+
         }
     @classmethod
     def instances_operation(cls) -> Dict:

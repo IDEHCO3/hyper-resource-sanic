@@ -4,6 +4,7 @@ import time
 from typing import Optional, Any
 
 from sanic import response
+from shapely import wkb
 
 from settings import SOURCE_DIR
 from src.hyper_resource import feature_utils
@@ -165,7 +166,7 @@ class FeatureResource(SpatialResource):
                 res = await model.execute_attribute_given(a_path)
                 result = res.wkb
             else:
-                result = model.get_geom()
+                result = (wkb.loads(model.get_geom(), hex=True)).wkb
             return sanic.response.raw(result, content_type=CONTENT_TYPE_WKB)
         except (Exception, SyntaxError, NameError) as err:
             print(err)

@@ -279,6 +279,7 @@ class DialectDatabase(AbstractDialectDatabase):
         d[MultiPolygon] = self.convert_to_db_geometry
         d[MultiLineString] = self.convert_to_db_geometry
         d[MultiPoint] = self.convert_to_db_geometry
+
         d[ForeignKey] = self.convert_to_db_int
 
         return d[a_type]

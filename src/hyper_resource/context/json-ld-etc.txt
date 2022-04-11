@@ -1,0 +1,51 @@
+{
+    "@context": {
+        "hr:typeOf": { "@id": "geo:Feature", "@type": "schema:State" }
+  }
+}
+
+{
+  "@context": {
+    ...
+    "occupation": { "@id": "ex:occupation", "@container": "@language" }
+  },
+  "name": "Yagyū Muneyoshi",
+  "occupation": {
+    "ja": "忍者",
+    "en": "Ninja",
+    "cs": "Nindža"
+  }
+  ...
+}
+{
+  "@context": {
+    "@vocab": "https://purl.org/geojson/vocab#",
+    "type": "@type",
+    "bbox": {"@container": "@list"},
+    "coordinates": {"@container": "@list"}
+  },
+  "type": "Feature",
+  "bbox": [-10.0, -10.0, 10.0, 10.0],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+        [
+            [-10.0, -10.0],
+            [10.0, -10.0],
+            [10.0, 10.0],
+            [-10.0, -10.0]
+        ]
+    ]
+  }
+  {
+       "@context": {
+        "schema": "http://schema.org/",
+        "name": "schema:name",
+        "body": "schema:articleBody",
+        "athletes": {
+          "@id": "schema:athlete",
+          "@container": "@index"
+        },
+        "position": "schema:jobTitle"
+      }
+  }

@@ -12,28 +12,30 @@ from src.hyper_resource.basic_route import *
 class AbstractResource:
     MAP_MODEL_FOR_CONTEXT = {}
     model_class = None
-
-    @classmethod
-    def router_id(cls):
-        return BasicRoute.router_id(cls.model_class)
-    @classmethod
-    def router_id_path(cls):
-        return BasicRoute.router_id_path(cls.model_class)
-    @classmethod
-    def router_list(cls):
-        return BasicRoute.router_list(cls.model_class)
-    @classmethod
-    def router_list_path(cls):
-        return BasicRoute.router_list_path(cls.model_class)
-
     def __init__(self, request):
         self.request = request
         self.dialect_db = None
 
+    @classmethod
+    def router_id(cls):
+        return BasicRoute.router_id(cls.model_class)
+
+    @classmethod
+    def router_id_path(cls):
+        return BasicRoute.router_id_path(cls.model_class)
+
+    @classmethod
+    def router_list(cls):
+        return BasicRoute.router_list(cls.model_class)
+
+    @classmethod
+    def router_list_path(cls):
+        return BasicRoute.router_list_path(cls.model_class)
+
+
     def dialect_DB(self) -> DialectDatabase:
         if self.dialect_db is None:
             self.dialect_db = self.request.app.dialect_db_class(self.request.app.db, self.metadata_table(), self.entity_class())
-
         return self.dialect_db
 
     def normalize_path_as_list(self, path: str, splitter) -> List[str]:

@@ -1,6 +1,7 @@
 import json
 from typing import List, Tuple, Dict, Optional
 from databases.backends.postgres import Record
+from shapely.errors import WKBReadingError
 from sqlalchemy.orm import InstrumentedAttribute
 from geoalchemy2 import functions, Geometry
 from src.aiohttp_client import ClientIOHTTP
@@ -57,14 +58,6 @@ class DialectDbPostgis(DialectDbPostgresql):
         geom: str = self.get_geom_column()
         return f"SELECT ST_AsBinary({geom}) FROM ({sub_query}) AS q"
 
-    async def fetch_all_as_wkb(self, where: Optional[str] = None, order_by: Optional[str] = None):
-        geom: str = self.get_geom_column()
-        attribute_geom: str = self.get_geom_attribute()
-        query = f"SELECT ST_AsBinary({geom}) as {attribute_geom} FROM {self.schema_table_name()}"
-        query += where or ''
-        query += order_by or ''
-        return await self.db.fetch_all(query)
-
     def geobuf_query(self, sub_query: str) -> str:
         geom: str = self.get_geom_column()
         return f"SELECT  ST_AsGeobuf(q, '{geom}') FROM ({sub_query}) AS q"
@@ -93,6 +86,26 @@ class DialectDbPostgis(DialectDbPostgresql):
 
     def flatgeobuf_query(self, sub_query: str) -> str:
         return f"SELECT ST_AsFlatGeobuf(q.*) FROM ({sub_query}) AS q"
+
+    def query_wkb(self, geom_expression: Optional[str] = None,
+                               table_name_expression: Optional[str] = None,
+                               where: Optional[str] = None,
+                               order_by: Optional[str] = None) -> str:
+
+        geom_expr: str = f'ST_AsBinary({geom_expression or self.entity_class.geo_column_name()})'
+        table_name_expr: str = table_name_expression or self.schema_table_name()
+        sub_query = f'select {geom_expr} from {table_name_expr} '
+        sub_query += where or ''
+        sub_query += order_by or ''
+        return sub_query
+
+    async def fetch_all_as_wkb(self, geom_expression: Optional[str] = None,
+                               table_name_expression: Optional[str] = None,
+                               where: Optional[str] = None,
+                               order_by: Optional[str] = None):
+        query: str = self.query_wkb(geom_expression,table_name_expression, where, order_by )
+        rows = await self.db.fetch_all(query)
+        return [row['st_asbinary'] for row in rows]
 
     async def fetch_all_as_flatgeobuf(self,  list_attribute: List[str] = None,  where: Optional[str] = None, order_by: Optional[str] = None, prefix_col_val: str = None):
         sub_query: str = self.basic_select(list_attrib=list_attribute,
@@ -217,8 +230,14 @@ class DialectDbPostgis(DialectDbPostgresql):
         async with ClientIOHTTP().session.get(url, headers=headers) as resp:
             if resp.content_type == CONTENT_TYPE_WKB:
                 geom = await resp.read()
+                #geom_encoded = wkb.loads(geom.decode(), hex=True)
                 #return wkb.loads(geom.decode(), hex=True)
-                return f"ST_SetSRID('{wkb.loads(geom.decode(), hex=True)}'::geometry, {self.srid})"
+                #return f"ST_SetSRID('{geom_encoded}'::geometry, {self.srid})"
+                try:
+                    geom_encoded = wkb.loads(geom)
+                except (WKBReadingError, UnicodeDecodeError) as error:
+                    geom_encoded = wkb.loads(geom.decode(), hex=True)
+                return f"ST_SetSRID('{geom_encoded}'::geometry, {self.srid})"
             elif resp.content_type in [CONTENT_TYPE_GEOJSON, CONTENT_TYPE_JSON]:
                 geometry = await resp.json()
                 if 'geometry' in geometry:

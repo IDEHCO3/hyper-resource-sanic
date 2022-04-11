@@ -224,8 +224,12 @@ class FeatureCollectionResource(SpatialCollectionResource):
         #return res
 
     async def get_wkb_representation(self, where: Optional[str] = None, order_by: Optional[str] = None) -> Record:
-        rows = await self.dialect_DB().fetch_all_as_wkb(where=where, order_by=order_by)
-        return sanic.response.raw(rows or [], content_type=CONTENT_TYPE_WKB)
+        #rows = await self.dialect_DB().fetch_all_as_wkb(where=where, order_by=order_by)
+        query_wkb: str = self.dialect_DB().query_wkb(where=where, order_by=order_by)
+        async def streaming_fn(response):
+            async for row in self.dialect_DB().db.iterate(query_wkb):
+                await response.write(row['st_asbinary'])
+        return sanic.response.stream(streaming_fn, content_type='application/x-wkb')
 
     async def get_representation(self):
         accept = self.accept_type()
@@ -238,6 +242,8 @@ class FeatureCollectionResource(SpatialCollectionResource):
         elif CONTENT_TYPE_IMAGE_PNG in self.accept_type():
             query: str = self.dialect_DB().query_build_by()
             return await self.get_image_representation(query)
+        elif CONTENT_TYPE_WKB in self.accept_type():
+             return await self.get_wkb_representation()
         else:
             return await self.get_json_representation()
 
@@ -421,7 +427,11 @@ class FeatureCollectionResource(SpatialCollectionResource):
             return sanic.response.raw(flat_geo_buffer, content_type=CONTENT_TYPE_FLATGEOBUFFERS)
         if CONTENT_TYPE_IMAGE_PNG in self.accept_type():
             return await self.get_image_representation(qb.query())
-
+        if CONTENT_TYPE_WKB in self.accept_type():
+            geom_wkb = await qb.fetch_all_as_wkb()
+            if geom_wkb is None:
+                return sanic.response.text('This query does not found any resource', status=404)
+            return sanic.response.raw(geom_wkb, content_type=CONTENT_TYPE_WKB)
         rows = await self.dialect_DB().fetch_all_by(qb.query())
         rows_dict = await self.rows_as_dict(rows)
         return sanic.response.json(rows_dict or [])

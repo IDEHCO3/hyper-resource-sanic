@@ -80,6 +80,10 @@ class DialectDbPostgresql(DialectDatabase):
         else:
             rows = await self.fetch_all_as_json(None, query)
         return rows
+
+    def iterate(self):
+        return self.db.iterate
+
     async def fetch_all_by(self, query: str):
         return await self.db.fetch_all(query)
 
