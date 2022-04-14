@@ -6,6 +6,30 @@ from .dictionary_actions_abstract_resource import dic_abstract_resource_action
 
 representations = [CONTENT_TYPE_JSON, CONTENT_TYPE_XML]  # , CONTENT_TYPE_FLATBUFFERS
 
+dic_abstract_collection_general_action: Dict[str, ActionFunction] = {
+    'collect': ActionFunction('collect',
+                              'collect',
+                              'AbstractCollection',
+                              [ParamAction('enum_attribute_names', str), ParamAction('attribute_name', str)],
+                              'Returns a collection with some transformation given a expression.',
+                              'http://a-server/apis/states/collect/name,area&geom/buffer/1.2',
+                              representations),
+
+    'projection': ActionFunction('projection',
+                                 'projection',
+                                  'AbstractCollection',
+                                  [ParamAction('enum_attribute_names', str)],
+                                  'Returns a collection with attribute names',
+                                  'http://a-server/apis/states/projetion/name,area',
+                                  representations),
+    'count': ActionFunction('count',
+                            'count',
+                            'AbstractCollection',
+                            [],
+                            'Returns the amount of resources',
+                            'http://a-server/apis/states/count',
+                            [CONTENT_TYPE_JSON]),
+}
 dic_abstract_collection_lookup_action: Dict[str, ActionFunction] = {
 
     'filter': ActionFunction('filter',
@@ -99,7 +123,55 @@ dic_abstract_collection_lookup_action: Dict[str, ActionFunction] = {
                                         'http://a-server/apis/states/projection/name/filter/geom/within/Point(22, 34)',
                                         representations),
 }
-dic_abstract_collection_lookup_action = {**dic_abstract_resource_action, **dic_abstract_collection_lookup_action}
+
+dic_abstract_collection_agregate_action: Dict[str, ActionFunction] = {
+
+    'sum': ActionFunction('sum',
+                            'sum',
+                            'AbstractCollection',
+                            [ParamAction('attribute_name', str)],
+                            'Returns the sum of given attribute in resources.The attribute must be a number.',
+                            'http://a-server/apis/states/sum/salary',
+                            [CONTENT_TYPE_JSON]),
+    'avg': ActionFunction('avg',
+                            'avg',
+                            'AbstractCollection',
+                            [ParamAction('attribute', str)],
+                            'Returns the means of given attribute in resources.The attribute must be a number.',
+                            'http://a-server/apis/states/avg/salary',
+                            [CONTENT_TYPE_JSON]),
+
+    'max': ActionFunction('max',
+                            'max',
+                            'AbstractCollection',
+                            [ParamAction('attribute', str)],
+                            'Returns the max value given attribute in resources.The attribute must be a number.',
+                            'http://a-server/apis/states/max/salary',
+                            [CONTENT_TYPE_JSON]),
+    'min': ActionFunction('min',
+                            'min',
+                            'AbstractCollection',
+                            [ParamAction('attribute', str)],
+                            'Returns the min value given attribute in resources.The attribute must be a number.',
+                            'http://a-server/apis/states/max/salary',
+                            [CONTENT_TYPE_JSON]),
+
+    'orderby': ActionFunction('orderby',
+                              'order_by',
+                              'AbstractCollection',
+                              [],
+                              'Returns the amount of resources',
+                              'http://a-server/apis/states/orderby/name',
+                              representations),
+    'groupby': ActionFunction('groupby',
+                              'group_by',
+                              'AbstractCollection',
+                              [ParamAction('enum_attribute', str)],
+                              'Returns resources grouped by',
+                              'http://a-server/apis/states/groupby/region',
+                              representations),
+}
+dic_abstract_collection_action = {**dic_abstract_resource_action, **dic_abstract_collection_general_action, **dic_abstract_collection_lookup_action, **dic_abstract_collection_agregate_action}
 
 def action_name(a_key_name: str) -> str:
     return dic_abstract_collection_lookup_action[a_key_name].name

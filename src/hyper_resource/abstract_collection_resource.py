@@ -47,7 +47,7 @@ class AbstractCollectionResource(AbstractResource):
             self.function_names = list(dic_abstract_collection_lookup_action.keys())
         return self.function_names
 
-    async def rows_as_dict(self, rows) -> List:
+    async def rows_as_dict(self, rows) -> List[Dict]:
         return [await self.dialect_DB().convert_row_to_dict(row) for row in rows]
 
     async def get_html_representation(self):
@@ -88,7 +88,7 @@ class AbstractCollectionResource(AbstractResource):
 
     def operation_name_in_path(self, path) -> str:
         operation_name_or_attribute_comma: str = self.first_word(path)
-        if ',' in operation_name_or_attribute_comma:
+        if ',' in operation_name_or_attribute_comma or operation_name_or_attribute_comma in self.attribute_names():
             return 'projection'
         if operation_name_or_attribute_comma in self.get_function_names():
             return operation_name_or_attribute_comma
@@ -141,21 +141,21 @@ class AbstractCollectionResource(AbstractResource):
         return await getattr(self, action_name(operation_name))(*[path])
 
     async def response_by_qb(self, qb: QueryBuilder):
-        if qb.has_only_one_aggregate_math_function():
-            return sanic.response.json(await qb.count())
-
+        print(qb.query())
         if (CONTENT_TYPE_JSON in self.accept_type()):
             rows = await self.dialect_DB().fetch_all_by(qb.query())
             rows_dict = await self.rows_as_dict(rows)
+            if qb.has_only_one_aggregate_math_function():
+                key, value = rows_dict[0].popitem()
+                return sanic.response.json(value)
             return sanic.response.json(rows_dict or [], content_type=CONTENT_TYPE_JSON)
-
-        #if CONTENT_TYPE_HTML in self.accept_type():
-        #    return await self.get_html_representation()
 
         rows = await self.dialect_DB().fetch_all_by(qb.query())
         rows_dict = await self.rows_as_dict(rows)
+        if qb.has_only_one_aggregate_math_function():
+            key, value = rows_dict[0].popitem()
+            return sanic.response.json(value)
         return sanic.response.json(rows_dict or [])
-
 
     async def add_where_in_qb(self, qb: QueryBuilder, path: str):
         qb.add_where(await self.interpreter(path[6:]).translate_lookup())
@@ -174,45 +174,49 @@ class AbstractCollectionResource(AbstractResource):
     async def add_count_in_qb(self, qb: QueryBuilder, path: str):
         qb.add_count()
 
+    async def add_sum_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_sum(self.normalize_path(path[4:]))
+
+    async def add_max_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_max(self.normalize_path(path[4:]))
+
+    async def add_min_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_min(self.normalize_path(path[4:]))
+
+    async def add_avg_in_qb(self, qb: QueryBuilder, path: str):
+        qb.add_avg(self.normalize_path(path[4:]))
+
     async def add_offsetlimit_in_qb(self, qb: QueryBuilder, path: str):
         pred_offset_limit: str = self.predicate_offsetlimit(path)
         qb.add_offsetlimit(pred_offset_limit)
 
     async def add_order_by_in_qb(self, qb: QueryBuilder, path: str):
-        qb.add_offsetlimit(self.predicate_order_by(path[8:]))
-
-    async def add_sum_in_qb(self, qb: QueryBuilder, path: str):
-        qb.add_sum(path)
-
-    async def add_avg_in_qb(self, qb: QueryBuilder, path: str):
-        qb.add_avg(path)
-
-    async def add_aggregate_in_qb(self, qb: QueryBuilder, path: str):
-        qb.add_math_aggregate()
-        self.dialect_DB()
+        qb.add_order_by(self.predicate_order_by(path[8:]))
 
     def dict_qb_function(self) -> Dict:
         return {
-            'filter': self.add_where_in_qb,
             'collect': self.add_collect_in_qb,
             'projection': self.add_projection_in_qb,
-            'groupby': self.add_group_by_in_qb,
             'count': self.add_count_in_qb,
-            'offsetlimit': self.add_offsetlimit_in_qb,
             'orderby': self.add_order_by_in_qb,
-
         }
 
     def dict_qb_lookup_function(self) -> Dict:
-        return {}
+        return {
+            'filter': self.add_where_in_qb,
+            'offsetlimit': self.add_offsetlimit_in_qb,
+        }
 
     def dict_qb_aggregate_function(self) -> Dict:
         return {
-            'sum': self.add_aggregate_in_qb,
-            'avg': self.add_aggregate_in_qb,
-            'max': self.add_aggregate_in_qb,
+            'sum': self.add_sum_in_qb,
+            'avg': self.add_avg_in_qb,
+            'max': self.add_max_in_qb,
+            'min': self.add_min_in_qb,
+            'groupby': self.add_group_by_in_qb,
         }
-
+    def dict_query_builder_function(self):
+        pass
     async def execute_qb_function(self, qb, path):
         qb_function: Dict = {**self.dict_qb_function(), **self.dict_qb_lookup_function(), **self.dict_qb_aggregate_function() }
         operation_name: str = self.operation_name_in_path(path)

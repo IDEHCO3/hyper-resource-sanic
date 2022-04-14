@@ -33,13 +33,13 @@ class Token:
         'lte': '<='
     }
 
-    def __init__(self, tword: TWord, category: str, tpe: Optional[type] = None, prev_token: Optional['Token'] = None):
+    def __init__(self, tword: TWord, category: str, tpe: Optional[type] = None, prev_token: Optional['Token'] = None, entity_class = None):
         self.tword = tword
         self.category = category
         self.typeof = tpe
         self.prev_token = prev_token
         self.next_token: Optional[Token] = None
-
+        self.entity_class: AlchemyBase = entity_class
     def word(self) -> str:
         return self.tword.word
 
@@ -92,6 +92,9 @@ class TokenAttribute(Token):
         return self.typeof
 
     def column_name(self, model_class: Optional[AlchemyBase]):
+        att = model_class.fk_or_none_n_relationship_given(self.word())
+        if att:
+            return att
         return model_class.attrib_name_col_name_type_col_name(self.word())[1]
 
     async def translate(self, translated: str = None, model_class: Optional[AlchemyBase] = None, db: Optional[DialectDatabase] = None) -> str:
@@ -101,8 +104,8 @@ class TokenAttribute(Token):
 
 class TokenOperation(Token):
     def __init__(self, tword: TWord, category: str, tpe: Optional[type] = None, prev_token: Optional['Token'] = None,
-                 return_type: Optional[type] = None):
-        super(TokenOperation, self).__init__(tword, category, tpe, prev_token)
+                 return_type: Optional[type] = None, entity_class = None):
+        super(TokenOperation, self).__init__(tword=tword, category=category, tpe=tpe, prev_token=prev_token, entity_class=entity_class)
         self.return_type = return_type
         self._translated: Optional[str] = None
 
@@ -225,6 +228,28 @@ class TokenValue(Token):
 
     async def returned(self) -> Optional[type]:
         return await self.prev_token.returned()
+
+    def get_token_attribute_or_none(self, tk: Token = None):
+        if tk is None:
+            return None
+        if tk.is_attribute():
+            return tk
+        return self.get_token_attribute_or_none(tk.prev_token)
+
+    def last_word_in_url(self) -> str:
+        an_url: str = self.word()[:-1] if self.word()[-1] == '/' else self.word()
+        idx_last: int = an_url.rindex('/') + 1
+        return f'{an_url[idx_last:]}'
+
+    async def translate(self, translated: str = None, model_class: Optional[AlchemyBase] = None, db: Optional[DialectDatabase] = None) -> str:
+        if self.has_url():
+            tk_attribute: Token = self.get_token_attribute_or_none(self.prev_token)
+            if tk_attribute is None or tk_attribute.word() not in model_class.__dict__:
+                return f'{self.word()} '
+            instr_attrb = model_class.__dict__[tk_attribute.word()]
+            if model_class.is_foreign_key_attribute(instr_attrb):
+                      return self.last_word_in_url()
+        return f'{self.word()} '
 
 class TokenRelationalOperator(Token):
     async def translate(self, translated: str = None, model_class: Optional[AlchemyBase] = None,  db: Optional[DialectDatabase] = None) -> str:

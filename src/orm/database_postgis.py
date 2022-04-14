@@ -195,12 +195,6 @@ class DialectDbPostgis(DialectDbPostgresql):
         d = {Geometry: dic_action}
         return d
 
-    def action(self, typeof: object, action_name: str) -> Optional[ActionFunction]:
-        if typeof in self.dict_action() and (action_name in self.dict_action()[typeof]):
-            d = self.dict_action()[typeof]
-            return d[action_name]
-        return None
-
     def value_seems_wkt(self, well_know_text: str):
         wkts = ['point', 'Linestring', 'polygon', 'multipoint', 'multilinestring', 'muiltpolygon', 'geometrycollection']
         value_from_path = well_know_text[0:20].lower()

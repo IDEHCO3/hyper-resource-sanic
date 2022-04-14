@@ -200,34 +200,34 @@ class InterpreterNew:
 
     async def get_token_given(self, tword: Optional[TWord], prv_token: Optional[Token]):
         if self.word_is_attribute(tword.word):
-            tk = TokenAttribute(tword, Token.ATTRIBUTE_CATEGORY, self.type_of_attribute(tword.word), prv_token)
+            tk = TokenAttribute(tword= tword, category=Token.ATTRIBUTE_CATEGORY, tpe=self.type_of_attribute(tword.word), prev_token=prv_token, entity_class=self.model_class)
             return self.set_next_token_on_token(tk, prv_token)
         elif self.word_is_relational_operator(tword.word):
-            tk = TokenRelationalOperator(tword, Token.RELATIONAL_OPERATOR_CATEGORY, str, prv_token)
+            tk = TokenRelationalOperator(tword=tword, category=Token.RELATIONAL_OPERATOR_CATEGORY, tpe=str, prev_token=prv_token)
             return self.set_next_token_on_token(tk, prv_token)
         elif self.word_is_in_operator(tword.word) and prv_token is not None:
             tp: type = await prv_token.returned()
-            tk = TokenIn(tword, Token.IN_OPERATOR, tp,  prv_token)
+            tk = TokenIn(tword=tword, category=Token.IN_OPERATOR, tpe=tp,  prev_token=prv_token)
             return self.set_next_token_on_token(tk, prv_token)
         elif tword.word == Token.AND_CATEGORY:
-            tk = TokenAnd(tword, Token.AND_CATEGORY, str,  prv_token)
+            tk = TokenAnd(tword=tword, category=Token.AND_CATEGORY, tpe=str,  prev_token=prv_token)
             return self.set_next_token_on_token(tk, prv_token)
         elif tword.word == Token.OR_CATEGORY:
-            tk = TokenOr(tword, Token.OR_CATEGORY, str,  prv_token)
+            tk = TokenOr(tword=tword, category=Token.OR_CATEGORY, tpe=str,  prev_token=prv_token)
             return self.set_next_token_on_token(tk, prv_token)
         elif tword.word == Token.BETWEEN_CATEGORY:
-            tk = TokenBetween(tword, Token.BETWEEN_CATEGORY, str,  prv_token)
+            tk = TokenBetween(tword=tword, category=Token.BETWEEN_CATEGORY, tpe=str,  prev_token=prv_token)
             return self.set_next_token_on_token(tk, prv_token)
         elif tword.word == Token.PAREN_OPEN:
-            tk = TokenParenthese(tword, Token.PAREN_OPEN, str,  prv_token)
+            tk = TokenParenthese(tword=tword, category=Token.PAREN_OPEN, tpe=str,  prev_token=prv_token)
             return self.set_next_token_on_token(tk, prv_token)
         elif tword.word == Token.PAREN_CLOSE:
-            tk = TokenParenthese(tword, Token.PAREN_CLOSE, str,  prv_token)
+            tk = TokenParenthese(tword=tword, category=Token.PAREN_CLOSE, tpe=str,  prev_token=prv_token)
             return self.set_next_token_on_token(tk, prv_token)
         elif prv_token is not None and await self.word_is_operation(tword.word, prv_token):
             a_type = await prv_token.returned()
             action = self.dialect_db_action(a_type, tword.word)
-            tk = TokenOperation(tword, Token.OPERATION_CATEGORY, a_type, prv_token, action.answer)
+            tk = TokenOperation(tword=tword, category=Token.OPERATION_CATEGORY, tpe=a_type, prev_token=prv_token, return_type=action.answer, entity_class=self.model_class)
             return self.set_next_token_on_token(tk, prv_token)
         elif prv_token is not None and await self.word_is_operation_arg(tword.word, prv_token):
             a_type = prv_token.typeof
