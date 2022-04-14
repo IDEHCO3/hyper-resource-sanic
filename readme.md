@@ -26,8 +26,11 @@ If you don't have GDAL lib or python GDAL bindings installed in your environment
 ![GDAL lib not find](gdal-config-not-find.png)
 #### GNU GCC lib not find
 ![GNU GCC lib not find](gnu-gcc-not-find.png)
+#### use_2to3 error
+![use_2to3 Error](use_2to3-error.png)
 
 Try to solve this executing the following commands:
+### `pip install setuptools==57.5.0`
 ### `sudo apt-get install libpq5=12.9-0ubuntu0.20.04.1 # change versions to match your ubuntu installation` 
 ### `sudo apt-get install libpq-dev`
 ### `sudo apt-get install libgdal-dev`
