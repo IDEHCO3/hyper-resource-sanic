@@ -33,7 +33,7 @@ class AlchemyBase(Base):
         return isinstance(attribute.prop, ColumnProperty) and attribute.prop.columns[0].primary_key
     @classmethod
     def is_foreign_key_attribute(cls, attribute) -> bool:
-        return isinstance(attribute, InstrumentedAttribute) and isinstance(attribute.prop, ColumnProperty) and (len(attribute.prop.columns[0].foreign_keys) > 0)
+        return isinstance(attribute, InstrumentedAttribute) and isinstance(attribute.prop, RelationshipProperty) and (len(attribute.prop._user_defined_foreign_keys) > 0)
 
     @classmethod
     def is_not_foreign_key_attribute(cls, attribute) -> bool:
@@ -95,10 +95,11 @@ class AlchemyBase(Base):
 
     @classmethod
     def attribute_type_given(cls, attribute_name: str) -> Optional[type]:
+        col_name = cls.column_name(attribute_name)
         cols = cls.__table__.c
-        if attribute_name not in cols:
+        if col_name not in cols:
             return None
-        col = cols[attribute_name]
+        col = cols[col_name]
         return type(col.type)
 
     @classmethod
@@ -154,14 +155,16 @@ class AlchemyBase(Base):
         return instrumentedAttribute.prop.entity.class_
     @classmethod
     def fk_or_none_n_relationship_given(cls, attribute_name : str) -> str:
-        prop = cls.__dict__[attribute_name].prop
+        if attribute_name not in cls.__dict__:
+            return None
+        attrib = cls.__dict__[attribute_name]
+        if not isinstance(attrib, InstrumentedAttribute):
+            return None
+        prop = attrib.prop
         if not isinstance(prop, RelationshipProperty):
             return None
-        cols = prop.mapper.columns
-        for col in cols: #pessoa.gastos => ForeignKey('pessoal.gasto.id_pessoa')
-            if len(col.foreign_keys) > 0 and col.foreign_keys.pop().target_fullname.split('.')[-1] == cls.primary_key():
-                return col.key
-        return None
+        return list(prop._user_defined_foreign_keys)[0].key
+
     @classmethod
     def list_attribute_column(cls) -> List[Tuple]:
         return [ (key, value.prop.columns[0].name) for key, value in cls.__dict__.items() if cls.is_attribute_without_relationship(value)]

@@ -1236,7 +1236,56 @@
 			"item": [
 				{
 					"name": "collection",
-					"item": []
+					"item": [
+						{
+							"name": "json-gasto-list-collect-valor-min",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/gasto-list/collect/valor/min",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"gasto-list",
+										"collect",
+										"valor",
+										"min"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "json-gasto-list-collect-valor-min-max-avg",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/gasto-list/collect/valor/min/*/collect/valor/max/*/collect/valor/avg",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"gasto-list",
+										"collect",
+										"valor",
+										"min",
+										"*",
+										"collect",
+										"valor",
+										"max",
+										"*",
+										"collect",
+										"valor",
+										"avg"
+									]
+								}
+							},
+							"response": []
+						}
+					]
 				},
 				{
 					"name": "FeatureCollection",
@@ -1431,6 +1480,183 @@
 							"response": []
 						}
 					]
+				}
+			]
+		},
+		{
+			"name": "max-min-avg-sum",
+			"item": [
+				{
+					"name": "collection",
+					"item": [
+						{
+							"name": "json-max-valor-groupby",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/gasto-list/sum/valor/*/groupby/data_do_gasto",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"gasto-list",
+										"sum",
+										"valor",
+										"*",
+										"groupby",
+										"data_do_gasto"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "json-max-valor",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/gasto-list/max/valor",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"gasto-list",
+										"max",
+										"valor"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "json-min-valor",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/gasto-list/min/valor",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"gasto-list",
+										"min",
+										"valor"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "json-avg-valor",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://127.0.0.1:8000/gasto-list/avg/valor",
+									"protocol": "http",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "8000",
+									"path": [
+										"gasto-list",
+										"avg",
+										"valor"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "json-sum-valor",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/gasto-list/sum/valor",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"gasto-list",
+										"sum",
+										"valor"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "json-min-max-avg-sum-valor",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/gasto-list/min/valor/*/max/valor/*/avg/valor/*/sum/valor/",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"gasto-list",
+										"min",
+										"valor",
+										"*",
+										"max",
+										"valor",
+										"*",
+										"avg",
+										"valor",
+										"*",
+										"sum",
+										"valor",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "json-gasto-list-projection-sum-max-valor-groupby-data_do_gasto-orderby-data_do_gasto",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{SERVER}}/gasto-list/projection/data_do_gasto/*/sum/valor/*/max/valor/*/groupby/data_do_gasto/*/orderby/data_do_gasto",
+									"host": [
+										"{{SERVER}}"
+									],
+									"path": [
+										"gasto-list",
+										"projection",
+										"data_do_gasto",
+										"*",
+										"sum",
+										"valor",
+										"*",
+										"max",
+										"valor",
+										"*",
+										"groupby",
+										"data_do_gasto",
+										"*",
+										"orderby",
+										"data_do_gasto"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "FeatureCollection",
+					"item": []
 				}
 			]
 		},

@@ -10,13 +10,13 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from .database import DialectDatabase
 from sqlalchemy import text
 from sqlalchemy import ARRAY, BIGINT, CHAR, BigInteger, BINARY, BLOB, BOOLEAN, Boolean, CHAR, CLOB, DATE, Date, DATETIME, \
-    DateTime, DateTime, DECIMAL, Enum, Column, FLOAT, Float, INT, INTEGER, Integer, JSON, LargeBinary, NCHAR, NUMERIC, \
+    DateTime, DECIMAL, Enum, Column, FLOAT, Float, INT, INTEGER, Integer, JSON, LargeBinary, NCHAR, NUMERIC, \
     Numeric, NVARCHAR, PickleType, REAL, SMALLINT, SmallInteger, String, TEXT, Text, TIME, Time, TIMESTAMP, TypeDecorator, \
     Unicode, UnicodeText, VARBINARY, VARCHAR
 
 # reference: https://www.postgresql.org/docs/9.1/functions-string.html
 from .dictionary_actions import ActionFunction
-from .dictionary_actions_postgres import dic_math_aggregate_action
+from .dictionary_actions_postgres import dic_math_aggregate_action, dic_date_action
 from .models import AlchemyBase
 from src.hyper_resource.basic_route import BasicRoute
 STRING_SQL_OPERATIONS = ["lower", "replace", "upper"]
@@ -115,6 +115,14 @@ class DialectDbPostgresql(DialectDatabase):
             return f"{col_name} as {attr_name}" if pref == '' else f"'{pref}' || {col_name} as {attr_name}"
         elif self.entity_class.is_relationship_attribute(inst_attr):
             return None
+            """
+            col_name = self.entity_class.fk_or_none_n_relationship_given(
+                inst_attr.key)  
+            if not col_name:
+                return None
+            model_class = self.entity_class.class_given_relationship_fk(self.entity_class.__dict__[inst_attr.key])
+            return f"CASE WHEN {col_name} is not null THEN '{prefix_col}{model_class.router_list()}/' || {col_name} ELSE null  END AS {self.entity_class.attribute_name_given(inst_attr)}
+            """
         else:
             col_name = self.entity_class.column_name_or_None(inst_attr)
             attr_name = self.entity_class.attribute_name_given(inst_attr)
@@ -386,7 +394,10 @@ class DialectDbPostgresql(DialectDatabase):
              INT: dic_math_aggregate_action,
              Integer: dic_math_aggregate_action,
              INTEGER: dic_math_aggregate_action,
-
+             date: dic_date_action,
+             DATE: dic_date_action,
+             datetime: dic_date_action,
+             DATETIME: dic_date_action,
             }
 
         return d

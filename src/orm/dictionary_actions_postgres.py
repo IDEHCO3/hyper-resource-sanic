@@ -35,3 +35,13 @@ dic_math_aggregate_action: Dict[str, ActionFunction] = {
                           representations=representations),
 
 }
+dic_date_action:  Dict[str, ActionFunction] = {
+    'year': ActionFunction(name='year',
+                          name_operation='extract',
+                          answer=Number,
+                          param_actions=[],
+                          description= 'Return the year of the date.',
+                          example="api/expenses/date/year",
+                          representations=representations),
+
+}

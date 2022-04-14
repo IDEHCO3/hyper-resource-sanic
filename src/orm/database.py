@@ -291,7 +291,7 @@ class DialectDatabase(AbstractDialectDatabase):
     async def convert_in_db_args(self, in_arg: str, a_type: type) -> str:
         if a_type in (str, String):
             args = in_arg.split(',')
-            args_str = [f"'{arg}'" for arg in args]
+            args_str = [f"{arg}" if arg[0] == "'" else f"'{arg}'" for arg in args  ]
             return ','.join(args_str)
         else:
             return f'{in_arg}'

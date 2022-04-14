@@ -70,7 +70,6 @@ class FeatureCollectionResource(SpatialCollectionResource):
     def aggregate_function_names(self) -> List[str]:
         return self.dialect_DB().get_spatial_aggregate_function_names()
 
-
     async def get_extent(self, query: Optional[str] = None):
         if self.extent is None:
             self.extent = await self.dialect_DB().extent(query)
@@ -274,19 +273,17 @@ class FeatureCollectionResource(SpatialCollectionResource):
         aggregate: str = f'collect/{self.get_geom_attribute()}/{path}'
         qb.add_collect(await self.interpreter().translate_collect(aggregate, self.protocol_host()))
 
-
     def dict_qb_lookup_function(self) -> Dict:
-        dic = {}
+        dic = super().dict_qb_lookup_function()
         for name in self.lookup_function_names():
             dic[name] = self.add_spatial_lookup_in_qb
         return dic
 
     def dict_qb_aggregate_function(self) -> Dict:
-        dic = {}
+        dic = super().dict_qb_aggregate_function()
         for name in self.aggregate_function_names():
             dic[name] = self.add_spatial_aggregate_in_qb
         return dic
-
 
     async def get_representation_given_path(self, path: str) -> str:
         try:

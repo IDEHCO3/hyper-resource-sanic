@@ -14,6 +14,7 @@ class QueryBuilder:
         self.group_by: Optional[str] = None
         self.order_by: Optional[str] = None
         self.offset_limit: Optional[str] = None
+        self.has_group_by: bool = False
         self.has_count: bool = False
         self.has_sum: bool = False
         self.has_max: bool = False
@@ -26,6 +27,9 @@ class QueryBuilder:
         self.dialect_db = dialect_db
         self.entity_class = entity_class
         self.prefix_column: Optional[str] = prefix_column
+
+    def column_name(self, attribute_name: str) -> str:
+        return self.entity_class.column_name(attribute_name)
 
     def add_collect(self, express: str):
         self.add_column(express)
@@ -43,8 +47,10 @@ class QueryBuilder:
     def add_where(self, expr_where: str):
         self.wheres.append(expr_where)
 
-    def add_group_by(self, group_by: str):
-        self.group_by = group_by
+    def add_group_by(self, expr_group_by: str):
+        column_names: List[str] = [self.column_name(att_name) for att_name in expr_group_by.split(',')]
+        self.has_group_by = True
+        self.group_by = ','.join(column_names)
 
     def add_order_by(self, order_by: str):
         self.order_by = order_by
@@ -59,14 +65,24 @@ class QueryBuilder:
 
     def add_sum(self, sum_str: str):
         self.has_sum = True
-        self.add_column(f"sum({sum_str})")
+        self.add_column(f"sum({self.column_name(sum_str)}) as sum_{sum_str}")
 
     def add_avg(self, avg_str: str):
         self.has_avg = True
-        self.add_column(f"avg({avg_str})")
+        self.add_column(f"avg({self.column_name(avg_str)}) as avg_{avg_str}")
+
+    def add_max(self, max_str: str):
+        self.has_max = True
+        self.add_column(f"max({self.column_name(max_str)}) as max_{max_str}")
+
+    def add_min(self, min_str: str):
+        self.has_min = True
+        self.add_column(f"min({self.column_name(min_str)}) as min_{min_str}")
 
     def has_only_one_aggregate_math_function(self):
-        return len(self.columns) == 1 and (self.has_sum or self.has_count or self.has_avg)
+        return len(self.columns) == 1 and \
+               (self.has_sum or self.has_count or self.has_avg or self.has_min or self.has_max) and \
+               not self.has_group_by
 
     def exec_only_one_aggregate_math_function(self):
         if self.has_count:
@@ -99,7 +115,7 @@ class QueryBuilder:
     def orderby(self)-> str:
         if self.order_by is None:
             return ""
-        return f"order by {self.order_by} "
+        return f"{self.order_by} "
 
     def offsetlimit(self):
         if self.offset_limit is None:
