@@ -20,7 +20,7 @@ from sanic_cors import CORS, cross_origin
 #Create Sanic app
 app = Sanic(__name__)
 CORS(app, automatic_options=False)
-app.blueprint(swagger_blueprint)
+# app.blueprint(swagger_blueprint)
 #Setup env
 env = Env()
 env.read_env()  # read .env file, if it exists

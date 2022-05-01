@@ -955,15 +955,15 @@ test = ["sanic-testing (>=0.6.0)", "pytest (==5.2.1)", "multidict (>=5.0,<6.0)",
 
 [[package]]
 name = "sanic-cors"
-version = "0.10.0.post3"
+version = "1.0.0"
 description = "A Sanic extension adding a decorator for CORS support. Based on flask-cors by Cory Dolphin."
 category = "main"
 optional = false
 python-versions = "*"
 
 [package.dependencies]
-sanic = ">=18.12.0"
-sanic-plugins-framework = ">=0.9.0"
+sanic = ">=21.3.1,<22"
+sanic-plugin-toolkit = ">=1.0.0,<2"
 
 [[package]]
 name = "sanic-envconfig"
@@ -993,15 +993,15 @@ doc = ["recommonmark (==0.5.0)", "sphinx (==2.1.2)", "sphinx-rtd-theme (==0.4.3)
 test = ["coverage (==4.5.3)", "pytest (==4.6.2)", "pytest-cov (==2.7.1)", "pytest-html (==1.20.0)", "pytest-runner (==5.1)", "tox (==3.12.1)"]
 
 [[package]]
-name = "sanic-plugins-framework"
-version = "0.9.4.post1"
-description = "Doing all of the boilerplate to create a Sanic Plugin, so you don't have to."
+name = "sanic-plugin-toolkit"
+version = "1.2.1"
+description = "The all-in-one toolkit for creating powerful Sanic Plugins"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
-sanic = ">=18.12.0"
+sanic = ">=21.3.1,<21.12.0"
 
 [[package]]
 name = "sanic-routing"
@@ -1276,7 +1276,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "f0e1481c495045713da4229d0fa3f64298e3792661c625ee223b45fc52e2db7a"
+content-hash = "22fa6a27812e5ac3876d8a51c3cdcb303b6f61309bd477df470f79ac3b4be67b"
 
 [metadata.files]
 aiocontextvars = [
@@ -1643,6 +1643,7 @@ greenlet = [
     {file = "greenlet-1.1.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:97e5306482182170ade15c4b0d8386ded995a07d7cc2ca8f27958d34d6736497"},
     {file = "greenlet-1.1.2-cp310-cp310-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:e6a36bb9474218c7a5b27ae476035497a6990e21d04c279884eb10d9b290f1b1"},
     {file = "greenlet-1.1.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:abb7a75ed8b968f3061327c433a0fbd17b729947b400747c334a9c29a9af6c58"},
+    {file = "greenlet-1.1.2-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:b336501a05e13b616ef81ce329c0e09ac5ed8c732d9ba7e3e983fcc1a9e86965"},
     {file = "greenlet-1.1.2-cp310-cp310-win_amd64.whl", hash = "sha256:14d4f3cd4e8b524ae9b8aa567858beed70c392fdec26dbdb0a8a418392e71708"},
     {file = "greenlet-1.1.2-cp35-cp35m-macosx_10_14_x86_64.whl", hash = "sha256:17ff94e7a83aa8671a25bf5b59326ec26da379ace2ebc4411d690d80a7fbcf23"},
     {file = "greenlet-1.1.2-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:9f3cba480d3deb69f6ee2c1825060177a22c7826431458c697df88e6aeb3caee"},
@@ -1655,6 +1656,7 @@ greenlet = [
     {file = "greenlet-1.1.2-cp36-cp36m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f9d29ca8a77117315101425ec7ec2a47a22ccf59f5593378fc4077ac5b754fce"},
     {file = "greenlet-1.1.2-cp36-cp36m-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:21915eb821a6b3d9d8eefdaf57d6c345b970ad722f856cd71739493ce003ad08"},
     {file = "greenlet-1.1.2-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:eff9d20417ff9dcb0d25e2defc2574d10b491bf2e693b4e491914738b7908168"},
+    {file = "greenlet-1.1.2-cp36-cp36m-musllinux_1_1_x86_64.whl", hash = "sha256:b8c008de9d0daba7b6666aa5bbfdc23dcd78cafc33997c9b7741ff6353bafb7f"},
     {file = "greenlet-1.1.2-cp36-cp36m-win32.whl", hash = "sha256:32ca72bbc673adbcfecb935bb3fb1b74e663d10a4b241aaa2f5a75fe1d1f90aa"},
     {file = "greenlet-1.1.2-cp36-cp36m-win_amd64.whl", hash = "sha256:f0214eb2a23b85528310dad848ad2ac58e735612929c8072f6093f3585fd342d"},
     {file = "greenlet-1.1.2-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:b92e29e58bef6d9cfd340c72b04d74c4b4e9f70c9fa7c78b674d1fec18896dc4"},
@@ -1663,6 +1665,7 @@ greenlet = [
     {file = "greenlet-1.1.2-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1e12bdc622676ce47ae9abbf455c189e442afdde8818d9da983085df6312e7a1"},
     {file = "greenlet-1.1.2-cp37-cp37m-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:8c790abda465726cfb8bb08bd4ca9a5d0a7bd77c7ac1ca1b839ad823b948ea28"},
     {file = "greenlet-1.1.2-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f276df9830dba7a333544bd41070e8175762a7ac20350786b322b714b0e654f5"},
+    {file = "greenlet-1.1.2-cp37-cp37m-musllinux_1_1_x86_64.whl", hash = "sha256:8c5d5b35f789a030ebb95bff352f1d27a93d81069f2adb3182d99882e095cefe"},
     {file = "greenlet-1.1.2-cp37-cp37m-win32.whl", hash = "sha256:64e6175c2e53195278d7388c454e0b30997573f3f4bd63697f88d855f7a6a1fc"},
     {file = "greenlet-1.1.2-cp37-cp37m-win_amd64.whl", hash = "sha256:b11548073a2213d950c3f671aa88e6f83cda6e2fb97a8b6317b1b5b33d850e06"},
     {file = "greenlet-1.1.2-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:9633b3034d3d901f0a46b7939f8c4d64427dfba6bbc5a36b1a67364cf148a1b0"},
@@ -1671,6 +1674,7 @@ greenlet = [
     {file = "greenlet-1.1.2-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e859fcb4cbe93504ea18008d1df98dee4f7766db66c435e4882ab35cf70cac43"},
     {file = "greenlet-1.1.2-cp38-cp38-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:00e44c8afdbe5467e4f7b5851be223be68adb4272f44696ee71fe46b7036a711"},
     {file = "greenlet-1.1.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ec8c433b3ab0419100bd45b47c9c8551248a5aee30ca5e9d399a0b57ac04651b"},
+    {file = "greenlet-1.1.2-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:2bde6792f313f4e918caabc46532aa64aa27a0db05d75b20edfc5c6f46479de2"},
     {file = "greenlet-1.1.2-cp38-cp38-win32.whl", hash = "sha256:288c6a76705dc54fba69fbcb59904ae4ad768b4c768839b8ca5fdadec6dd8cfd"},
     {file = "greenlet-1.1.2-cp38-cp38-win_amd64.whl", hash = "sha256:8d2f1fb53a421b410751887eb4ff21386d119ef9cde3797bf5e7ed49fb51a3b3"},
     {file = "greenlet-1.1.2-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:166eac03e48784a6a6e0e5f041cfebb1ab400b394db188c48b3a84737f505b67"},
@@ -1679,6 +1683,7 @@ greenlet = [
     {file = "greenlet-1.1.2-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:b1692f7d6bc45e3200844be0dba153612103db241691088626a33ff1f24a0d88"},
     {file = "greenlet-1.1.2-cp39-cp39-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:7227b47e73dedaa513cdebb98469705ef0d66eb5a1250144468e9c3097d6b59b"},
     {file = "greenlet-1.1.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7ff61ff178250f9bb3cd89752df0f1dd0e27316a8bd1465351652b1b4a4cdfd3"},
+    {file = "greenlet-1.1.2-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:0051c6f1f27cb756ffc0ffbac7d2cd48cb0362ac1736871399a739b2885134d3"},
     {file = "greenlet-1.1.2-cp39-cp39-win32.whl", hash = "sha256:f70a9e237bb792c7cc7e44c531fd48f5897961701cdaa06cf22fc14965c496cf"},
     {file = "greenlet-1.1.2-cp39-cp39-win_amd64.whl", hash = "sha256:013d61294b6cd8fe3242932c1c5e36e5d1db2c8afb58606c5a67efce62c1f5fd"},
     {file = "greenlet-1.1.2.tar.gz", hash = "sha256:e30f5ea4ae2346e62cedde8794a56858a67b878dd79f7df76a0767e356b1744a"},
@@ -2224,8 +2229,8 @@ sanic = [
     {file = "sanic-21.6.0.tar.gz", hash = "sha256:eeae886e94f8ee9cee61bf7e3a9c1974cb9cfd666002d2a0a4b82e007aa4f2dd"},
 ]
 sanic-cors = [
-    {file = "Sanic-Cors-0.10.0.post3.tar.gz", hash = "sha256:abb0f8b17d2ecb12d62ecac42ca62bfed9b07fd00ffd83219ad23b99d4df3f23"},
-    {file = "Sanic_Cors-0.10.0.post3-py2.py3-none-any.whl", hash = "sha256:b919d65643de810ed1ed15657b8bc75c310fa1ac8eb491d59deaa9404756b745"},
+    {file = "Sanic-Cors-1.0.0.tar.gz", hash = "sha256:d6109b342afcaa053db663d92d44f4f61e59cdb0d0a3c1857dcc9812a6595a61"},
+    {file = "Sanic_Cors-1.0.0-py2.py3-none-any.whl", hash = "sha256:00cea470376808a942ec70aa53002d0805505670bac28c507b272cf9515d81fa"},
 ]
 sanic-envconfig = [
     {file = "sanic_envconfig-1.3.4-py2.py3-none-any.whl", hash = "sha256:5a8485a0862ae9586ae20932f95d47c408f34253200e0b83cfb0b9ed6acef570"},
@@ -2234,9 +2239,9 @@ sanic-envconfig = [
 sanic-openapi = [
     {file = "sanic-openapi-0.6.2.tar.gz", hash = "sha256:0ddd11983443d4136ef3e93146cbf89a7196533eb198d72f7489b840cf4016c4"},
 ]
-sanic-plugins-framework = [
-    {file = "Sanic-Plugins-Framework-0.9.4.post1.tar.gz", hash = "sha256:eea5b874c15255467c21acfb2e8b16b0e6bff5d11dffed698c63b2e759f3ec50"},
-    {file = "Sanic_Plugins_Framework-0.9.4.post1-py2.py3-none-any.whl", hash = "sha256:958a648a891526022c33ef20f041782a211ad8bfe7efa21ec9626b9ac59ac6e8"},
+sanic-plugin-toolkit = [
+    {file = "sanic-plugin-toolkit-1.2.1.tar.gz", hash = "sha256:9f6eeca2e28b915dba4be8584ebb5a5f76a3f6895fe34572042ec275b13e41e1"},
+    {file = "sanic_plugin_toolkit-1.2.1-py3-none-any.whl", hash = "sha256:aabea0dc1fd71969567c6a0fa419b55a727c0a5be372f166560e0cdbb9c30abb"},
 ]
 sanic-routing = [
     {file = "sanic-routing-0.7.0.tar.gz", hash = "sha256:bd6e30b9252d3500e0224e9bb64ba52561638991cefa1f7281c3ba75795c7df9"},

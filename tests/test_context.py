@@ -4,20 +4,20 @@ from unittest import TestCase
 
 from databases import Database
 
-from src.contexts.con_gasto import ConGastoCollectionContext
+# from src.contexts.con_gasto import ConGastoCollectionContext
 from src.contexts.lim_unidade_federacao_a import LimUnidadeFederacaoACollectionContext, \
     LimUnidadeFederacaoADetailContext
 from src.hyper_resource.abstract_resource import AbstractResource
-from src.models.con_gasto import ConGasto
-from src.models.con_tipo_gasto import ConTipoGasto
-from src.models.con_usuario import ConUsuario
+# from src.models.con_gasto import ConGasto
+# from src.models.con_tipo_gasto import ConTipoGasto
+# from src.models.con_usuario import ConUsuario
 from src.models.lim_unidade_federacao_a import LimUnidadeFederacaoA
 from src.orm.database_postgis import DialectDbPostgis
 from environs import Env
 
-from src.resources.con_gasto import ConGastoResource
-from src.resources.con_tipo_gasto import ConTipoGastoResource
-from src.resources.con_usuario import ConUsuarioResource
+# from src.resources.con_gasto import ConGastoResource
+# from src.resources.con_tipo_gasto import ConTipoGastoResource
+# from src.resources.con_usuario import ConUsuarioResource
 from src.resources.lim_unidade_federacao_a import LimUnidadeFederacaoAResource
 
 env = Env()
@@ -218,8 +218,6 @@ EXPECTED_UF_CONTEXT = {
     ]
 }
 
-
-
 EXPECTED_RELATIONSHIP_CONTEXT = {
     "@context": {
         "hr": "http://127.0.0.1:8000/core",
@@ -336,15 +334,15 @@ class TestBasicContext():
 
         TestCase().assertDictEqual(EXPECTED_NON_GEO_CONTEXT, context)
 
-    def test_relationship_context(self):
-        AbstractResource.MAP_MODEL_FOR_CONTEXT = {
-            ConGastoResource.model_class: ConGastoResource.context_class,
-            ConTipoGastoResource.model_class: ConTipoGastoResource.context_class,
-            ConUsuarioResource.model_class: ConUsuarioResource.context_class,
-        }
-        dialect = DialectDbPostgis(Database(env.str("URLDB"), ssl=False, min_size=1, max_size=20), ConGasto.__table__, ConGasto )
-
-        context = ConGastoCollectionContext(dialect, ConGasto.__table__, ConGasto).get_basic_context()
-        # print(context)
-        # print(EXPECTED_RELATIONSHIP_CONTEXT)
-        TestCase().assertDictEqual(EXPECTED_RELATIONSHIP_CONTEXT, context)
+    # def test_relationship_context(self):
+    #     AbstractResource.MAP_MODEL_FOR_CONTEXT = {
+    #         ConGastoResource.model_class: ConGastoResource.context_class,
+    #         ConTipoGastoResource.model_class: ConTipoGastoResource.context_class,
+    #         ConUsuarioResource.model_class: ConUsuarioResource.context_class,
+    #     }
+    #     dialect = DialectDbPostgis(Database(env.str("URLDB"), ssl=False, min_size=1, max_size=20), ConGasto.__table__, ConGasto )
+    #
+    #     context = ConGastoCollectionContext(dialect, ConGasto.__table__, ConGasto).get_basic_context()
+    #     # print(context)
+    #     # print(EXPECTED_RELATIONSHIP_CONTEXT)
+    #     TestCase().assertDictEqual(EXPECTED_RELATIONSHIP_CONTEXT, context)

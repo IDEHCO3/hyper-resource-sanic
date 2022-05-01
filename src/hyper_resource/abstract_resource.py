@@ -92,19 +92,19 @@ class AbstractResource:
     
     #'/string/<parameters:path>'
     async def options_given_path(self, path):
-        return await response.json("Method OPTIONS not implemented yet.", status=501)
+        return response.json("Method OPTIONS not implemented yet.", status=501)
 
     async def post(self):
-        return await response.json("Method POST not implemented yet.", status=501)
+        return response.json("Method POST not implemented yet.", status=501)
 
     async def patch(self, id):
-        return await response.json("Method PATCH not implemented yet.", status=501)
+        return response.json("Method PATCH not implemented yet.", status=501)
 
     async def put(self, id):
-        return await response.json("Method PUT not implemented yet.", status=501)
+        return response.json("Method PUT not implemented yet.", status=501)
 
     async def delete(self, id):
-        return await response.json("Method DELETE not implemented yet.", status=501)
+        return response.json("Method DELETE not implemented yet.", status=501)
 
     def validate_attribute_names(self, attribute_names: List[str]) -> bool:
         s1 = set(self.dialect_DB().attribute_names())
