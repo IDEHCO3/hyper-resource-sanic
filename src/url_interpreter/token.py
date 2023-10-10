@@ -1,6 +1,7 @@
 from typing import Optional, List
 
 import aiohttp
+from sqlalchemy import String
 
 from src.hyper_resource.common_resource import CONTENT_TYPE_JSON
 from src.orm.action_type import ActionFunction
@@ -249,7 +250,17 @@ class TokenValue(Token):
             instr_attrb = model_class.__dict__[tk_attribute.word()]
             if model_class.is_foreign_key_attribute(instr_attrb):
                       return self.last_word_in_url()
+        if self.prev_token.category == Token.RELATIONAL_OPERATOR_CATEGORY and self.prev_token.prev_token.category == Token.ATTRIBUTE_CATEGORY:
+            value_type = getattr(model_class, self.prev_token.prev_token.tword.word).expression.type.python_type
+            if value_type == str or value_type == String:
+                return self.corvert_to_string()
         return f'{self.word()} '
+
+    def corvert_to_string(self):
+        data = self.word().strip()
+        if data.startswith("'") and data.endswith("'"):
+            return f'{self.word()} '
+        return f"'{data}' "
 
 class TokenRelationalOperator(Token):
     async def translate(self, translated: str = None, model_class: Optional[AlchemyBase] = None,  db: Optional[DialectDatabase] = None) -> str:
