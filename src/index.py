@@ -72,9 +72,9 @@ def api_entry_point_context(entry_point_content):
     for key, value in entry_point_content.items():
         d["@context"].update({
             key: {
-                "@type": "LinkRole",
-                key: value,
-                "linkRelationship": "collection"
+                "@id": "schema:ItemList",
+                "@type": "@id",
+                # key: value
             }
         })
     return d
