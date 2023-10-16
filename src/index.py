@@ -50,9 +50,34 @@ def handle_request_options(request: Request):
     _headers = {'Access-Control-Expose-Headers': 'Link', 'Link': f'<{base_iri}>;rel=https://schema.org/EntryPoint'}
     print(_headers)
     print("GET and OPTIONS")
-    #return response.json(api_entry_point())
-    return response.json(api_entry_point(), headers=_headers, status=200)
-
+    # return response.json({
+    #     "@context": {
+    #         "schema": "https://schema.org/",
+    #         "lim-unidade-federacao-a-list": {
+    #             "@type": "LinkRole",
+    #             "lim-unidade-federacao-a-list": "http://127.0.0.1:8000/lim-unidade-federacao-a-list",
+    #             "linkRelationship": "collection"
+    #          }
+    #     }
+    #
+    # })
+    return response.json(api_entry_point_context(api_entry_point()))
+    # return response.json(api_entry_point(), headers=_headers, status=200)
+def api_entry_point_context(entry_point_content):
+    d = {
+        "@context": {
+            "schema": "https://schema.org/",
+        }
+    }
+    for key, value in entry_point_content.items():
+        d["@context"].update({
+            key: {
+                "@type": "LinkRole",
+                key: value,
+                "linkRelationship": "collection"
+            }
+        })
+    return d
 
 @app.route("/core")
 def handle_request(request: Request):
