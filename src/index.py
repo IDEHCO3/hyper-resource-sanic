@@ -33,46 +33,39 @@ MIME_TYPE_JSONLD = "application/ld+json"
 @app.middleware("request")
 async def print_on_request(request):
     pass
-   
+
+def get_entry_point_header(request: Request):
+    base_iri = request.scheme + '://' + request.host
+    _headers = {
+        'Access-Control-Expose-Headers': 'Link',
+        'Link': f"<{base_iri}>; rel=\"https://schema.org/EntryPoint\", "
+                f"<{base_iri}.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\""
+    }
+    return _headers
+
 @app.route("/", methods=["GET"])
 def handle_request(request: Request):
-    base_iri = request.scheme +'://' +request.host
-
-    _headers = {'Access-Control-Expose-Headers': 'Link', 'Link': f'<{base_iri}>;rel=https://schema.org/EntryPoint'}
-    print(_headers)
-    print("GET and OPTIONS")
-    #return response.json(api_entry_point())
-    return response.json(api_entry_point(), headers=_headers, status=200)
+    return response.json(api_entry_point(), headers=get_entry_point_header(request), status=200)
 
 @app.route("/", methods=["OPTIONS"])
 def handle_request_options(request: Request):
-    base_iri = request.scheme +'://' +request.host
-    _headers = {'Access-Control-Expose-Headers': 'Link', 'Link': f'<{base_iri}>;rel=https://schema.org/EntryPoint'}
-    print(_headers)
-    print("GET and OPTIONS")
-    # return response.json({
-    #     "@context": {
-    #         "schema": "https://schema.org/",
-    #         "lim-unidade-federacao-a-list": {
-    #             "@type": "LinkRole",
-    #             "lim-unidade-federacao-a-list": "http://127.0.0.1:8000/lim-unidade-federacao-a-list",
-    #             "linkRelationship": "collection"
-    #          }
-    #     }
-    #
-    # })
-    return response.json(api_entry_point_context(api_entry_point()))
+    return response.json(api_entry_point_context(api_entry_point()), headers=get_entry_point_header(request), status=200)
     # return response.json(api_entry_point(), headers=_headers, status=200)
+
+@app.route("/", methods=["HEAD"])
+def handle_request_options(request: Request):
+    return response.empty(headers=get_entry_point_header(request), status=200)
 def api_entry_point_context(entry_point_content):
     d = {
         "@context": {
             "schema": "https://schema.org/",
+            "geojson": "https://purl.org/geojson/vocab#",
         }
     }
     for key, value in entry_point_content.items():
         d["@context"].update({
             key: {
-                "@id": "schema:ItemList",
+                "@id": "geojson:FeatureCollection",
                 "@type": "@id",
                 # key: value
             }

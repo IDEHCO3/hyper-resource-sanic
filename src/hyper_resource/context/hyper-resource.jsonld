@@ -19,9 +19,6 @@
 			"@id": "rdfs:subClassOf",
 			"@type": "@vocab"
 		},
-		"example": {
-			"@type": "https://schema.org/Text"
-		},
 		"defines": {
 			"@reverse": "rdfs:isDefinedBy"
 		},

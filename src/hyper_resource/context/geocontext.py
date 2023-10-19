@@ -80,6 +80,7 @@ class GeoCollectionContext(GeoContext):
         context = copy.deepcopy(FEATURE_CONTEXT_TEMPLATE_VOCABS)
         context[ACONTEXT_KEYWORK][self.get_geometry_type()] = f"{PREFIX_GEOJSONLD}:{self.get_geometry_type()}"
         context[ACONTEXT_KEYWORK].update(self.get_properties_term_definition_dict())
+        context[ACONTEXT_KEYWORK].update({"FeatureCollection": f"{PREFIX_GEOJSONLD}:FeatureCollection"})
         context[ACONTEXT_KEYWORK].update( {"features": {"@container": "@set", "@id": f"{PREFIX_GEOJSONLD}:features"}} )
         return context
 
