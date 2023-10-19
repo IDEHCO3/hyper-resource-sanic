@@ -11,6 +11,8 @@ MIME_TYPE_JSONLD = "application/ld+json"
 from src.hyper_resource.basic_route import *
 class AbstractResource:
     MAP_MODEL_FOR_CONTEXT = {}
+    PATH_SEP = "/"
+
     model_class = None
     def __init__(self, request):
         self.request = request
@@ -53,6 +55,9 @@ class AbstractResource:
 
     def entity_class(self) -> AlchemyBase:
         raise NotImplementedError("'entity_class' must be implemented in subclasses")
+
+    def get_metadata_reference(self) -> str:
+        raise NotImplementedError("'get_metadata_reference' must be implemented in subclasses")
 
     def metadata_table(self):
         return self.entity_class().__table__

@@ -16,6 +16,7 @@ from shapely import wkb
 from settings import BASE_DIR, SOURCE_DIR
 import sanic
 
+from src.hyper_resource.abstract_resource import AbstractResource
 from src.hyper_resource.common_resource import CONTENT_TYPE_HTML, CONTENT_TYPE_OCTET_STREAM, CONTENT_TYPE_GEOBUF, \
     CONTENT_TYPE_WKB, CONTENT_TYPE_VECTOR_TILE, CONTENT_TYPE_JSON, CONTENT_TYPE_GEOJSON, CONTENT_TYPE_GML, \
     CONTENT_TYPE_FLATGEOBUFFERS, CONTENT_TYPE_IMAGE_PNG
@@ -230,21 +231,38 @@ class FeatureCollectionResource(SpatialCollectionResource):
                 await response.write(row['st_asbinary'])
         return sanic.response.stream(streaming_fn, content_type='application/x-wkb')
 
+    async def add_link_headers(self, response):
+        up_link = AbstractResource.PATH_SEP.join(self.request.url.split(AbstractResource.PATH_SEP)[:-1])
+        context_link = self.request.url[:-1] if self.request.url.endswith(AbstractResource.PATH_SEP) else self.request.url
+        context_rel = "rel=\"http://www.w3.org/ns/json-ld#context\""
+        link_content = f"<{up_link}>; rel=\"up\", <{context_link}.jsonld>; {context_rel}, type=\"{MIME_TYPE_JSONLD}\""
+        try:
+            link_content = f'{link_content}, {self.get_metadata_reference()}; rel=\"metadata\"'
+        except NotImplementedError:
+            pass
+
+        response.headers.update({
+            "Link": link_content
+        })
+        return response
+
     async def get_representation(self):
         accept = self.accept_type()
         if CONTENT_TYPE_HTML in accept:
-            return await self.get_html_representation()
+            resp = await self.get_html_representation()
         elif (CONTENT_TYPE_GEOBUF in accept) or (CONTENT_TYPE_OCTET_STREAM in accept):
-            return await self.get_geobuf_representation(prefix=self.protocol_host())
+            resp = await self.get_geobuf_representation(prefix=self.protocol_host())
         elif (CONTENT_TYPE_FLATGEOBUFFERS in accept):
-            return await self.get_flatgeobuf_representation(prefix=self.protocol_host())
+            resp = await self.get_flatgeobuf_representation(prefix=self.protocol_host())
         elif CONTENT_TYPE_IMAGE_PNG in self.accept_type():
             query: str = self.dialect_DB().query_build_by()
-            return await self.get_image_representation(query)
+            resp = await self.get_image_representation(query)
         elif CONTENT_TYPE_WKB in self.accept_type():
-             return await self.get_wkb_representation()
+            resp = await self.get_wkb_representation()
         else:
-            return await self.get_json_representation()
+            resp = await self.get_json_representation()
+        resp = await self.add_link_headers(resp)
+        return resp
 
     async def get_mvt_representation_given_path(self, path):
         #application/vnd.mapbox-vector-tile
