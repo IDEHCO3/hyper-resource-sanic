@@ -246,6 +246,11 @@ class FeatureCollectionResource(SpatialCollectionResource):
         })
         return response
 
+    async def head(self):
+        resp = sanic.response.empty(status=200)
+        resp = await self.add_link_headers(resp)
+        return resp
+
     async def get_representation(self):
         accept = self.accept_type()
         if CONTENT_TYPE_HTML in accept:
@@ -378,9 +383,12 @@ class FeatureCollectionResource(SpatialCollectionResource):
         except (RuntimeError, TypeError, NameError) as err:
             print(err)
             raise
+
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
-        return sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
+        resp = sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
+        resp = await self.add_link_headers(resp)
+        return resp
 
     def dialect_DB(self)-> DialectDbPostgis:
         if self.dialect_db is None:

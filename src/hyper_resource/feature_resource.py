@@ -8,6 +8,7 @@ from shapely import wkb
 
 from settings import SOURCE_DIR
 from src.hyper_resource import feature_utils
+from .abstract_resource import AbstractResource
 from ..hyper_resource.common_resource import *
 
 from src.hyper_resource.common_resource import *
@@ -74,17 +75,39 @@ class FeatureResource(SpatialResource):
         j_d = model.json_dict(model.__class__.attribute_names())
         return sanic.response.json(j_d)
 
+    async def head(self, id:int):
+        resp = sanic.response.empty(status=200)
+        resp = await self.add_link_headers(resp)
+        return resp
+
+    async def add_link_headers(self, response):
+        up_link = AbstractResource.PATH_SEP.join(self.request.url.split(AbstractResource.PATH_SEP)[:-1])
+        context_link = self.request.url[:-1] if self.request.url.endswith(AbstractResource.PATH_SEP) else self.request.url
+        context_rel = "rel=\"http://www.w3.org/ns/json-ld#context\""
+        link_content = f"<{up_link}>; rel=\"up\", <{context_link}.jsonld>; {context_rel}, type=\"{MIME_TYPE_JSONLD}\""
+        try:
+            link_content = f'{link_content}, {self.get_metadata_reference()}; rel=\"metadata\"'
+        except NotImplementedError:
+            pass
+
+        response.headers.update({
+            "Link": link_content
+        })
+        return response
+
     async def get_representation(self, id_or_key_value: Optional[Any] = None):
         if type(id_or_key_value) == tuple:
             self.entity_class()
         try:
             accept = self.request.headers['accept']
             if CONTENT_TYPE_HTML in accept:
-                return await self.get_html_representation(id_or_key_value)
+                resp = await self.get_html_representation(id_or_key_value)
             elif CONTENT_TYPE_WKB in accept:
-                return await self.get_wkb_representation(id_or_key_value)
+                resp = await self.get_wkb_representation(id_or_key_value)
             else:
-                return await self.get_json_representation(id_or_key_value)
+                resp = await self.get_json_representation(id_or_key_value)
+            resp = await self.add_link_headers(resp)
+            return resp
         except (Exception, SyntaxError, NameError) as err:
             print(err)
             return sanic.response.json({"Error": f"{err}"})
@@ -174,7 +197,9 @@ class FeatureResource(SpatialResource):
 
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
-        return response.json(context.get_basic_context(), content_type=CONTENT_TYPE_LD_JSON)
+        resp = response.json(context.get_basic_context(), content_type=CONTENT_TYPE_LD_JSON)
+        resp = await self.add_link_headers(resp)
+        return resp
 
     async def options_given_path(self, id, path):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
