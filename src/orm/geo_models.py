@@ -26,6 +26,14 @@ class AlchemyGeoBase(AlchemyBase):
         return isinstance(value, InstrumentedAttribute) and type(value.property.columns[0].type) == Geometry
 
     @classmethod
+    def is_primary_key(cls, value: object) -> bool:
+        return isinstance(value, InstrumentedAttribute) and value.property.columns[0].primary_key
+
+    @classmethod
+    def primary_key_name(cls) -> Optional[str]:
+        return next((key for key, value in cls.__dict__.items() if cls.is_primary_key(value)), None)
+
+    @classmethod
     def geo_attribute_name(cls) -> Optional[str]:
         return next((key for key, value in cls.__dict__.items() if cls.is_geometry(value)), None)
 

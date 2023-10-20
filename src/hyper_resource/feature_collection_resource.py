@@ -42,6 +42,9 @@ class FeatureCollectionResource(SpatialCollectionResource):
     def get_geom_attribute(self) -> str:
         return self.entity_class().geo_attribute_name()
 
+    def get_primary_key_attribute(self) -> str:
+        return self.entity_class().primary_key_name()
+
     def get_geom_column(self) -> str:
         return self.dialect_DB().get_geom_column()
 
@@ -80,6 +83,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
         if CONTENT_TYPE_HTML in self.accept_type():
             return await super(FeatureCollectionResource, self).rows_as_dict(rows)
         response_data = []
+        pk_attribute = self.get_primary_key_attribute()
         geom_attribute = geom_attribute_name or self.get_geom_attribute()
         a_row: Record = rows[0]
         if geom_attribute not in list(a_row):
@@ -91,12 +95,14 @@ class FeatureCollectionResource(SpatialCollectionResource):
                 row_dict = await self.dialect_DB().convert_row_to_dict(row)
                 feature = {"type": "Feature"}
                 geom_value = row_dict[geom_attribute]
+                pk_value = row_dict[pk_attribute]
                 if type(geom_value) == str:
                     geom_value = wkb.loads(geom_value, hex=True)
                 else:
                     geom_value = wkb.loads(geom_value)
                 geometry = geom_value.__geo_interface__ #json.loads(row_dict[geom_attrubute])
                 row_dict.pop(geom_attribute, None)
+                row_dict.pop(pk_attribute, None)
                 #geometry.pop("crs", None)
                 #"crs": {
                 #    "type": "name",
@@ -104,6 +110,8 @@ class FeatureCollectionResource(SpatialCollectionResource):
                 #        "name": "EPSG:4326"
                 #    }
                 #}
+                # feature['id'] = f"{self.request.url}{AbstractResource.PATH_SEP}{pk_value}"
+                feature['id'] = pk_value
                 feature["geometry"] = geometry
                 feature["properties"] = row_dict
                 response_data.append(feature)
