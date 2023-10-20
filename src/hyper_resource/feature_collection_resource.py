@@ -110,8 +110,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
                 #        "name": "EPSG:4326"
                 #    }
                 #}
-                # feature['id'] = f"{self.request.url}{AbstractResource.PATH_SEP}{pk_value}"
-                feature['id'] = pk_value
+                feature['id'] = f"{self.request.url}{AbstractResource.PATH_SEP}{pk_value}"
                 feature["geometry"] = geometry
                 feature["properties"] = row_dict
                 response_data.append(feature)
