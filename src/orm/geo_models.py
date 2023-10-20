@@ -7,6 +7,8 @@ from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping
 from shapely.ops import transform
 from sqlalchemy.orm import InstrumentedAttribute, ColumnProperty
+
+from src.hyper_resource.abstract_resource import AbstractResource
 from src.orm.dictionary_actions import  ActionFunction, ActionAttribute ,ParamAction,  dic_action
 from src.orm.action_type import FUNCTION, ATTRIBUTE, Action
 from src.orm.models import AlchemyBase
@@ -63,11 +65,14 @@ class AlchemyGeoBase(AlchemyBase):
         attrib_names = attrib_names if attrib_names is not None else self.__class__.attributes_with_dereferenceable()
         if self.geo_attribute_name() in attrib_names:
             if len(attrib_names) > 1:
+                props = self.properties_dict_without_geom(attrib_names)
+                props.pop(self.primary_key(), None)
+
                 dic = {
                     "type": "Feature",
-                    "id": getattr(self, self.primary_key()),
+                    "id": f"{getattr(self, self.primary_key())}",
                     "geometry": mapping(self.get_base_geom()),
-                    "properties": self.properties_dict_without_geom(attrib_names)
+                    "properties": props
                 }
             else:
                 dic = mapping(self.get_base_geom())

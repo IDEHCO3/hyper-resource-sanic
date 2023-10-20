@@ -49,6 +49,7 @@ FEATURE_CONTEXT_TEMPLATE = {
         #     "@id": "geojson:features"
         # },
         "type": "@type",
+        "id": "@id",
         "geometry": "geojson:geometry",
         "properties": "geojson:properties"
     }

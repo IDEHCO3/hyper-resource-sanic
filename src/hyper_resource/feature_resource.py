@@ -68,11 +68,18 @@ class FeatureResource(SpatialResource):
             content = self.set_html_variables(html_content)
             return sanic.response.html(content, 200)
 
+    async def add_identifier(self, serialized):
+        identifier = f"{self.request.url}{AbstractResource.PATH_SEP}"
+        identifier = identifier[:-1] if identifier.endswith(AbstractResource.PATH_SEP) else identifier
+        serialized["id"] = identifier
+        return serialized
+
     async def get_json_representation(self, id_or_key_value):
         model = await self.dialect_DB().fetch_one_model(id_or_key_value)
         if model is None:
             return sanic.response.json("The resource was not found.", status=404)
         j_d = model.json_dict(model.__class__.attribute_names())
+        j_d = await self.add_identifier(j_d)
         return sanic.response.json(j_d)
 
     async def head(self, id:int):
