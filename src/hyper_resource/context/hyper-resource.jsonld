@@ -50,112 +50,81 @@
 			"comment": "The class of Hyper Resource classes."
 		},
 		{
-			"@id": "hr:Operation",
-			"@type": "hr:Class",
-			"label": "Operation",
-			"comment": "An operation."
-		},
+            "@id": "hr:Operation",
+            "@type": "hr:Class",
+            "label": "Operation",
+            "comment": "An operation."
+        },
+        {
+            "@id": "hr:OperationParameter",
+            "rdfs:domain": ":hr:Operation",
+            "rdfs:range": "schema:Text",
+            "comment": "Parameter of a given operation"
+        },
 		{
-			"@id": "hr:supportedOperations",
-			"@container": "@list",
-			"@type": "rdf:Property",		
-			"label": "supported operation",
-			"comment": "An list of operations supported by instances of the specific Hyper Resource class",
-			"domain": "hr:Resource",
-			"range": "hydra:Operation"
-		},
+            "@id": "hr:supportedOperations",
+            "@container": "@list",
+            "@type": "rdf:Property",
+            "label": "supported operation",
+            "comment": "An list of operations supported by instances of the specific Hyper Resource class",
+            "domain": "hr:Resource",
+            "range": "hr:Operation"
+        },
 		{
-			"@id": "hydra:method",
-			"@type": "rdf:Property",
-			"label": "method",
-			"comment": "The HTTP method.",
-			"domain": "hr:Operation",
-			"range": "schema:Text"
-		},
+            "@id": "hr:appendPath",
+            "@type": "rdf:Property",
+            "label": "Operation URL path",
+            "comment": "Specification of the path expected to be appended to current URL with placeholders to be fulfiled according with operation params",
+            "domain": "hr:Operation",
+            "range": "schema:Text"
+        },
 		{
-			"@id": "hydra:expectsHeader",
-			"@type": "rdf:Property",
-			"label": "expects header",
-			"comment": "Specification of the header expected by the operation.",
-			"domain": "hr:Operation"
-
-		},
+            "@id": "hr:parameters",
+            "@container": "@list",
+            "@type": "rdf:Property",
+            "label": "operation parameters",
+            "comment": "The list of informations expected by the Web API in a given operation",
+            "domain": "hr:Operation",
+            "range": "hr:OperationParameter"
+        },
+        {
+            "@id": "hr:requiredParameter",
+            "@type": "rdf:Property",
+            "comment": "True if the client need to insert the parameter value into URL, false otherwise.",
+            "domain": "hr:OperationParameter",
+            "label": "required parameter",
+            "rdfs:range": "schema:Boolean"
+        },
+        {
+            "@id": "hr:variable",
+            "@type": "rdf:Property",
+            "comment": "Indicates a label to be replaced by serilized string in URL of the operation",
+            "domain": "hr:OperationParameter",
+            "label": "variable",
+            "rdfs:range": "schema:Text"
+        },
+        {
+            "@id": "hr:expectsSerialization",
+            "@type": "rdf:Property",
+            "comment": "Indicates de acceptable mime types to serialize the parameter value into string",
+            "domain": "hr:OperationParameter",
+            "label": "expectsSerialization"
+        },
 		{
-			"@id": "hr:appendPath",
-			"@type": "rdf:Property",
-			"label": "Operation URL path",
-			"comment": "Specification of the path expected to be appended to current URL with placeholders to be fulfiled according with operation params",
-			"domain": "hr:Operation",
-			"range": "schema:Text"
-		},
-		{
-			"@id": "hr:parameters",
-			"@container": "@list",
-			"@type": "rdf:Property",		
-			"label": "Operation parameters",
-			"comment": "The list of informations expected by the Web API in a given operation",
-			"domain": "hr:Operation",
-			"range": "hr:OperationParameter"
-		},
-		{
-			"@id": "hr:OperationParameter",
-			"@type": "hr:Class",
-			"label": "Operation parameter",
-			"comment": "Parameter of a given operation"
-		},
-
-		{
-			"@id": "hr:SupportedProperty",
-			"@type": "hr:Class",
-			"label": "Supported Property",
-			"comment": "A property known to be supported by a Hyper Resource Class.",
-			"isDefinedBy": "http://127.0.0.1:8000/core#"
-		},
-		{
-			"@id": "hr:property",
-			"@type": "rdf:Property",
-			"label": "property",
-			"comment": "The property name",
-			"domain": "hr:SupportedProperty",
-			"range": "schema:Text",
-			"isDefinedBy": "http://127.0.0.1:8000/core#"
-		},
+            "@id": "hr:SupportedProperty",
+            "@type": "hr:Class",
+            "label": "Supported Property",
+            "comment": "A property known to be supported by a Hyper Resource Class.",
+            "subClassOf": "hydra:SupportedProperty"
+        },
 		{
 			"@id": "hr:isExternal",
 			"@type": "rdf:Property",
 			"label": "isExternal",
 			"comment": "True if the property value is a dereferencable, false if the property value belongs to the current resource",
 			"domain": "hr:SupportedProperty",
-			"range": "schema:Boolean",
-			"isDefinedBy": "http://127.0.0.1:8000/core#"
+			"range": "schema:Boolean"
 		},
-		{
-            "@id": "hr:required",
-            "@type": "rdf:Property",
-            "label": "required",
-            "comment": "True if the property is required, false otherwise.",
-            "range": "schema:Boolean",
-            "domain": "hr:SupportedProperty",
-            "isDefinedBy": "http://127.0.0.1:8000/core#"
-        },
-		 {
-            "@id": "hr:readable",
-            "@type": "rdf:Property",
-            "label": "readable",
-            "comment": "True if the client can retrieve the property's value, false otherwise.",
-            "domain": "hr:SupportedProperty",
-            "range": "schema:Boolean",
-            "isDefinedBy": "http://127.0.0.1:8000/core#"
-        },
-        {
-            "@id": "hr:writable",
-            "@type": "rdf:Property",
-            "label": "writable",
-            "comment": "True if the client can change the property's value, false otherwise.",
-            "domain": "hr:SupportedProperty",
-            "range": "schema:Boolean",
-            "isDefinedBy": "http://127.0.0.1:8000/core#"
-        },
 		{
 			"@id": "hr:supportedProperties",
 			"@container": "@list",
