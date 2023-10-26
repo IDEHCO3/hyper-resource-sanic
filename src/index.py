@@ -29,27 +29,38 @@ host = env.str("HOST", "127.0.0.1")
 debug=env.bool("DEBUG", False)
 access_log = env.bool("ACESS_LOG", False)
 MIME_TYPE_JSONLD = "application/ld+json"
+HTTP_SAFE_METHODS = ["GET", "HEAD", "OPTIONS"]
+HTTP_ALLOW_HEADER = "Allow"
 
 @app.middleware("request")
 async def print_on_request(request):
     pass
 
-def get_entry_point_header(request: Request):
+def get_link_entry_point_header(request: Request):
     base_iri = request.scheme + '://' + request.host
-    _headers = {
+    return {
         'Access-Control-Expose-Headers': 'Link',
         'Link': f"<{base_iri}>; rel=\"https://schema.org/EntryPoint\", "
                 f"<{base_iri}.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\""
     }
+
+def get_accept_entry_point_header() -> dict[str, str]:
+    d = {}
+    d[HTTP_ALLOW_HEADER] = ", ".join(HTTP_SAFE_METHODS)
+    return d
+
+def get_entry_point_header(request: Request):
+    _headers = get_link_entry_point_header(request)
+    _headers.update(get_accept_entry_point_header())
     return _headers
 
 @app.route("/", methods=["GET"])
 def handle_request(request: Request):
-    return response.json(api_entry_point(), headers=get_entry_point_header(request), status=200)
+    return response.json(api_entry_point(request), headers=get_entry_point_header(request), status=200)
 
 @app.route("/", methods=["OPTIONS"])
 def handle_request_options(request: Request):
-    return response.json(api_entry_point_context(api_entry_point()), headers=get_entry_point_header(request), status=200)
+    return response.json(api_entry_point_context(api_entry_point(request)), headers=get_entry_point_header(request), status=200)
     # return response.json(api_entry_point(), headers=_headers, status=200)
 
 @app.route("/", methods=["HEAD"])

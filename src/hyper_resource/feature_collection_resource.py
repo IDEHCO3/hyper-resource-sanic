@@ -1,4 +1,6 @@
 import io
+import urllib
+
 import matplotlib.pyplot as plt
 import time
 from typing import List, Tuple, Optional, Dict
@@ -8,6 +10,7 @@ import geopandas as gpd
 import cartopy.crs as ccrs
 import shapely
 from geopandas import GeoDataFrame
+from sanic import Request
 from shapely.geometry import Point, LineString, Polygon, MultiPolygon, MultiPoint, MultiLineString
 from databases.backends.postgres import Record
 from geoalchemy2 import Geometry, shape
@@ -16,6 +19,7 @@ from shapely import wkb
 from settings import BASE_DIR, SOURCE_DIR
 import sanic
 
+from src.hyper_resource.abstract_collection_resource import AbstractCollectionResource
 from src.hyper_resource.abstract_resource import AbstractResource
 from src.hyper_resource.common_resource import CONTENT_TYPE_HTML, CONTENT_TYPE_OCTET_STREAM, CONTENT_TYPE_GEOBUF, \
     CONTENT_TYPE_WKB, CONTENT_TYPE_VECTOR_TILE, CONTENT_TYPE_JSON, CONTENT_TYPE_GEOJSON, CONTENT_TYPE_GML, \
@@ -253,9 +257,18 @@ class FeatureCollectionResource(SpatialCollectionResource):
         })
         return response
 
+    async def add_accept_feature_collection_header(self, response) -> dict[str, str]:
+        response.headers[AbstractResource.HTTP_ALLOW_HEADER] = ", ".join(AbstractCollectionResource.COLLECTION_ALLOWED_METHODS)
+        return response
+
+    async def add_feature_collection_header(self, response):
+        response = await self.add_link_headers(response)
+        response = await self.add_accept_feature_collection_header(response)
+        return response
+
     async def head(self):
         resp = sanic.response.empty(status=200)
-        resp = await self.add_link_headers(resp)
+        resp = await self.add_feature_collection_header(resp)
         return resp
 
     async def get_representation(self):
@@ -273,7 +286,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
             resp = await self.get_wkb_representation()
         else:
             resp = await self.get_json_representation()
-        resp = await self.add_link_headers(resp)
+        resp = await self.add_feature_collection_header(resp)
         return resp
 
     async def get_mvt_representation_given_path(self, path):
@@ -394,7 +407,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
         resp = sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
-        resp = await self.add_link_headers(resp)
+        resp = await self.add_feature_collection_header(resp)
         return resp
 
     def dialect_DB(self)-> DialectDbPostgis:

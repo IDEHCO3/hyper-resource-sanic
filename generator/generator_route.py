@@ -134,10 +134,11 @@ def generate_route_file(path, file_name, file_name_hyfen, class_name, has_patch=
 def generate_entry_point_file(path, file_name, file_names_hyfen, class_names):
     file_with_path = os.path.join(path, f'{file_name}.py')
     with open(file_with_path, 'w') as file:
-        file.write('def api_entry_point():\n')
+        file.write('from sanic.request import Request\n\n')
+        file.write('def api_entry_point(request: Request):\n')
         file.write('    return {\n')
         for i in range(0, len(file_names_hyfen)):
-            s = f'      "{file_names_hyfen[i]}-list": "{protocol}//{host}:{port}/{file_names_hyfen[i]}-list",\n'
+            s = f'      "{file_names_hyfen[i]}-list": f"{protocol}//' + '{request.host}' + f':{port}/{file_names_hyfen[i]}-list",\n'
             file.write(s)
         file.write('    }\n')
 

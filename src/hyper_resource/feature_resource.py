@@ -84,8 +84,17 @@ class FeatureResource(SpatialResource):
 
     async def head(self, id:int):
         resp = sanic.response.empty(status=200)
-        resp = await self.add_link_headers(resp)
+        resp = await self.add_feature_resource_header(resp)
         return resp
+
+    async def add_accept_feature_resource_header(self, response) -> dict[str, str]:
+        response.headers[AbstractResource.HTTP_ALLOW_HEADER] = ", ".join(AbstractResource.ITEM_ALLOWED_METHODS)
+        return response
+
+    async def add_feature_resource_header(self, response) -> dict[str, str]:
+        response = await self.add_accept_feature_resource_header(response)
+        response = await self.add_link_headers(response)
+        return response
 
     async def add_link_headers(self, response):
         up_link = AbstractResource.PATH_SEP.join(self.request.url.split(AbstractResource.PATH_SEP)[:-1])
@@ -113,7 +122,7 @@ class FeatureResource(SpatialResource):
                 resp = await self.get_wkb_representation(id_or_key_value)
             else:
                 resp = await self.get_json_representation(id_or_key_value)
-            resp = await self.add_link_headers(resp)
+            resp = await self.add_feature_resource_header(resp)
             return resp
         except (Exception, SyntaxError, NameError) as err:
             print(err)
@@ -205,7 +214,7 @@ class FeatureResource(SpatialResource):
     async def options(self, *args, **kwargs):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
         resp = response.json(context.get_basic_context(), content_type=CONTENT_TYPE_LD_JSON)
-        resp = await self.add_link_headers(resp)
+        resp = await self.add_feature_resource_header(resp)
         return resp
 
     async def options_given_path(self, id, path):

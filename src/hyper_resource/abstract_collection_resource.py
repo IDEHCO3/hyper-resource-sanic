@@ -37,6 +37,8 @@ collection_function_names = [
 
 
 class AbstractCollectionResource(AbstractResource):
+    COLLECTION_ALLOWED_METHODS = ['GET', 'POST', 'HEAD', 'OPTIONS']
+
     def __init__(self, request):
         super().__init__(request)
         self.context_class = AbstractCollectionContext

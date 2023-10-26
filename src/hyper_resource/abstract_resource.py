@@ -12,6 +12,9 @@ from src.hyper_resource.basic_route import *
 class AbstractResource:
     MAP_MODEL_FOR_CONTEXT = {}
     PATH_SEP = "/"
+    HTTP_ACCEPT_HEADER = "Accept"
+    HTTP_ALLOW_HEADER = "Allow"
+    ITEM_ALLOWED_METHODS = ['GET', 'PUT', 'HEAD', 'OPTIONS']
 
     model_class = None
     def __init__(self, request):
