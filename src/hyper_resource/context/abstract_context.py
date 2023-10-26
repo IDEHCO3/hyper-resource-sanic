@@ -7,9 +7,30 @@ import copy
 from environs import Env
 from sqlalchemy.inspection import inspect
 
-ACONTEXT_KEYWORK = "@context"
-ATYPE_KEYWORK = "@type"
-AID_KEYWORK = "@id"
+ACONTEXT_KEYWORD = "@context"
+ATYPE_KEYWORD = "@type"
+AID_KEYWORD = "@id"
+ASET_KEYWORD = "@set"
+ACONTAINER_KEYWORD = "@container"
+HYPER_RESOURCE_VOCAB_KEY = "hr"
+SUPPORTED_OPERATIONS_KEYWORD = f"{HYPER_RESOURCE_VOCAB_KEY}:supportedOperations"
+OPERATION_KEYWORD = f"{HYPER_RESOURCE_VOCAB_KEY}:Operation"
+APPEND_PATH_KEYWORD = f"{HYPER_RESOURCE_VOCAB_KEY}:appendPath"
+VARIABLE_PATH_KEYWORD = f"{HYPER_RESOURCE_VOCAB_KEY}:variable"
+REQUIRED_PARAMETER_PATH_KEYWORD = f"{HYPER_RESOURCE_VOCAB_KEY}:requiredParameter"
+OPERATION_PARAMETER_KEYWORD = f"{HYPER_RESOURCE_VOCAB_KEY}:OperationParameter"
+EXPECTS_KEYWORD_SERIALIZATION = f"{HYPER_RESOURCE_VOCAB_KEY}:expectsSerialization"
+PARAMETERS_KEYWORD = f"{HYPER_RESOURCE_VOCAB_KEY}:parameters"
+
+HYDRA_VOCAB_KEY = "hydra"
+HYDRA_METHOD_KEYWORD = f"{HYDRA_VOCAB_KEY}:method"
+HYDRA_RETURNS_HEADER_KEYWORD = f"{HYDRA_VOCAB_KEY}:returnsHeader"
+HYDRA_HEADER_NAME_KEYWORD = f"{HYDRA_VOCAB_KEY}:headerName"
+HYDRA_POSSIBLE_VALUE_KEYWORD = f"{HYDRA_VOCAB_KEY}:possibleValue"
+HYDRA_POSSIBLE_STATUS_VALUE_KEYWORD = f"{HYDRA_VOCAB_KEY}:possibleStatus"
+HYDRA_EXPECTS_HEADER_KEYWORD = f"{HYDRA_VOCAB_KEY}:expectsHeader"
+HYDRA_EXPECTS_KEYWORD = f"{HYDRA_VOCAB_KEY}:expects"
+
 env = Env()
 env.read_env()
 port = env.str("PORT", "8002")
@@ -19,8 +40,8 @@ PREFIX_HYPER_RESOURCE = "hr"
 PREFIX_SCHEMA_ORG = "schema"
 
 VOCABS_TEMPLATE = {
-    f"{ACONTEXT_KEYWORK}": {
-        f"{PREFIX_HYPER_RESOURCE}": f"http://{host}:{port}/core",
+    f"{ACONTEXT_KEYWORD}": {
+        f"{PREFIX_HYPER_RESOURCE}": f"http://hyper-resource.org/core",
         f"{PREFIX_SCHEMA_ORG}": "http://schema.org/",
     }
 }
@@ -33,26 +54,26 @@ class AbstractContext(object):
 
     def get_basic_context(self):
         context = copy.deepcopy(VOCABS_TEMPLATE)
-        context[ACONTEXT_KEYWORK].update(self.get_properties_term_definition_dict())
+        context[ACONTEXT_KEYWORD].update(self.get_properties_term_definition_dict())
         # context.update(self.get_type_by_model_class())
         context.update(AbstractResource.MAP_MODEL_FOR_CONTEXT[self.entity_class].get_type_by_model_class())
         return context
 
     def get_projection_context(self, attributes: List[str]):
         context = copy.deepcopy(VOCABS_TEMPLATE)
-        context[ACONTEXT_KEYWORK].pop(PREFIX_HYPER_RESOURCE)
+        context[ACONTEXT_KEYWORD].pop(PREFIX_HYPER_RESOURCE)
         filtered_term_def_dict = dict()
         for term, definition in self.get_properties_term_definition_dict().items():
             if term in attributes:
                 filtered_term_def_dict.update({term: definition})
-        context[ACONTEXT_KEYWORK].update(filtered_term_def_dict)
+        context[ACONTEXT_KEYWORD].update(filtered_term_def_dict)
         context.update(AbstractResource.MAP_MODEL_FOR_CONTEXT[self.entity_class].get_type_by_model_class())
         return context
 
     def get_foreign_key_context(self, fk_model):
         d = AbstractResource.MAP_MODEL_FOR_CONTEXT[fk_model].get_type_by_model_class()
-        fk_context = {ATYPE_KEYWORK: AID_KEYWORK}
-        fk_context[AID_KEYWORK] = d[ATYPE_KEYWORK]
+        fk_context = {ATYPE_KEYWORD: AID_KEYWORD}
+        fk_context[AID_KEYWORD] = d[ATYPE_KEYWORD]
         return fk_context
 
     def get_properties_term_definition_dict(self):
@@ -69,7 +90,7 @@ class AbstractContext(object):
 
     @staticmethod
     def get_type_by_model_class():
-        return {ATYPE_KEYWORK: PYTHON_SCHEMA_ORG_TYPES[object]}
+        return {ATYPE_KEYWORD: PYTHON_SCHEMA_ORG_TYPES[object]}
 
 
 class AbstractCollectionContext(AbstractContext):

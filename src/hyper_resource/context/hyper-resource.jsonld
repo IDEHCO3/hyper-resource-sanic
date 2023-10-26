@@ -1,6 +1,6 @@
 {
 	"@context": {
-		"hr": "http://127.0.0.1:8000/core#",
+		"hr": "http://hyper-resource.org/core#",
 		"hydra": "http://www.w3.org/ns/hydra/core#",
 		"rdfs": "http://www.w3.org/2000/01/rdf-schema#",
 		"owl": "http://www.w3.org/2002/07/owl#",
@@ -57,8 +57,7 @@
         },
         {
             "@id": "hr:OperationParameter",
-            "rdfs:domain": ":hr:Operation",
-            "rdfs:range": "schema:Text",
+            "rdfs:domain": "hr:Operation",
             "comment": "Parameter of a given operation"
         },
 		{
