@@ -217,6 +217,48 @@ class FeatureResource(SpatialResource):
         resp = await self.add_feature_resource_header(resp)
         return resp
 
+    def get_feature_required_keys(self):
+        return ["type", "geometry", "properties"]
+
+    def get_geometry_required_keys(self):
+        return ["type", "coordinates"]
+
+    # todo: to be implemented
+    def validate_attribute_names(self, attribute_names: List[str]) -> bool:
+        # s1 = set(self.dialect_DB().required_attribute_names())
+        # s2 = set(attribute_names)
+        # set_final = s2.difference(s1)
+        # if len(set_final) > 0:
+        #     raise NameError(f"The attribute list was not found: {set_final.__str__()}")
+        return True
+
+    def validate_data(self, attribute_value: dict):
+        for k in self.get_feature_required_keys():
+            if k not in list(attribute_value.keys()):
+                return False
+
+        for k in self.get_geometry_required_keys():
+            if k not in list(attribute_value["geometry"].keys()):
+                return False
+        self.validate_attribute_names(list(attribute_value["properties"].keys()))
+
+    async def put(self, id):
+        data = self.request.json
+        try:
+            data = self.request.json
+            print(f"Dados enviados para atualizar: {data}")
+            self.validate_data(data)
+            await self.dialect_DB().update(id, data)
+        except (Exception, SyntaxError, NameError) as err:
+            print(err)
+            return sanic.response.json({"Error": f"{err}"}, status=400)
+
+        return sanic.response.empty(status=204)
+
+    async def delete(self, id):
+        res = await self.dialect_DB().delete(id)
+        return sanic.response.empty(status=204)
+
     async def options_given_path(self, id, path):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
 

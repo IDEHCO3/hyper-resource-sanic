@@ -270,3 +270,16 @@ class DialectDbPostgis(DialectDbPostgresql):
         query = f"INSERT INTO {self.schema_table_name()}({self.enum_column_names(column_names)}, {self.get_geom_column()}) VALUES ({self.enum_colon_column_names(column_names)}, '{geom_str}')"
         await self.db.execute(query=query, values=dict_column_value)
         return pk_value
+
+    async def update(self, id_or_dict, feature: dict):
+        id_dict = id_or_dict if type(id_or_dict) == dict else {self.entity_class.primary_key(): id_or_dict}
+        list_attr_col_type = self.list_attribute_column_type_given(feature["properties"].keys())
+        dict_column_value = self.convert_all_to_db(list_attr_col_type, feature["properties"], True)
+        tuple_key_value = id_dict.popitem()
+        col_eq_value = tuple_key_value[0] + ' = ' + str(tuple_key_value[1])
+        enum_col_eq_value = self.enum_equal_column_names(dict_column_value)
+        geom = shape(feature['geometry'])
+        geom_str = f"SRID={self.srid};{geom}"
+        query = f"UPDATE {self.schema_table_name()} SET {enum_col_eq_value} , {self.get_geom_column()} = '{geom_str}' WHERE {col_eq_value} "
+        res = await self.db.execute(query=query, values=dict_column_value)
+        return res
