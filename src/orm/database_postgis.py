@@ -1,7 +1,9 @@
+import copy
 import json
 from typing import List, Tuple, Dict, Optional
 from databases.backends.postgres import Record
 from shapely.errors import WKBReadingError
+from shapely.geometry import shape
 from sqlalchemy.orm import InstrumentedAttribute
 from geoalchemy2 import functions, Geometry
 from src.aiohttp_client import ClientIOHTTP
@@ -254,3 +256,17 @@ class DialectDbPostgis(DialectDbPostgresql):
 
         except (ValueError, ConnectionError) as err:
             print('Error: '.format(err))
+
+    async def insert(self, feature: dict):
+        list_attr_col_type = self.list_attribute_column_type_given(feature["properties"].keys())
+        dict_column_value = self.convert_all_to_db(list_attr_col_type, feature["properties"])
+        column_names = copy.deepcopy(list(dict_column_value.keys()))
+        pk_name = self.entity_class.primary_key()
+        if pk_name not in column_names:
+            pk_value = await self.next_val()
+            # dict_column_value[pk_name] = pk_value
+        geom = shape(feature['geometry'])
+        geom_str = f"SRID={self.srid};{geom}"
+        query = f"INSERT INTO {self.schema_table_name()}({self.enum_column_names(column_names)}, {self.get_geom_column()}) VALUES ({self.enum_colon_column_names(column_names)}, '{geom_str}')"
+        await self.db.execute(query=query, values=dict_column_value)
+        return pk_value

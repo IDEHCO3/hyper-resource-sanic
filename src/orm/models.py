@@ -31,6 +31,10 @@ class AlchemyBase(Base):
     @classmethod
     def is_primary_key(cls, attribute: InstrumentedAttribute) -> bool:
         return isinstance(attribute.prop, ColumnProperty) and attribute.prop.columns[0].primary_key
+
+    @classmethod
+    def is_required_attribute(cls, attribute: InstrumentedAttribute) -> bool:
+        return isinstance(attribute.prop, ColumnProperty) and not attribute.prop.columns[0].nullable
     @classmethod
     def is_foreign_key_attribute(cls, attribute) -> bool:
         return isinstance(attribute, InstrumentedAttribute) and isinstance(attribute.prop, RelationshipProperty) and (len(attribute.prop._user_defined_foreign_keys) > 0)
@@ -119,6 +123,14 @@ class AlchemyBase(Base):
         items = cls.__dict__.items() if attrib is None else attrib.__dict__.items()
         return [(key, value) for key, value in items if
                          cls.is_not_foreign_key_attribute(value) or cls.is_relationship_attribute(value)]
+
+    @classmethod
+    def attributes_required(cls) -> List[tuple]:
+        attrs = []
+        for key, value in list(cls.__dict__.items()):
+            if cls.is_required_attribute(value):
+                attrs.append(value)
+        return attrs
 
     @classmethod
     def attribute_names_with_dereferenceable(cls, attrib: InstrumentedAttribute = None) -> List[str]:

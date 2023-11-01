@@ -1,6 +1,7 @@
 """
 Converters to handle python/SQLAlchemy types -> JSON-LD/Schema.org conversions
 """
+from typing import List
 
 from geoalchemy2 import Geometry, Geography, Raster, WKTElement, WKBElement, RasterElement
 from sqlalchemy import ARRAY, BIGINT, BigInteger, BINARY,  BLOB, BOOLEAN, CHAR, CLOB, DATE, Date, DATETIME, \
@@ -95,7 +96,22 @@ SQLALCHEMY_TYPES_OPERATIONS = {
     VARBINARY:      [],
     VARCHAR:        []
 }
+# --- Geospatial collection operations ---
+def within(geometry: Geometry) -> List[Geometry]:
+    pass
+def contains(geometry: Geometry) -> List[Geometry]:
+    pass
 
+GEOMETRY_COLLECTION_EXPOSED_OPERATIONS = [within, contains]
+
+GEOALCHEMY_COLLECTION_TYPES_OPERATIONS = {
+    Geometry:       GEOMETRY_COLLECTION_EXPOSED_OPERATIONS,
+    Geography:      [],
+    Raster:         [],
+    WKTElement:     [],
+    WKBElement:     [],
+    RasterElement:  []
+}
 
 # --- Geospatial operations ---
 def area() -> float:

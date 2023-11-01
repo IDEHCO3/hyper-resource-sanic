@@ -9,6 +9,7 @@ import geopandas as gpd
 
 import cartopy.crs as ccrs
 import shapely
+from asyncpg import UniqueViolationError, DataError
 from geopandas import GeoDataFrame
 from sanic import Request
 from shapely.geometry import Point, LineString, Polygon, MultiPolygon, MultiPoint, MultiLineString
@@ -409,6 +410,62 @@ class FeatureCollectionResource(SpatialCollectionResource):
         resp = sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
         resp = await self.add_feature_collection_header(resp)
         return resp
+
+    def get_feature_required_keys(self):
+        return ["type", "geometry", "properties"]
+
+    def get_geometry_required_keys(self):
+        return ["type", "coordinates"]
+
+    #todo: to be implemented
+    def validate_attribute_names(self, attribute_names: List[str]) -> bool:
+        # s1 = set(self.dialect_DB().required_attribute_names())
+        # s2 = set(attribute_names)
+        # set_final = s2.difference(s1)
+        # if len(set_final) > 0:
+        #     raise NameError(f"The attribute list was not found: {set_final.__str__()}")
+        return True
+
+    def validate_data(self, attribute_value: dict):
+        for k in self.get_feature_required_keys():
+            if k not in list(attribute_value.keys()):
+                return False
+
+        for k in self.get_geometry_required_keys():
+            if k not in list(attribute_value["geometry"].keys()):
+                return False
+
+        # required_attr = self.dialect_DB().required_attribute_names()
+        # if len(required_attr)>0:
+        #     try:
+        #         self.validate_attribute_names(list(attribute_value["properties"].keys()))
+        #     except KeyError:
+        #         raise NameError(f"The 'properties' kwy was not found in geojson")
+        self.validate_attribute_names(list(attribute_value["properties"].keys()))
+
+
+
+    async def post(self):
+        data = self.request.json
+        print(f"Dados enviados: {data}")
+        try:
+            self.validate_data(data)
+            id = await self.dialect_DB().insert(data)
+            path = self.request.path if self.request.path[-1] != '/' else self.request.path[:-1]
+            content_location = f'{path}/{str(id)}'
+        except UniqueViolationError as err:
+            print(err)
+            return sanic.response.json({"Error": "Resource already exists"}, status=409)
+        except DataError as err:
+            print(err)
+            return sanic.response.json({"Error": "Data type"}, status=409)
+        except (Exception, SyntaxError, NameError) as err:
+            print(type(err))
+            print(err)
+            return sanic.response.json({"Error": f"{err}"}, status=400)
+
+        resp = sanic.response.empty(status=201, headers={'Content-Location': content_location})
+        return await self.add_link_headers(resp)
 
     def dialect_DB(self)-> DialectDbPostgis:
         if self.dialect_db is None:

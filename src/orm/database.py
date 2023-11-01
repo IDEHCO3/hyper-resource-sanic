@@ -115,6 +115,9 @@ class DialectDatabase(AbstractDialectDatabase):
     def attribute_names(self) -> List[str]:
         return [key for key, value in self.entity_class.attributes_with_dereferenceable()]
 
+    def required_attribute_names(self) -> List[str]:
+        return [key for key, value in self.entity_class.attributes_required()]
+
     def query_build_by(self, enum_fields: str = '', enum_schema_table: str ='', enum_join: str ='', enum_order_by:str = '', offsetlimit: str = '') -> str:
         raise NotImplementedError("'query_build_by' must be implemented in subclasses")
 
