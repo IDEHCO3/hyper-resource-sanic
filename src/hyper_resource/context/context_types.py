@@ -61,4 +61,3 @@ PYTHON_SCHEMA_ORG_TYPES = {
     str:            f"{PREFIX_SCHEMAORG}:Text",
     object:         f"{PREFIX_SCHEMAORG}:Thing",
 }
-GEOPYTHON_SCHEMA_ORG_TYPES = copy.deepcopy(PYTHON_SCHEMA_ORG_TYPES)
