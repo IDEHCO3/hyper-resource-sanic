@@ -160,17 +160,17 @@ class GeoCollectionContext(GeoContext):
 
                 key = 0
                 for parameter_name, parameter_type in op.__annotations__.items():
-                    param_dict = {
-                        ATYPE_KEYWORD: OPERATION_PARAMETER_KEYWORD,
-                        VARIABLE_PATH_KEYWORD: f"param{key}",
-                        REQUIRED_PARAMETER_PATH_KEYWORD: True  # todo: hardcoded
-                    }
+
                     if not parameter_name == "return":
-                        param_dict.update({
+                        param_dict = {
+                            ATYPE_KEYWORD: OPERATION_PARAMETER_KEYWORD,
+                            VARIABLE_PATH_KEYWORD: f"param{key}",
+                            REQUIRED_PARAMETER_PATH_KEYWORD: True,  # todo: hardcoded
                             HYDRA_EXPECTS_KEYWORD: self.get_expects_for_parameter_type(parameter_type),
-                            EXPECTS_KEYWORD_SERIALIZATION: self.get_expected_serialization_for_parameter_type(parameter_type)
-                        })
-                    operation_dict[PARAMETERS_KEYWORD].append(param_dict)
+                            EXPECTS_KEYWORD_SERIALIZATION: self.get_expected_serialization_for_parameter_type(
+                                parameter_type)
+                        }
+                        operation_dict[PARAMETERS_KEYWORD].append(param_dict)
                     key = key + 1
                 supported_operations.append(operation_dict)
         d =  {SUPPORTED_OPERATIONS_KEYWORD: supported_operations}
