@@ -138,7 +138,7 @@ def generate_entry_point_file(path, file_name, file_names_hyfen, class_names):
         file.write('def api_entry_point(request: Request):\n')
         file.write('    return {\n')
         for i in range(0, len(file_names_hyfen)):
-            s = f'      "{file_names_hyfen[i]}-list": f"{protocol}//' + '{request.host}' + f':{port}/{file_names_hyfen[i]}-list",\n'
+            s = f'      "{file_names_hyfen[i]}-list": f"{protocol}//' + '{request.host}' + f'/{file_names_hyfen[i]}-list",\n'
             file.write(s)
         file.write('    }\n')
 
