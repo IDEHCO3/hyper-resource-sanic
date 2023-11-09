@@ -51,6 +51,7 @@ VOCABS_TEMPLATE = {
     f"{ACONTEXT_KEYWORD}": {
         f"{PREFIX_HYPER_RESOURCE}": f"http://hyper-resource.org/core",
         f"{PREFIX_SCHEMA_ORG}": "http://schema.org/",
+        "id": AID_KEYWORD,
     }
 }
 
@@ -88,6 +89,8 @@ class AbstractContext(object):
         fk_column_names = self.db_dialect.foreign_keys_names()
         term_definition_dict = {}
         for column in self.metadata_table.columns:
+            if column.primary_key:
+                continue
             if str(column.name) in fk_column_names:
                 fk_col = self.db_dialect.foreign_key_column_by_name(column.name)
                 fk_model = self.db_dialect.get_model_by_foreign_key(fk_col)
@@ -102,7 +105,30 @@ class AbstractContext(object):
 
 
 class AbstractCollectionContext(AbstractContext):
-    pass
+
+    def get_basic_context(self):
+        context = copy.deepcopy(VOCABS_TEMPLATE)
+        context[ACONTEXT_KEYWORD].update(self.get_properties_term_definition_dict())
+        context.update(AbstractResource.MAP_MODEL_FOR_CONTEXT[self.entity_class].get_type_by_model_class())
+        context.update(self.get_basic_supported_properties())
+        return context
+
+    def get_basic_supported_properties(self) -> dict:
+        supported_properties = []
+        for column in self.metadata_table.columns:
+            # WARNING: must check if the property is a dereferencable
+            is_fk = column.name in self.db_dialect.foreign_keys_names()
+            property_dict = {
+                ATYPE_KEYWORD: HYDRA_SUPPORTED_PROPERTY_KEYWORD,
+                HYDRA_PROPERTY_KEYWORD: column.name,
+                HYDRA_REQUIRED_KEYWORD: not column.nullable,
+                HYDRA_READABLE_KEYWORD: True,
+                HYDRA_WRITABLE_KEYWORD: not column.primary_key,
+                IS_EXTERNAL_KEYWORD: is_fk
+            }
+            supported_properties.append(property_dict)
+        d = {SUPPORTED_PROPERTIES_KEYWORD: supported_properties}
+        return d
 
 class AbstractDetailContext(AbstractContext):
     pass
