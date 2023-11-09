@@ -151,6 +151,20 @@ class DialectDbPostgis(DialectDbPostgresql):
                 full_columns_names.append(self.metadata_table.fullname + "." + col.name)
         return full_columns_names
 
+    def column_names_alias(self, attrib_names: Optional[List[str]] = None, prefix_col_val: str = None) -> str:
+        attr_names = attrib_names if attrib_names is not None else self.attribute_names()
+        attributes = [self.entity_class.__dict__[name] for name in attr_names]
+        list_alias = []
+        for att in attributes:
+            alias = self.alias_column(att, prefix_col_val)
+            if alias is not None:
+                if att.key == self.get_geom_column():
+                    list_alias.append(alias.replace(att.key, f"ST_ReducePrecision({att.key}, 0.0001)", 1))
+                    # list_alias.append(alias)
+                else:
+                    list_alias.append(alias)
+        return ','.join(list_alias)
+
     def alias_column_old(self, inst_attr: InstrumentedAttribute, prefix_col: str = None):
         if self.entity_class.is_relationship_fk_attribute(inst_attr)  and prefix_col is not None:
             col_name = self.entity_class.column_name_or_None(inst_attr) #inst_attr.prop._user_defined_foreign_keys[0].name

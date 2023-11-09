@@ -121,6 +121,7 @@ async def finish(app, loop):
 
 def setup_database():
     app.db = Database(env.str("URLDB"), ssl=False, min_size=1, max_size=20)
+    # app.dialect_db_class = DialectDbPostgis
     app.dialect_db_class = DialectDbPostgresql
     
 def setup_routes():

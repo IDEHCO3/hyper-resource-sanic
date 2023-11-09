@@ -5,6 +5,8 @@ from environs import Env
 from sanic import Sanic, response
 from sanic.response import text
 from sanic_openapi import swagger_blueprint
+
+from src.orm.database_postgis import DialectDbPostgis
 #from src.middlewares.security import setup_middlewares
 # from src.routes.setor_censitario import setor_censitario_routes
 # from src.routes.unidade_federativa import unidades_federativas_routes
@@ -51,7 +53,8 @@ async def disconnect_from_db(*args, **kwargs):
 def setup_database():
     app.db = Database(env.str("URLDB"), ssl=False, min_size=1, max_size=20)
     app.db.echo= True
-    app.dialect_db_class = DialectDbPostgresql
+    app.dialect_db_class = DialectDbPostgis
+    # app.dialect_db_class = DialectDbPostgresql
     #app.Session = sessionmaker(bind=app.db)
 
 def setup_routes():
