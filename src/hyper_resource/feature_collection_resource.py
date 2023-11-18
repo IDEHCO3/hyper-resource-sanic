@@ -130,7 +130,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
         print(f"time: {start} start rows in python")
         rows = await self.dialect_DB().fetch_all()
         rows_from_db = await self.rows_as_dict(rows)
-        res = sanic.response.json(rows_from_db or [])
+        res = sanic.response.json(rows_from_db or [], content_type=CONTENT_TYPE_GEOJSON)
         #rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
         #res = sanic.response.text(rows or [], content_type='application/json')
         end = time.time()

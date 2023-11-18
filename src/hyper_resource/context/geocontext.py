@@ -64,6 +64,7 @@ FEATURE_CONTEXT_TEMPLATE = {
 }
 FEATURE_CONTEXT_TEMPLATE_VOCABS = copy.deepcopy(FEATURE_CONTEXT_TEMPLATE)
 FEATURE_CONTEXT_TEMPLATE_VOCABS[ACONTEXT_KEYWORD].update(VOCABS_TEMPLATE[ACONTEXT_KEYWORD])
+FEATURE_COLLECTION_KEYWORD = "FeatureCollection"
 
 class GeoContext(AbstractContext):
     def get_properties_term_definition_dict(self):
@@ -185,6 +186,7 @@ class GeoCollectionContext(GeoContext):
         context[ACONTEXT_KEYWORD].update({GEOJSONLD_FEATURES: {ACONTAINER_KEYWORD: ASET_KEYWORD, AID_KEYWORD: f"{PREFIX_GEOJSONLD}:{GEOJSONLD_FEATURES}"}})
         context.update(self.get_basic_supported_operations())
         context.update(self.get_basic_supported_properties())
+        context.update({ATYPE_KEYWORD: FEATURE_COLLECTION_KEYWORD})
         return context
 
 class GeoDetailContext(GeoContext):
