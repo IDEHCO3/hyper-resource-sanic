@@ -1,6 +1,6 @@
 import copy
 
-import geoalchemy2.types
+import geoalchemy2
 
 from src.hyper_resource.common_resource import CONTENT_TYPE_TEXT, CONTENT_TYPE_GEOJSON
 from src.hyper_resource.context.context_types import PYTHON_SCHEMA_ORG_TYPES, HYPER_RESOURCE_TYPES, MIME_TYPES_FOR_TYPE

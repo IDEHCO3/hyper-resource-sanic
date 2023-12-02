@@ -15,7 +15,8 @@ from src.hyper_resource.context.context_types import SQLALCHEMY_SCHEMA_ORG_TYPES
 import copy
 from environs import Env
 
-from src.url_interpreter.interpreter_types import COLLECTION_EXPOSED_OPERATIONS, COLLECTION_TYPES_OPERATIONS, Operator
+from src.url_interpreter.interpreter_types import COLLECTION_EXPOSED_OPERATIONS, COLLECTION_TYPES_OPERATIONS, Operator, \
+    FILTER_OPERATORS
 
 env = Env()
 env.read_env()
@@ -169,10 +170,18 @@ class AbstractCollectionContext(AbstractContext):
     def get_basic_context(self):
         context = copy.deepcopy(VOCABS_TEMPLATE)
         context[ACONTEXT_KEYWORD].update(self.get_properties_term_definition_dict())
+        context[ACONTEXT_KEYWORD].update(self.get_filter_operators_term_definition_dict())
         context.update(AbstractResource.MAP_MODEL_FOR_CONTEXT[self.entity_class].get_type_by_model_class())
         context.update(self.get_basic_supported_properties())
-        context.update(self.get_basic_supported_operations)
+        context.update(self.get_basic_supported_operations())
         return context
+
+    def get_filter_operators_term_definition_dict(self):
+        term_definitions = {}
+        for operator in FILTER_OPERATORS:
+            term_definitions[operator.build().symbol] = f"{PREFIX_SCHEMA_ORG}:{operator.build().name}"
+        return term_definitions
+
 
     def get_basic_supported_properties(self) -> dict:
         supported_properties = []

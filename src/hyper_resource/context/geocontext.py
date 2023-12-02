@@ -11,10 +11,11 @@ from src.hyper_resource.context.abstract_context import AbstractContext, ACONTEX
     HYDRA_EXPECTS_KEYWORD, EXPECTS_KEYWORD_SERIALIZATION, AID_KEYWORD, \
     PARAMETERS_KEYWORD, VARIABLE_PATH_KEYWORD, REQUIRED_PARAMETER_PATH_KEYWORD, \
     HYDRA_PROPERTY_KEYWORD, HYDRA_SUPPORTED_PROPERTY_KEYWORD, HYDRA_REQUIRED_KEYWORD, HYDRA_READABLE_KEYWORD, \
-    HYDRA_WRITABLE_KEYWORD, IS_EXTERNAL_KEYWORD
+    HYDRA_WRITABLE_KEYWORD, IS_EXTERNAL_KEYWORD, PREFIX_SCHEMA_ORG
 from src.hyper_resource.context.geocontext_types import PREFIX_GEOJSONLD, GEOJSONLD_GEOMETRY, \
     GEOJSONLD_FEATURE_COLLECTION, GEOJSONLD_FEATURES, GEOPYTHON_SCHEMA_ORG_TYPES, GEO_MIME_TYPES_FOR_TYPE
-from src.url_interpreter.interpreter_types import GEOALCHEMY_TYPES_OPERATIONS, GEOALCHEMY_COLLECTION_TYPES_OPERATIONS
+from src.url_interpreter.interpreter_types import GEOALCHEMY_TYPES_OPERATIONS, GEOALCHEMY_COLLECTION_TYPES_OPERATIONS, \
+    FILTER_OPERATORS
 from src.hyper_resource.context.context_types import SQLALCHEMY_SCHEMA_ORG_TYPES, PYTHON_SCHEMA_ORG_TYPES, \
     ACONTAINER_KEYWORD, ASET_KEYWORD, SUPPORTED_PROPERTY_KEYWORD
 from environs import Env
@@ -182,6 +183,7 @@ class GeoCollectionContext(GeoContext):
         context = copy.deepcopy(FEATURE_CONTEXT_TEMPLATE_VOCABS)
         context[ACONTEXT_KEYWORD][self.get_geometry_type()] = f"{PREFIX_GEOJSONLD}:{self.get_geometry_type()}"
         context[ACONTEXT_KEYWORD].update(self.get_properties_term_definition_dict())
+        context[ACONTEXT_KEYWORD].update(self.get_filter_operators_term_definition_dict())
         context[ACONTEXT_KEYWORD].update({
                                              GEOJSONLD_FEATURE_COLLECTION: f"{PREFIX_GEOJSONLD}:{GEOJSONLD_FEATURE_COLLECTION}"})
         context[ACONTEXT_KEYWORD].update({GEOJSONLD_FEATURES: {ACONTAINER_KEYWORD: ASET_KEYWORD, AID_KEYWORD: f"{PREFIX_GEOJSONLD}:{GEOJSONLD_FEATURES}"}})
@@ -189,6 +191,12 @@ class GeoCollectionContext(GeoContext):
         context.update(self.get_basic_supported_properties())
         context.update({ATYPE_KEYWORD: FEATURE_COLLECTION_KEYWORD})
         return context
+
+    def get_filter_operators_term_definition_dict(self):
+        term_definitions = {}
+        for operator in FILTER_OPERATORS:
+            term_definitions[operator.build().symbol] = f"{PREFIX_SCHEMA_ORG}:{operator.build().name}"
+        return term_definitions
 
 class GeoDetailContext(GeoContext):
 

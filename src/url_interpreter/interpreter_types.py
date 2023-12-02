@@ -74,14 +74,7 @@ class EqualsOperator(Operator):
     def build(cls):
         return EqualsOperator()
 
-# dict_relational_operator = {
-#     'gt': '>',
-#     'lt': '<',
-#     'eq': '=',
-#     'neq': '<>',
-#     'gte': '>=',
-#     'lte': '<='
-# }
+FILTER_OPERATORS = [GreaterOperator, EqualsOperator]
 
 def filter(supported_property:SupportedProperty, operator:Union[GreaterOperator, EqualsOperator], value:Any) -> List[object]:
     pass
