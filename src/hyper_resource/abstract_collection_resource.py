@@ -351,6 +351,9 @@ class AbstractCollectionResource(AbstractResource):
         context = self.context_class(self.dialect_DB(), self.metadata_table(), self.entity_class())
         return sanic.response.json(context.get_basic_context(), content_type=MIME_TYPE_JSONLD)
 
+    async def options_given_path(self, path):
+        return await self.options()
+
     """
         
      projection

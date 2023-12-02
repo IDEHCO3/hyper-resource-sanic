@@ -1,7 +1,7 @@
 """
 Converters to handle python/SQLAlchemy types -> JSON-LD/Schema.org conversions
 """
-from typing import List
+from typing import List, Any, Union
 
 from geoalchemy2 import Geometry, Geography, Raster, WKTElement, WKBElement, RasterElement
 from sqlalchemy import ARRAY, BIGINT, BigInteger, BINARY,  BLOB, BOOLEAN, CHAR, CLOB, DATE, Date, DATETIME, \
@@ -40,7 +40,56 @@ def get_operation(_type, operation_name:str) -> str:
     return operation
 
 
+class SupportedProperty:
+    def __init__(self, property:str, required:bool, readable:bool, writable:bool, isExternal:bool):
+        self.property = property
+        self.required = required
+        self.readable = readable
+        self.writable = writable
+        self.isExternal = isExternal
 
+class Operator:
+    def __init__(self, name:str, symbol:str):
+        self.name = name
+        self.symbol = symbol
+
+    @classmethod
+    def build(cls):
+        raise NotImplementedError("'build' must be implemented in subclasses")
+
+
+class GreaterOperator(Operator):
+    def __init__(self):
+        super().__init__("greater", 'gt')
+
+    @classmethod
+    def build(cls):
+        return GreaterOperator()
+
+class EqualsOperator(Operator):
+    def __init__(self):
+        super().__init__("equals", 'eq')
+
+    @classmethod
+    def build(cls):
+        return EqualsOperator()
+
+# dict_relational_operator = {
+#     'gt': '>',
+#     'lt': '<',
+#     'eq': '=',
+#     'neq': '<>',
+#     'gte': '>=',
+#     'lte': '<='
+# }
+
+def filter(supported_property:SupportedProperty, operator:Union[GreaterOperator, EqualsOperator], value:Any) -> List[object]:
+    pass
+
+COLLECTION_EXPOSED_OPERATIONS = [filter]
+COLLECTION_TYPES_OPERATIONS = {
+    List: COLLECTION_EXPOSED_OPERATIONS
+}
 # --- operations executable throught client URL ---
 def upper() -> str:
     pass

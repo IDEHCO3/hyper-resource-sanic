@@ -12,7 +12,6 @@ from sanic_openapi import swagger_blueprint
 
 from settings import VOCAB_DIR
 from src.aiohttp_client import ClientIOHTTP
-from src.hyper_resource.context.abstract_context import ACONTEXT_KEYWORD, HYPER_RESOURCE_VOCAB_KEY
 from src.orm.database_postgis import DialectDbPostgis
 from src.resources.setup_resources import setup_all_resources
 from src.routes.setup_routes import setup_all_routes
@@ -73,13 +72,13 @@ def api_entry_point_context(entry_point_content):
     d = {
         "@context": {
             "schema": "https://schema.org/",
-            "geojson": "https://purl.org/geojson/vocab#",
+            # "geojson": "https://purl.org/geojson/vocab#",
         }
     }
     for key, value in entry_point_content.items():
         d["@context"].update({
             key: {
-                "@id": "geojson:FeatureCollection",
+                "@id": "schema:Collection",
                 "@type": "@id",
                 # key: value
             }
