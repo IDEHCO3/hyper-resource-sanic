@@ -1,4 +1,5 @@
 import copy
+import typing
 from typing import List
 
 from src.hyper_resource.common_resource import HTTP_GET_METHOD, CONTENT_TYPE_HEADER, CONTENT_TYPE_GEOJSON, \
@@ -14,7 +15,8 @@ from src.hyper_resource.context.abstract_context import AbstractContext, ACONTEX
 from src.hyper_resource.context.geocontext_types import PREFIX_GEOJSONLD, GEOJSONLD_GEOMETRY, \
     GEOJSONLD_FEATURE_COLLECTION, GEOJSONLD_FEATURES, GEOPYTHON_SCHEMA_ORG_TYPES, GEO_MIME_TYPES_FOR_TYPE
 from src.url_interpreter.interpreter_types import GEOALCHEMY_TYPES_OPERATIONS, GEOALCHEMY_COLLECTION_TYPES_OPERATIONS
-from src.hyper_resource.context.context_types import SQLALCHEMY_SCHEMA_ORG_TYPES, PYTHON_SCHEMA_ORG_TYPES
+from src.hyper_resource.context.context_types import SQLALCHEMY_SCHEMA_ORG_TYPES, PYTHON_SCHEMA_ORG_TYPES, \
+    ACONTAINER_KEYWORD, ASET_KEYWORD, SUPPORTED_PROPERTY_KEYWORD
 from environs import Env
 
 env = Env()
@@ -125,7 +127,7 @@ class GeoCollectionContext(GeoContext):
              # WARNING: must check if the property is a dereferencable
             is_fk = column.name in self.db_dialect.foreign_keys_names()
             property_dict = {
-                ATYPE_KEYWORD: HYDRA_SUPPORTED_PROPERTY_KEYWORD,
+                ATYPE_KEYWORD: SUPPORTED_PROPERTY_KEYWORD,
                 HYDRA_PROPERTY_KEYWORD: column.name,
                 HYDRA_REQUIRED_KEYWORD: not column.nullable,
                 HYDRA_READABLE_KEYWORD: True,
@@ -163,15 +165,14 @@ class GeoCollectionContext(GeoContext):
                 for parameter_name, parameter_type in op.__annotations__.items():
 
                     if not parameter_name == "return":
-                        param_dict = {
-                            ATYPE_KEYWORD: OPERATION_PARAMETER_KEYWORD,
-                            VARIABLE_PATH_KEYWORD: f"param{key}",
-                            REQUIRED_PARAMETER_PATH_KEYWORD: True,  # todo: hardcoded
-                            HYDRA_EXPECTS_KEYWORD: self.get_expects_for_parameter_type(parameter_type),
-                            EXPECTS_KEYWORD_SERIALIZATION: self.get_expected_serialization_for_parameter_type(
-                                parameter_type)
-                        }
-                        operation_dict[PARAMETERS_KEYWORD].append(param_dict)
+                        types_in_union = typing.get_args(parameter_type)
+                        if len(types_in_union) > 0:
+                            for _type in types_in_union:
+                                param_dict = self.get_operation_parameter(key, _type)
+                                operation_dict[PARAMETERS_KEYWORD].append(param_dict)
+                        else:
+                            param_dict = self.get_operation_parameter(key, parameter_type)
+                            operation_dict[PARAMETERS_KEYWORD].append(param_dict)
                     key = key + 1
                 supported_operations.append(operation_dict)
         d =  {SUPPORTED_OPERATIONS_KEYWORD: supported_operations}

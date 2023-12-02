@@ -68,10 +68,26 @@ class Expression:
                 str_aux = str_aux[1:]
             if str_aux[-1] == '/':
                 str_aux = str_aux[0:-1]
-            ls = str_aux.split('/')
+            ls = self.split_path(str_aux) #str_aux.split('/')
             self._twords = [TWord(st, TWord.SIMPLE_CATEGORY) for st in ls]
 
         return self._twords
+
+    def split_path(self, str_aux):
+        HTTP_PREFIX_STR = "http://"
+        HTTPS_PREFIX_STR = "https://"
+        if HTTP_PREFIX_STR in str_aux:
+            url = str_aux[str_aux.index(HTTP_PREFIX_STR):]
+            ls = str_aux[:str_aux.index(HTTP_PREFIX_STR) - 1].split("/")
+            ls.append(url)
+            return ls
+        elif HTTPS_PREFIX_STR in self.string:
+            url = str_aux[str_aux.index(HTTPS_PREFIX_STR):]
+            ls = str_aux[str_aux.index(HTTPS_PREFIX_STR) - 1].split("/")
+            ls.append(url)
+            return ls
+        else:
+            return str_aux.split('/')
 
     def initialize_twords(self) -> List[TWord]:
         if not self.is_balanced():

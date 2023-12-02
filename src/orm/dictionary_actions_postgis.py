@@ -3,6 +3,7 @@ from typing import Dict
 
 from src.hyper_resource.common_resource import CONTENT_TYPE_GEOJSON, CONTENT_TYPE_WKT, CONTENT_TYPE_GEOBUF, CONTENT_TYPE_WKB, CONTENT_TYPE_EWKB
 from src.orm.action_type import ActionFunction, ParamAction, ActionAttribute
+from src.orm.dictionary_actions_abstract_collection import dic_abstract_collection_action
 
 dic_geometry_action = {
         'area': ActionFunction('area', 'ST_Area', float, [], 'Returns the area using the current coordinate system', 'http://a-server/apis/states/RJ/geom/area/'),
@@ -40,7 +41,7 @@ dic_spatial_lookup_action: Dict[str, ActionFunction] = {
                                'http://a-server/apis/states/bboverlaps/Point(22, 34)',
                                representations),
     'contained': ActionFunction('contained',
-                                '@',
+                                'ST_Contained',
                                bool,
                                [ParamAction('other', Geometry)],
                                'Tests if the geometry field’s bounding box is completely contained by the lookup geometry’s bounding box.',
@@ -227,4 +228,4 @@ dic_spatial_aggregate_action: Dict[str, ActionFunction] = {
                                representations),
 
 }
-dic_action = {**dic_geometry_action, **dic_spatial_lookup_action, **dic_spatial_aggregate_action}
+dic_action = {**dic_abstract_collection_action, **dic_geometry_action, **dic_spatial_lookup_action, **dic_spatial_aggregate_action}

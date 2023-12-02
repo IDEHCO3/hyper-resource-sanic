@@ -14,6 +14,7 @@ dic_geo_action = {
         'bounds': ActionAttribute('bounds', tuple),
         'buffer': ActionFunction('buffer','buffer', Geometry, [ParamAction('distance', float), ParamAction('resolution', int, False, 16),ParamAction('cap_style', int, False, 1), ParamAction('join_style', int, False, 1), ParamAction('mitre_limit', float, False, 5.0),ParamAction('single_sided', bool, False, False)]),
         'centroid': ActionAttribute('centroid', Point),
+        'contained': ActionFunction('contained','contained', bool, [ParamAction('other', Geometry )]),
         'contains': ActionFunction('contains','contains', bool, [ParamAction('other', Geometry )]),
         'convex_hull': ActionAttribute('convex_hull', Geometry),
         'covered_by': ActionFunction('covered_by','covered_by', bool, [ParamAction('other', Geometry )]),

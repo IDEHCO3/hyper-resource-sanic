@@ -146,7 +146,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
                 where = await self.predicate_query_from(path)
                 rows = await self.dialect_DB().execute_spatial_function(action_name, where)
             rows_from_db = await self.rows_as_dict(rows)
-            res = sanic.response.json(rows_from_db or [])
+            res = sanic.response.json(rows_from_db or [], content_type=CONTENT_TYPE_GEOJSON)
             #rows = await self.dialect_DB().fetch_all_as_json(prefix_col_val=self.protocol_host())
             #res = sanic.response.text(rows or [], content_type='application/json')
             end = time.time()
@@ -411,6 +411,9 @@ class FeatureCollectionResource(SpatialCollectionResource):
         resp = await self.add_feature_collection_header(resp)
         return resp
 
+    async def options_given_path(self, path):
+        return await self.options(path)
+
     def get_feature_required_keys(self):
         return ["type", "geometry", "properties"]
 
@@ -534,7 +537,7 @@ class FeatureCollectionResource(SpatialCollectionResource):
             return sanic.response.raw(geom_wkb, content_type=CONTENT_TYPE_WKB)
         rows = await self.dialect_DB().fetch_all_by(qb.query())
         rows_dict = await self.rows_as_dict(rows)
-        return sanic.response.json(rows_dict or [])
+        return sanic.response.json(rows_dict or [], content_type=CONTENT_TYPE_GEOJSON)
 
     async def response_by(self, query: str):
         if CONTENT_TYPE_HTML in self.accept_type():

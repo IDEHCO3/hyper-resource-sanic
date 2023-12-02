@@ -46,6 +46,25 @@ class AbstractContext(object):
         context.update(AbstractResource.MAP_MODEL_FOR_CONTEXT[self.entity_class].get_type_by_model_class())
         return context
 
+    def get_operation_parameter(self, key, parameter_type):
+        return {
+            ATYPE_KEYWORD: OPERATION_PARAMETER_KEYWORD,
+            VARIABLE_PATH_KEYWORD: f"param{key}",
+            REQUIRED_PARAMETER_PATH_KEYWORD: True,  # todo: hardcoded
+            HYDRA_EXPECTS_KEYWORD: self.get_operation_parameter_expects(parameter_type),
+            EXPECTS_KEYWORD_SERIALIZATION: self.get_expected_serialization_for_parameter_type(parameter_type)
+        }
+
+    def get_operation_parameter_expects(self, parameter_type):
+        try:
+            if issubclass(parameter_type, Operator):
+                _expects = parameter_type.build().symbol
+            else:
+                _expects = self.get_expects_for_parameter_type(parameter_type)
+        except TypeError:
+            _expects = self.get_expects_for_parameter_type(parameter_type)
+        return _expects
+
     def get_operation_append_path(self, func) -> str:
         params_list = "/".join(["{" + f"param{val}" + "}" for val in range(0, len(func.__annotations__.items()) - 1)])
         if params_list != "":
@@ -143,28 +162,9 @@ class AbstractCollectionContext(AbstractContext):
                         else:
                             param_dict = self.get_operation_parameter(key, parameter_type)
                             operation_dict[PARAMETERS_KEYWORD].append(param_dict)
-                        key = key + 1
+                    key = key + 1
                 supported_operations.append(operation_dict)
         return {SUPPORTED_OPERATIONS_KEYWORD: supported_operations}
-
-    def get_operation_parameter(self, key, parameter_type):
-        return {
-            ATYPE_KEYWORD: OPERATION_PARAMETER_KEYWORD,
-            VARIABLE_PATH_KEYWORD: f"param{key}",
-            REQUIRED_PARAMETER_PATH_KEYWORD: True,  # todo: hardcoded
-            HYDRA_EXPECTS_KEYWORD: self.get_operation_parameter_expects(parameter_type),
-            EXPECTS_KEYWORD_SERIALIZATION: self.get_expected_serialization_for_parameter_type(parameter_type)
-        }
-
-    def get_operation_parameter_expects(self, parameter_type):
-        try:
-            if issubclass(parameter_type, Operator):
-                _expects = parameter_type.build().symbol
-            else:
-                _expects = self.get_expects_for_parameter_type(parameter_type)
-        except TypeError:
-            _expects = self.get_expects_for_parameter_type(parameter_type)
-        return _expects
 
     def get_basic_context(self):
         context = copy.deepcopy(VOCABS_TEMPLATE)

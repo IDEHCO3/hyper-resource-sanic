@@ -151,16 +151,19 @@ def within(geometry: Geometry) -> List[Geometry]:
 def contains(geometry: Geometry) -> List[Geometry]:
     pass
 
-GEOMETRY_COLLECTION_EXPOSED_OPERATIONS = [within, contains]
+def contained(geometry: Geometry) -> List[Geometry]:
+    pass
 
-GEOALCHEMY_COLLECTION_TYPES_OPERATIONS = {
+GEOMETRY_COLLECTION_EXPOSED_OPERATIONS = [within, contains, contained]
+
+GEOALCHEMY_COLLECTION_TYPES_OPERATIONS = {**COLLECTION_TYPES_OPERATIONS, **{
     Geometry:       GEOMETRY_COLLECTION_EXPOSED_OPERATIONS,
     Geography:      [],
     Raster:         [],
     WKTElement:     [],
     WKBElement:     [],
     RasterElement:  []
-}
+}}
 
 # --- Geospatial operations ---
 def area() -> float:
